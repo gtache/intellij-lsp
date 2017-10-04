@@ -1,3 +1,14 @@
+/** *****************************************************************************
+  * Copyright (c) 2016, 2017 Red Hat Inc. and others.
+  * All rights reserved. This program and the accompanying materials
+  * are made available under the terms of the Eclipse Public License v1.0
+  * which accompanies this distribution, and is available at
+  * http://www.eclipse.org/legal/epl-v10.html
+  *
+  * Contributors:
+  * Mickael Istria (Red Hat Inc.) - initial implementation
+  * Miro Spoenemann (TypeFox) - added clientImpl and serverInterface attributes
+  * ******************************************************************************/
 package com.github.gtache.client
 
 import scala.collection.mutable
