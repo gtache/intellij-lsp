@@ -1,0 +1,41 @@
+<idea-plugin>
+    <id>com.github.gtache.LSP</id>
+    <name>LSPIntegration</name>
+    <version>1.0</version>
+    <vendor email="guillaume.tache@epfl.ch">gtache</vendor>
+
+    <description>Adds LSP (Language Server Protocol) support for IntelliJ</description>
+
+    <change-notes>Initial release
+    </change-notes>
+
+    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
+    <idea-version since-build="145.0"/>
+
+    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
+         on how to target different products -->
+    <!-- uncomment to enable plugin in all products
+    <depends>com.intellij.modules.lang</depends>
+    -->
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Add your extensions here -->
+        <applicationConfigurable groupId="editor" displayName="Language Server Protocol"
+                                 instance="com.github.gtache.settings.LSPSettings"/>
+        <applicationService id="LSPState"
+                            serviceInterface="com.github.gtache.settings.LSPState"
+                            serviceImplementation="com.github.gtache.settings.LSPState"/>
+    </extensions>
+
+    <actions>
+    </actions>
+
+    <application-components>
+        <component>
+            <implementation-class>com.github.gtache.PluginMain</implementation-class>
+        </component>
+    </application-components>
+    <project-components>
+    </project-components>
+
+</idea-plugin>
