@@ -3,6 +3,9 @@ package com.github.gtache.editor
 import com.github.gtache.PluginMain
 import com.intellij.openapi.vfs._
 
+/**
+  * Object listening to file system changes
+  */
 object VFSListener extends VirtualFileListener {
   /**
     * Fired when a virtual file is renamed from within IDEA, or its writable status is changed.

@@ -38,7 +38,7 @@ class SimpleRequestManager(server: LanguageServer, client: LanguageClient) exten
 
   override def shutdown: CompletableFuture[AnyRef] = server.shutdown()
 
-  override def exit: Unit = server.exit()
+  override def exit(): Unit = server.exit()
 
   override def cancelRequest(params: CancelParams): Unit = {
     //TODO

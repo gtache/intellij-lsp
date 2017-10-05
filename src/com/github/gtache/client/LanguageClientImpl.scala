@@ -9,10 +9,17 @@ import org.eclipse.lsp4j.services.{LanguageClient, LanguageServer}
 import scala.collection.JavaConverters._
 
 
+/**
+  * Implementation of the LanguageClient
+  */
 class LanguageClientImpl extends LanguageClient {
   private val LOG: Logger = Logger.getInstance(classOf[LanguageClientImpl])
   private var server: LanguageServer = _
 
+  /**
+    * Connects the LanguageClient to the server
+    * @param server The LanguageServer
+    */
   def connect(server: LanguageServer): Unit = {
     this.server = server
   }

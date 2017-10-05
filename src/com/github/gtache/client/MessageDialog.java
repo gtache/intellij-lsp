@@ -7,6 +7,9 @@ import com.intellij.uiDesigner.core.Spacer;
 import javax.swing.*;
 import java.awt.*;
 
+/**
+ * Multi-purpose dialog, which just shows a text message and an ok button
+ */
 public class MessageDialog extends JDialog {
     private JPanel contentPane;
     private JButton buttonOK;
@@ -33,7 +36,6 @@ public class MessageDialog extends JDialog {
     }
 
     private void onOK() {
-        // add your code here
         this.setVisible(false);
         dispose();
     }

@@ -9,6 +9,9 @@ import org.jetbrains.annotations.Nls;
 import javax.swing.*;
 import java.util.Map;
 
+/**
+ * Class used to manage the settings related to the LSP
+ */
 public final class LSPSettings implements Configurable {
 
     private static final Logger LOG = Logger.getInstance(LSPSettings.class);

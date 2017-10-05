@@ -10,6 +10,9 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.Collections;
 
+/**
+ * The GUI for the LSP settings
+ */
 public class LSPGUI {
 
     private static final Logger LOG = Logger.getInstance(LSPGUI.class);

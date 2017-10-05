@@ -35,7 +35,7 @@ trait RequestManager {
 
   def shutdown: CompletableFuture[AnyRef]
 
-  def exit: Unit
+  def exit(): Unit
 
   def cancelRequest(params: CancelParams): Unit
 

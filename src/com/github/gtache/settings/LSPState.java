@@ -16,6 +16,10 @@ import java.util.Map;
         name = "LSPState",
         storages = {@Storage(id = "LSPState", file = "LSPState.xml")}
 )
+
+/**
+ * Class representing the state of the LSP settings
+ */
 public class LSPState implements PersistentStateComponent<LSPState> {
 
     private static final Logger LOG = Logger.getInstance(LSPState.class);

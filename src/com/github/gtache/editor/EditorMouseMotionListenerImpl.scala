@@ -4,7 +4,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.event.{EditorMouseEvent, EditorMouseMotionListener}
 
 /**
-  * Class used for the hover event
+  * Class listening for mouse movement in an editor (used for hover)
   */
 class EditorMouseMotionListenerImpl extends EditorMouseMotionListener {
 

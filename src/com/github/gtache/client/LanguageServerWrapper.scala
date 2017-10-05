@@ -44,10 +44,19 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
   private var initializeStartTime = 0L
   private var started: Boolean = false
 
+  /**
+    * Returns the EditorEventManager for a given uri
+    *
+    * @param uri the URI as a string
+    * @return the EditorEventManager (or null)
+    */
   def getManagerFor(uri: String): EditorEventManager = {
     connectedEditors.get(uri).orNull
   }
 
+  /**
+    * Starts the LanguageServer
+    */
   @throws[IOException]
   def start(): Unit = {
     if (!started) {
@@ -56,7 +65,7 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
         val client = serverDefinition.createLanguageClient
         val executorService = Executors.newCachedThreadPool
         val initParams = new InitializeParams
-        //TODO
+        //TODO hardcoded
         initParams.setRootUri(new File("C:\\DottyExample\\").toURI.toString)
         //initParams.setRootUri(Utils.toUri(project).toString)
         //initParams.setRootPath(project.getLocation.toFile.getAbsolutePath)
@@ -118,6 +127,11 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
     */
   def isActive: Boolean = this.launcherFuture != null && !this.launcherFuture.isDone && !this.launcherFuture.isCancelled
 
+  /**
+    * Connects an editor to the languageServer
+    *
+    * @param editor the editor
+    */
   @throws[IOException]
   def connect(editor: Editor): Unit = {
     val path = Utils.editorToURIString(editor)
@@ -134,8 +148,8 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
               val listener = new EditorMouseMotionListenerImpl()
               val manager = new EditorEventManager(editor, listener, requestManager, syncKind)
               listener.setManager(manager)
+              requestManager.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(Utils.editorToURIString(editor), serverDefinition.id, 0, editor.getDocument.getText)))
               LanguageServerWrapper.this.connectedEditors.put(path, manager)
-              requestManager.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(Utils.editorToURIString(editor), serverDefinition.id, 0, editor.getDocument.getText())))
             }
           }
 
@@ -146,6 +160,11 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
     }
   }
 
+  /**
+    * Disconnects an editor from the LanguageServer
+    *
+    * @param path The uri of the editor
+    */
   def disconnect(path: String): Unit = {
     this.connectedEditors.remove(path).foreach({ e =>
       e.editor.removeEditorMouseMotionListener(e.mouseMotionListener)
@@ -156,10 +175,13 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
   }
 
   /**
-    * checks if the wrapper is already connected to the document at the given path
+    * Checks if the wrapper is already connected to the document at the given path
     */
   def isConnectedTo(location: String): Boolean = connectedEditors.contains(location)
 
+  /**
+    * @return the LanguageServer
+    */
   @Nullable def getServer: LanguageServer = {
     try
       start()
@@ -199,9 +221,7 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
     if (contentTypes.exists(serverDefinition.getMappedExtensions.contains(_))) serverDefinition.id else null
   }
 
-  private def logMessage(message: Message): Unit
-
-  = {
+  private def logMessage(message: Message): Unit = {
     message match {
       case responseMessage: ResponseMessage if responseMessage.getError != null && (responseMessage.getId eq Integer.toString(ResponseErrorCode.RequestCancelled.getValue)) =>
         LOG.error(new ResponseErrorException(responseMessage.getError))

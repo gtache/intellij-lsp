@@ -16,6 +16,9 @@ import java.net.URI
 import org.eclipse.lsp4j.jsonrpc.messages.Message
 import org.eclipse.lsp4j.services.LanguageServer
 
+/**
+  * A class representing a stream connection
+  */
 trait StreamConnectionProvider {
   @throws[IOException]
   def start(): Unit
