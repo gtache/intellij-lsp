@@ -47,6 +47,7 @@ object PluginMain {
           LOG.info("Creating wrapper for ext " + ext)
           //TODO this line is for dotty
           wrapper = new LanguageServerWrapper(new LanguageServerDefinition(ext), Seq("coursier.bat", "launch", new File(s).getName, "-M", dottyM, "--", "-stdio"), new File(s).getParent)
+          extToLanguageWrapper.put(ext, wrapper)
         }
         LOG.info("Adding file " + file.getName)
         wrapper.connect(editor)
@@ -59,8 +60,10 @@ object PluginMain {
 
   def fileChanged(file: VirtualFile): Unit = {
     val uri: String = Utils.VFSToURIString(file)
-    LOG.info("File saved : " + uri)
-    uriToLanguageWrapper.get(uri).foreach(l => l.getManagerFor(uri).documentSaved())
+    uriToLanguageWrapper.get(uri).foreach(l => {
+      LOG.info("File saved : " + uri)
+      l.getManagerFor(uri).documentSaved()
+    })
   }
 
   def fileMoved(file: VirtualFile): Unit = {

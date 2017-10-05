@@ -22,7 +22,6 @@
         <!-- Add your extensions here -->
         <applicationConfigurable groupId="editor" displayName="Language Server Protocol"
                                  instance="com.github.gtache.settings.LSPSettings"/>
-        <problemFileHighlightFilter implementation="com.github.gtache.editor.DottyProblemFileHighlightFilter"/>
         <applicationService id="LSPState"
                             serviceInterface="com.github.gtache.settings.LSPState"
                             serviceImplementation="com.github.gtache.settings.LSPState"/>

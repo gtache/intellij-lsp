@@ -13,13 +13,16 @@ import com.intellij.openapi.ui.popup.JBPopupFactory
 import org.eclipse.lsp4j._
 
 class EditorEventManager(val editor: Editor, val mouseMotionListener: EditorMouseMotionListener, val requestManager: RequestManager, val syncKind: TextDocumentSyncKind = TextDocumentSyncKind.Full) {
-
-  private val RESPONSE_TIME: Int = 500 //Time in millis
+  {
+    editor.addEditorMouseMotionListener(mouseMotionListener)
+  }
+  private val RESPONSE_TIME: Int = 1000 //Time in millis
   private val HOVER_TIME_THRES: Long = 1000000000L //1 sec
   private val identifier: TextDocumentIdentifier = new TextDocumentIdentifier(Utils.editorToURIString(editor))
   private val LOG: Logger = Logger.getInstance(classOf[EditorEventManager])
   private var predTime: Long = -1L
   private var isOpen: Boolean = true
+  private var isPopupOpen: Boolean = false
 
   def mouseMoved(e: EditorMouseEvent): Unit = {
     val curTime = System.nanoTime()
@@ -36,8 +39,14 @@ class EditorEventManager(val editor: Editor, val mouseMotionListener: EditorMous
             val hover = response.get(RESPONSE_TIME, TimeUnit.MILLISECONDS)
             val range = hover.getRange
             val string = HoverHandler.getHoverString(hover)
-            val popup = JBPopupFactory.getInstance().createMessage(string)
-            popup.showInBestPositionFor(editor)
+            if (string != null) {
+              ApplicationManager.getApplication.invokeLater(() => {
+                val popup = JBPopupFactory.getInstance().createMessage(string)
+                popup.showInBestPositionFor(editor)
+              })
+            } else {
+              LOG.warn("String returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
+            }
           }
         })
       }

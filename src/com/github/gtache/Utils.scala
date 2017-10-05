@@ -10,7 +10,7 @@ import org.eclipse.lsp4j.{Position, TextDocumentIdentifier}
 object Utils {
 
   def logicalToLspPos(position: LogicalPosition): Position = {
-    new Position(position.line - 1, position.column)
+    new Position(position.line, position.column)
   }
 
   def editorToLSPIdentifier(editor: Editor): TextDocumentIdentifier = {

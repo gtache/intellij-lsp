@@ -42,6 +42,7 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
   private var initializeFuture: CompletableFuture[InitializeResult] = _
   private var capabilitiesAlreadyRequested = false
   private var initializeStartTime = 0L
+  private var started: Boolean = false
 
   def getManagerFor(uri: String): EditorEventManager = {
     connectedEditors.get(uri).orNull
@@ -49,62 +50,66 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
 
   @throws[IOException]
   def start(): Unit = {
-    try {
-      this.lspStreamProvider.start()
-      val client = serverDefinition.createLanguageClient
-      val executorService = Executors.newCachedThreadPool
-      val initParams = new InitializeParams
-      //TODO
-      initParams.setRootUri(new File("D:\\Projects\\Scala\\DottyExample\\").toURI.toString)
-      //initParams.setRootUri(Utils.toUri(project).toString)
-      //initParams.setRootPath(project.getLocation.toFile.getAbsolutePath)
-      /*val launcher = LSPLauncher.createClientLauncher(client, this.lspStreamProvider.getInputStream, this.lspStreamProvider.getOutputStream, executorService, (consumer: MessageConsumer) => (message: Message) => {
+    if (!started) {
+      try {
+        this.lspStreamProvider.start()
+        val client = serverDefinition.createLanguageClient
+        val executorService = Executors.newCachedThreadPool
+        val initParams = new InitializeParams
+        //TODO
+        initParams.setRootUri(new File("C:\\DottyExample\\").toURI.toString)
+        //initParams.setRootUri(Utils.toUri(project).toString)
+        //initParams.setRootPath(project.getLocation.toFile.getAbsolutePath)
+        /*val launcher = LSPLauncher.createClientLauncher(client, this.lspStreamProvider.getInputStream, this.lspStreamProvider.getOutputStream, executorService, (consumer: MessageConsumer) => (message: Message) => {
         consumer.consume(message)
         logMessage(message)
         this.lspStreamProvider.handleMessage(message, this.languageServer, URI.create(initParams.getRootUri))
       })
       */
-      val launcher = LSPLauncher.createClientLauncher(client, this.lspStreamProvider.getInputStream, this.lspStreamProvider.getOutputStream)
+        val launcher = LSPLauncher.createClientLauncher(client, this.lspStreamProvider.getInputStream, this.lspStreamProvider.getOutputStream)
 
-      this.languageServer = launcher.getRemoteProxy
-      client.connect(languageServer)
-      requestManager = new SimpleRequestManager(languageServer, client)
-      this.launcherFuture = launcher.startListening
-      val name = "Intellij" //$NON-NLS-1$
-      val workspaceClientCapabilites = new WorkspaceClientCapabilities
-      workspaceClientCapabilites.setApplyEdit(true)
-      workspaceClientCapabilites.setExecuteCommand(new ExecuteCommandCapabilities)
-      workspaceClientCapabilites.setSymbol(new SymbolCapabilities)
-      val textDocumentClientCapabilities = new TextDocumentClientCapabilities
-      textDocumentClientCapabilities.setCodeAction(new CodeActionCapabilities)
-      textDocumentClientCapabilities.setCodeLens(new CodeLensCapabilities)
-      textDocumentClientCapabilities.setCompletion(new CompletionCapabilities(new CompletionItemCapabilities(true)))
-      textDocumentClientCapabilities.setDefinition(new DefinitionCapabilities)
-      textDocumentClientCapabilities.setDocumentHighlight(new DocumentHighlightCapabilities)
-      textDocumentClientCapabilities.setDocumentLink(new DocumentLinkCapabilities)
-      textDocumentClientCapabilities.setDocumentSymbol(new DocumentSymbolCapabilities)
-      textDocumentClientCapabilities.setFormatting(new FormattingCapabilities)
-      textDocumentClientCapabilities.setHover(new HoverCapabilities)
-      textDocumentClientCapabilities.setOnTypeFormatting(null)
+        this.languageServer = launcher.getRemoteProxy
+        client.connect(languageServer)
+        requestManager = new SimpleRequestManager(languageServer, client)
+        this.launcherFuture = launcher.startListening
+        val name = "Intellij" //$NON-NLS-1$
+        val workspaceClientCapabilites = new WorkspaceClientCapabilities
+        workspaceClientCapabilites.setApplyEdit(true)
+        workspaceClientCapabilites.setExecuteCommand(new ExecuteCommandCapabilities)
+        workspaceClientCapabilites.setSymbol(new SymbolCapabilities)
+        val textDocumentClientCapabilities = new TextDocumentClientCapabilities
+        textDocumentClientCapabilities.setCodeAction(new CodeActionCapabilities)
+        textDocumentClientCapabilities.setCodeLens(new CodeLensCapabilities)
+        textDocumentClientCapabilities.setCompletion(new CompletionCapabilities(new CompletionItemCapabilities(true)))
+        textDocumentClientCapabilities.setDefinition(new DefinitionCapabilities)
+        textDocumentClientCapabilities.setDocumentHighlight(new DocumentHighlightCapabilities)
+        textDocumentClientCapabilities.setDocumentLink(new DocumentLinkCapabilities)
+        textDocumentClientCapabilities.setDocumentSymbol(new DocumentSymbolCapabilities)
+        textDocumentClientCapabilities.setFormatting(new FormattingCapabilities)
+        textDocumentClientCapabilities.setHover(new HoverCapabilities)
+        textDocumentClientCapabilities.setOnTypeFormatting(null)
 
-      textDocumentClientCapabilities.setRangeFormatting(new RangeFormattingCapabilities)
-      textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
-      textDocumentClientCapabilities.setRename(new RenameCapabilities)
-      textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
-      textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, true, true))
-      initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilites, textDocumentClientCapabilities, null))
-      initParams.setClientName(name)
-      initParams.setInitializationOptions(this.lspStreamProvider.getInitializationOptions(URI.create(initParams.getRootUri)))
-      initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
-        initializeResult = res
-        res
-      })
-      initializeStartTime = System.currentTimeMillis
-    }
-    catch {
-      case ex: Exception =>
-        LOG.error(ex)
-        stop()
+        textDocumentClientCapabilities.setRangeFormatting(new RangeFormattingCapabilities)
+        textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
+        textDocumentClientCapabilities.setRename(new RenameCapabilities)
+        textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
+        textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, true, true))
+        initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilites, textDocumentClientCapabilities, null))
+        initParams.setClientName(name)
+        initParams.setInitializationOptions(this.lspStreamProvider.getInitializationOptions(URI.create(initParams.getRootUri)))
+        initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
+          initializeResult = res
+          LOG.info("Got initializeResult")
+          res
+        })
+        initializeStartTime = System.currentTimeMillis
+        started = true
+      }
+      catch {
+        case ex: Exception =>
+          LOG.error(ex)
+          stop()
+      }
     }
   }
 
@@ -130,6 +135,7 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
               val manager = new EditorEventManager(editor, listener, requestManager, syncKind)
               listener.setManager(manager)
               LanguageServerWrapper.this.connectedEditors.put(path, manager)
+              requestManager.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(Utils.editorToURIString(editor), serverDefinition.id, 0, editor.getDocument.getText())))
             }
           }
 
@@ -203,9 +209,7 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
     }
   }
 
-  private def stop(): Unit
-
-  = {
+  private def stop(): Unit = {
     if (this.initializeFuture != null) {
       this.initializeFuture.cancel(true)
       this.initializeFuture = null
@@ -227,6 +231,7 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
     if (this.lspStreamProvider != null) this.lspStreamProvider.stop()
     connectedEditors.foreach(e => disconnect(e._1))
     this.languageServer = null
+    started = false
   }
 
 

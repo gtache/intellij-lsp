@@ -19,7 +19,7 @@ class EditorMouseMotionListenerImpl extends EditorMouseMotionListener {
 
   override def mouseMoved(e: EditorMouseEvent): Unit = {
     if (manager == null) {
-      throw new IllegalStateException("No manager")
+      LOG.error("No manager")
     } else {
       manager.mouseMoved(e)
     }
