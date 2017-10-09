@@ -10,6 +10,7 @@ object HoverHandler {
 
   /**
     * Returns the hover string corresponding to an Hover response
+    *
     * @param hover The Hover
     * @return The string response
     */

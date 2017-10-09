@@ -1,5 +1,6 @@
 package com.github.gtache
 
+import java.io.File
 import java.net.URL
 
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
@@ -50,6 +51,10 @@ object Utils {
     */
   def VFSToURIString(file: VirtualFile): String = {
     new URL(file.getUrl).toURI.toString
+  }
+
+  def editorToProjectFolderPath(editor: Editor): String = {
+    new File(editor.getProject.getBaseDir.getPath).getAbsolutePath
   }
 
 }

@@ -8,8 +8,8 @@ import com.intellij.openapi.editor.event.{EditorMouseEvent, EditorMouseMotionLis
   */
 class EditorMouseMotionListenerImpl extends EditorMouseMotionListener {
 
-  private var manager: EditorEventManager = _
   private val LOG: Logger = Logger.getInstance(classOf[EditorMouseMotionListenerImpl])
+  private var manager: EditorEventManager = _
 
   def setManager(manager: EditorEventManager): Unit = {
     this.manager = manager

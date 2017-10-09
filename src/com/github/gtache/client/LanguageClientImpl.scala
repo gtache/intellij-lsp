@@ -18,6 +18,7 @@ class LanguageClientImpl extends LanguageClient {
 
   /**
     * Connects the LanguageClient to the server
+    *
     * @param server The LanguageServer
     */
   def connect(server: LanguageServer): Unit = {

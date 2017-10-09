@@ -15,6 +15,7 @@ import scala.collection.mutable
 
 /**
   * Class representing the definition of a language server (related extensions)
+  *
   * @param id the id of the language
   */
 class LanguageServerDefinition(val id: String) {

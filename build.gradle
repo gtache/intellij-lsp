@@ -8,7 +8,6 @@ repositories {
 }
 
 dependencies {
-    compile group: 'ch.epfl.lamp', name: 'dotty-language-server_0.3', version: '0.3.0-RC2'
     compile group: 'org.eclipse.lsp4j', name: 'org.eclipse.lsp4j', version : '0.3.0'
     compile group: 'io.get-coursier', name: 'coursier_2.12', version : '1.0.0-RC12'
     compile 'org.scala-lang:scala-compiler:2.12.2'

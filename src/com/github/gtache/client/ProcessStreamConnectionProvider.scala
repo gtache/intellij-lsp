@@ -17,8 +17,8 @@ import com.intellij.openapi.diagnostic.Logger
 import org.jetbrains.annotations.Nullable
 
 class ProcessStreamConnectionProvider(private var commands: Seq[String], private var workingDir: String) extends StreamConnectionProvider {
-  @Nullable private var process: Process = _
   private val LOG: Logger = Logger.getInstance(classOf[ProcessOverSocketStreamConnectionProvider])
+  @Nullable private var process: Process = _
 
   @throws[IOException]
   override def start(): Unit = {

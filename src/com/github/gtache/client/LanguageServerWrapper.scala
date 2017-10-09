@@ -35,7 +35,7 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
   private val connectedEditors: mutable.Map[String, EditorEventManager] = mutable.HashMap()
   private val LOG: Logger = Logger.getInstance(classOf[LanguageServerWrapper])
   private var languageServer: LanguageServer = _
-  private var client: LanguageClient = _
+  private var client: LanguageClientImpl = _
   private var requestManager: RequestManager = _
   private var initializeResult: InitializeResult = _
   private var launcherFuture: Future[_] = _
@@ -58,16 +58,14 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
     * Starts the LanguageServer
     */
   @throws[IOException]
-  def start(): Unit = {
+  def start(rootFolder: String): Unit = {
     if (!started) {
       try {
         this.lspStreamProvider.start()
-        val client = serverDefinition.createLanguageClient
+        client = serverDefinition.createLanguageClient
         val executorService = Executors.newCachedThreadPool
         val initParams = new InitializeParams
-        //TODO hardcoded
-        initParams.setRootUri(new File("C:\\DottyExample\\").toURI.toString)
-        //initParams.setRootUri(Utils.toUri(project).toString)
+        initParams.setRootUri(new File(rootFolder).toURI.toString)
         //initParams.setRootPath(project.getLocation.toFile.getAbsolutePath)
         /*val launcher = LSPLauncher.createClientLauncher(client, this.lspStreamProvider.getInputStream, this.lspStreamProvider.getOutputStream, executorService, (consumer: MessageConsumer) => (message: Message) => {
         consumer.consume(message)
@@ -136,7 +134,7 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
   def connect(editor: Editor): Unit = {
     val path = Utils.editorToURIString(editor)
     if (!this.connectedEditors.contains(path)) {
-      start()
+      start(Utils.editorToProjectFolderPath(editor))
       if (this.initializeFuture != null && editor != null) {
         initializeFuture.thenRun(() => {
           if (!this.connectedEditors.contains(path)) {
@@ -184,7 +182,7 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
     */
   @Nullable def getServer: LanguageServer = {
     try
-      start()
+      start(".")
     catch {
       case ex: IOException =>
         LOG.error(ex)
@@ -200,7 +198,7 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
     */
   @Nullable def getServerCapabilities: ServerCapabilities = {
     try {
-      start()
+      start(".")
       if (this.initializeFuture != null) this.initializeFuture.get(if (capabilitiesAlreadyRequested) 0
       else 1000, TimeUnit.MILLISECONDS)
     } catch {

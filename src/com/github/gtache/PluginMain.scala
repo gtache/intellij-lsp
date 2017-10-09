@@ -1,7 +1,5 @@
 package com.github.gtache
 
-import java.io.File
-
 import com.github.gtache.client.{LanguageServerDefinition, LanguageServerWrapper}
 import com.github.gtache.editor.{EditorListener, VFSListener}
 import com.github.gtache.settings.LSPState
@@ -73,10 +71,10 @@ object PluginMain {
         var wrapper = extToLanguageWrapper.get(ext).orNull
         if (wrapper == null) {
           LOG.info("Creating wrapper for ext " + ext)
-          val workingDir = editor.getProject.getBaseDir //TODO what happens when multiple files not in same project ?
-          LOG.info(workingDir.getPath + " ; " + new File(s).getParent)
+          //TODO what happens when multiple files not in same project ?
+          val cp = CoursierImpl.resolveClasspath(s)
           //TODO this line is for dotty
-          wrapper = new LanguageServerWrapper(new LanguageServerDefinition(ext), Seq("coursier.bat", "launch", new File(s).getName, "-M", dottyM, "--", "-stdio"), new File(workingDir.getPath).getAbsolutePath)
+          wrapper = new LanguageServerWrapper(new LanguageServerDefinition(ext), Seq("java", "-cp", cp, dottyM, "-stdio"), Utils.editorToProjectFolderPath(editor))
           extToLanguageWrapper.put(ext, wrapper)
         }
         LOG.info("Adding file " + file.getName)
