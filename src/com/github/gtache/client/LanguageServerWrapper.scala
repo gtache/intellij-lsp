@@ -17,14 +17,14 @@ import java.net.URI
 import java.util.concurrent._
 
 import com.github.gtache.Utils
-import com.github.gtache.editor.{EditorEventManager, EditorMouseMotionListenerImpl}
+import com.github.gtache.editor.{DocumentListenerImpl, EditorEventManager, EditorMouseMotionListenerImpl}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException
 import org.eclipse.lsp4j.jsonrpc.messages.{Either, Message, ResponseErrorCode, ResponseMessage}
 import org.eclipse.lsp4j.launch.LSPLauncher
-import org.eclipse.lsp4j.services.{LanguageClient, LanguageServer}
+import org.eclipse.lsp4j.services.LanguageServer
 import org.jetbrains.annotations.Nullable
 
 import scala.collection.mutable
@@ -143,11 +143,13 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
             if (syncOptions != null) {
               if (syncOptions.isRight) syncKind = syncOptions.getRight.getChange
               else if (syncOptions.isLeft) syncKind = syncOptions.getLeft
-              val listener = new EditorMouseMotionListenerImpl()
-              val manager = new EditorEventManager(editor, listener, requestManager, syncKind)
-              listener.setManager(manager)
-              requestManager.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(Utils.editorToURIString(editor), serverDefinition.id, 0, editor.getDocument.getText)))
-              LanguageServerWrapper.this.connectedEditors.put(path, manager)
+              val mouseMotionListener = new EditorMouseMotionListenerImpl()
+              val documentListener = new DocumentListenerImpl()
+              val manager = new EditorEventManager(editor, mouseMotionListener, documentListener, requestManager, syncKind, this)
+              mouseMotionListener.setManager(manager)
+              documentListener.setManager(manager)
+              this.connectedEditors.put(path, manager)
+              LOG.info("Created a manager for " + path)
             }
           }
 
@@ -166,6 +168,7 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
   def disconnect(path: String): Unit = {
     this.connectedEditors.remove(path).foreach({ e =>
       e.editor.removeEditorMouseMotionListener(e.mouseMotionListener)
+      e.editor.getDocument.removeDocumentListener(e.documentListener)
       e.documentClosed()
     })
 

@@ -1,14 +1,14 @@
 package com.github.gtache.editor
 
 import java.util.concurrent.TimeUnit
-import java.util.{Timer, TimerTask}
+import java.util.{Collections, Timer, TimerTask}
 
 import com.github.gtache.Utils
-import com.github.gtache.client.RequestManager
+import com.github.gtache.client.{LanguageServerWrapper, RequestManager}
 import com.github.gtache.requests.HoverHandler
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.editor.event.{EditorMouseEvent, EditorMouseMotionListener}
+import com.intellij.openapi.editor.event.{DocumentEvent, DocumentListener, EditorMouseEvent, EditorMouseMotionListener}
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.ui.popup.{JBPopupFactory, JBPopupListener, LightweightWindowEvent}
 import org.eclipse.lsp4j._
@@ -21,10 +21,9 @@ import org.eclipse.lsp4j._
   * @param requestManager      The related RequestManager, connected to the right LanguageServer
   * @param syncKind            The type of synchronisation (unused)
   */
-class EditorEventManager(val editor: Editor, val mouseMotionListener: EditorMouseMotionListener, val requestManager: RequestManager, val syncKind: TextDocumentSyncKind = TextDocumentSyncKind.Full) {
-  {
-    editor.addEditorMouseMotionListener(mouseMotionListener)
-  }
+class EditorEventManager(val editor: Editor, val mouseMotionListener: EditorMouseMotionListener, val documentListener: DocumentListener, val requestManager: RequestManager, val syncKind: TextDocumentSyncKind = TextDocumentSyncKind.Full, val wrapper: LanguageServerWrapper) {
+
+
   private val RESPONSE_TIME: Int = 1000 //Time in millis to get a response
   private val HOVER_TIME_THRES: Long = 2000000000L //2 sec
   private val identifier: TextDocumentIdentifier = new TextDocumentIdentifier(Utils.editorToURIString(editor))
@@ -33,9 +32,15 @@ class EditorEventManager(val editor: Editor, val mouseMotionListener: EditorMous
   private var isOpen: Boolean = true
   @volatile private var isPopupOpen: Boolean = false
   private val hoverThread = new Timer("Hover", true)
-  private val scheduleThres = 100000000 //Time before the Timer is scheduled
+  private val scheduleThres = 10000000 //Time before the Timer is scheduled
   private val POPUP_THRES = HOVER_TIME_THRES / 1000000 + 200
+  private val versionStream = Stream.from(0).iterator
+  private val changesParams = new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(), Collections.singletonList(new TextDocumentContentChangeEvent()))
 
+  changesParams.getTextDocument.setUri(Utils.editorToURIString(editor))
+  editor.addEditorMouseMotionListener(mouseMotionListener)
+  editor.getDocument.addDocumentListener(documentListener)
+  requestManager.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(Utils.editorToURIString(editor), wrapper.serverDefinition.id, versionStream.next, editor.getDocument.getText)))
 
   private def getPos(e: EditorMouseEvent): LogicalPosition = {
     val mousePos = e.getMouseEvent.getPoint
@@ -71,7 +76,7 @@ class EditorEventManager(val editor: Editor, val mouseMotionListener: EditorMous
           hoverThread.schedule(new TimerTask {
             override def run(): Unit = {
               val curTime = System.nanoTime()
-              if (curTime - predTime > HOVER_TIME_THRES) {
+              if (curTime - predTime > HOVER_TIME_THRES && e.getEditor.getContentComponent.hasFocus) {
                 isPopupOpen = true
                 val serverPos = Utils.logicalToLspPos(editorPos)
                 val response = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
@@ -106,9 +111,25 @@ class EditorEventManager(val editor: Editor, val mouseMotionListener: EditorMous
     }
   }
 
-  //TODO
-  def documentChanged(): Unit = {
-    requestManager.didChange(new DidChangeTextDocumentParams())
+  def documentChanged(event: DocumentEvent): Unit = {
+    changesParams.getTextDocument.setVersion(versionStream.next())
+    syncKind match {
+      case TextDocumentSyncKind.None =>
+      case TextDocumentSyncKind.Incremental =>
+        val changeEvent = changesParams.getContentChanges.get(0)
+        val newText = event.getNewFragment
+        val offset = event.getOffset
+        val length = event.getNewLength
+        val range = new Range(Utils.offsetToLSPPos(event.getDocument, offset), Utils.offsetToLSPPos(event.getDocument, offset + length))
+        changeEvent.setRange(range)
+        changeEvent.setRangeLength(length)
+        changeEvent.setText(newText.toString)
+
+      case TextDocumentSyncKind.Full =>
+        changesParams.getContentChanges.get(0).setText(editor.getDocument.getText())
+    }
+    LOG.info("Document changed")
+    requestManager.didChange(changesParams)
   }
 
   /**

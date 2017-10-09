@@ -3,7 +3,7 @@ package com.github.gtache
 import java.io.File
 import java.net.URL
 
-import com.intellij.openapi.editor.{Editor, LogicalPosition}
+import com.intellij.openapi.editor.{Document, Editor, LogicalPosition}
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.vfs.VirtualFile
 import org.eclipse.lsp4j.{Position, TextDocumentIdentifier}
@@ -55,6 +55,12 @@ object Utils {
 
   def editorToProjectFolderPath(editor: Editor): String = {
     new File(editor.getProject.getBaseDir.getPath).getAbsolutePath
+  }
+
+  def offsetToLSPPos(doc: Document, offset: Int): Position = {
+    val line = doc.getLineNumber(offset)
+    val col = offset - (if (line > 0) doc.getLineEndOffset(line - 1) else 0)
+    new Position(line, col)
   }
 
 }
