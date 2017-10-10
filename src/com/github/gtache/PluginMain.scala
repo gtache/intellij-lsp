@@ -3,12 +3,14 @@ package com.github.gtache
 import com.github.gtache.client.{LanguageServerDefinition, LanguageServerWrapper}
 import com.github.gtache.editor.{EditorListener, VFSListener}
 import com.github.gtache.settings.LSPState
+import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.openapi.components.ApplicationComponent
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, EditorFactory}
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.{VirtualFile, VirtualFileManager}
+import org.eclipse.lsp4j.Position
 
 import scala.collection.immutable.HashMap
 import scala.collection.mutable
@@ -160,6 +162,19 @@ object PluginMain {
     } else {
       LOG.warn("File for document " + editor.getDocument.getText + " is null")
     }
+  }
+
+  /**
+    * Returns the completion suggestions for a given editor and position
+    *
+    * @param editor The editor
+    * @param pos    The position
+    * @return The suggestions
+    */
+  def completion(editor: Editor, pos: Position): java.lang.Iterable[_ <: LookupElement] = {
+    val uri = Utils.editorToURIString(editor)
+    import scala.collection.JavaConverters._
+    uriToLanguageWrapper.get(uri).map(l => l.getManagerFor(uri).completion(pos)).getOrElse(Iterable()).asJava
   }
 }
 

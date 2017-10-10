@@ -25,6 +25,7 @@
         <applicationService id="LSPState"
                             serviceInterface="com.github.gtache.settings.LSPState"
                             serviceImplementation="com.github.gtache.settings.LSPState"/>
+        <!-- <completion.contributor implementationClass="com.github.gtache.requests.CompletionHandler" /> TODO -->
     </extensions>
 
     <actions>

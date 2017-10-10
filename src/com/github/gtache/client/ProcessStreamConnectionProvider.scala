@@ -61,10 +61,6 @@ class ProcessStreamConnectionProvider(private var commands: Seq[String], private
 
   }
 
-  override def hashCode: Int = {
-    Objects.hashCode(this.getCommands) ^ Objects.hashCode(this.getWorkingDirectory)
-  }
-
   protected def getCommands: Seq[String] = commands
 
   def setCommands(commands: Seq[String]): Unit = {
@@ -75,5 +71,9 @@ class ProcessStreamConnectionProvider(private var commands: Seq[String], private
 
   def setWorkingDirectory(workingDir: String): Unit = {
     this.workingDir = workingDir
+  }
+
+  override def hashCode: Int = {
+    Objects.hashCode(this.getCommands) ^ Objects.hashCode(this.getWorkingDirectory)
   }
 }
