@@ -1,9 +1,12 @@
-package com.github.gtache.editor
+package com.github.gtache.editor.listeners
 
 import com.github.gtache.PluginMain
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.event.{EditorFactoryEvent, EditorFactoryListener}
 
+/**
+  * An EditorListener implementation
+  */
 class EditorListener extends EditorFactoryListener {
 
   private val LOG: Logger = Logger.getInstance(classOf[EditorListener])

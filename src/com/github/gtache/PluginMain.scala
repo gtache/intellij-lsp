@@ -1,7 +1,7 @@
 package com.github.gtache
 
 import com.github.gtache.client.{LanguageServerDefinition, LanguageServerWrapper}
-import com.github.gtache.editor.{EditorListener, VFSListener}
+import com.github.gtache.editor.listeners.{EditorListener, VFSListener}
 import com.github.gtache.settings.LSPState
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.openapi.components.ApplicationComponent

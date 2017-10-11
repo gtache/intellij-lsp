@@ -1,12 +1,11 @@
-package com.github.gtache.editor
+package com.github.gtache.editor.listeners
 
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.event.{DocumentEvent, DocumentListener}
 
-class DocumentListenerImpl extends DocumentListener {
-
-  private val LOG: Logger = Logger.getInstance(classOf[DocumentListenerImpl])
-  private var manager: EditorEventManager = _
+/**
+  * Implementation of a DocumentListener
+  */
+class DocumentListenerImpl extends DocumentListener with LSPListener {
 
   /**
     * Called before the text of the document is changed.
@@ -23,14 +22,9 @@ class DocumentListenerImpl extends DocumentListener {
     * @param event the event containing the information about the change.
     */
   override def documentChanged(event: DocumentEvent): Unit = {
-    if (manager != null) {
+    if (checkManager()) {
       manager.documentChanged(event)
-    } else {
-      LOG.error("No manager set!")
     }
   }
 
-  def setManager(manager: EditorEventManager): Unit = {
-    this.manager = manager
-  }
 }

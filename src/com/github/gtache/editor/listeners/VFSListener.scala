@@ -1,4 +1,4 @@
-package com.github.gtache.editor
+package com.github.gtache.editor.listeners
 
 import com.github.gtache.PluginMain
 import com.intellij.openapi.vfs._

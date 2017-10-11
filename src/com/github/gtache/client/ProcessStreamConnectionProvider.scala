@@ -16,6 +16,12 @@ import java.util.Objects
 import com.intellij.openapi.diagnostic.Logger
 import org.jetbrains.annotations.Nullable
 
+/**
+  * A class symbolizing a stream to a process
+  *
+  * @param commands   The commands to start the process
+  * @param workingDir The working directory of the process
+  */
 class ProcessStreamConnectionProvider(private var commands: Seq[String], private var workingDir: String) extends StreamConnectionProvider {
   private val LOG: Logger = Logger.getInstance(classOf[ProcessOverSocketStreamConnectionProvider])
   @Nullable private var process: Process = _
@@ -61,6 +67,10 @@ class ProcessStreamConnectionProvider(private var commands: Seq[String], private
 
   }
 
+  override def hashCode: Int = {
+    Objects.hashCode(this.getCommands) ^ Objects.hashCode(this.getWorkingDirectory)
+  }
+
   protected def getCommands: Seq[String] = commands
 
   def setCommands(commands: Seq[String]): Unit = {
@@ -71,9 +81,5 @@ class ProcessStreamConnectionProvider(private var commands: Seq[String], private
 
   def setWorkingDirectory(workingDir: String): Unit = {
     this.workingDir = workingDir
-  }
-
-  override def hashCode: Int = {
-    Objects.hashCode(this.getCommands) ^ Objects.hashCode(this.getWorkingDirectory)
   }
 }

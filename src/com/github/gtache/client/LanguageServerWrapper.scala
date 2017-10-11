@@ -17,7 +17,8 @@ import java.net.URI
 import java.util.concurrent._
 
 import com.github.gtache.Utils
-import com.github.gtache.editor.{DocumentListenerImpl, EditorEventManager, EditorMouseMotionListenerImpl}
+import com.github.gtache.editor.EditorEventManager
+import com.github.gtache.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import org.eclipse.lsp4j._
@@ -143,11 +144,15 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
             if (syncOptions != null) {
               if (syncOptions.isRight) syncKind = syncOptions.getRight.getChange
               else if (syncOptions.isLeft) syncKind = syncOptions.getLeft
-              val mouseMotionListener = new EditorMouseMotionListenerImpl()
-              val documentListener = new DocumentListenerImpl()
-              val manager = new EditorEventManager(editor, mouseMotionListener, documentListener, requestManager, syncKind, this)
+              val mouseListener = new EditorMouseListenerImpl
+              val mouseMotionListener = new EditorMouseMotionListenerImpl
+              val documentListener = new DocumentListenerImpl
+              val selectionListener = new SelectionListenerImpl
+              val manager = new EditorEventManager(editor, mouseListener, mouseMotionListener, documentListener, selectionListener, requestManager, syncKind, this)
+              mouseListener.setManager(manager)
               mouseMotionListener.setManager(manager)
               documentListener.setManager(manager)
+              selectionListener.setManager(manager)
               this.connectedEditors.put(path, manager)
               LOG.info("Created a manager for " + path)
             }

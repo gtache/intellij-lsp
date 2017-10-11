@@ -3,7 +3,7 @@ package com.github.gtache
 import java.io.File
 import java.net.URL
 
-import com.intellij.openapi.editor.{Document, Editor, LogicalPosition}
+import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.vfs.VirtualFile
@@ -13,16 +13,6 @@ import org.eclipse.lsp4j.{Position, TextDocumentIdentifier}
   * Object containing some useful methods for the plugin
   */
 object Utils {
-
-  /**
-    * Transforms a LogicalPosition (IntelliJ) to an LSP Position
-    *
-    * @param position the LogicalPosition
-    * @return the Position
-    */
-  def logicalToLspPos(position: LogicalPosition): Position = {
-    new Position(position.line, position.column)
-  }
 
   /**
     * Transforms an editor (Document) identifier to an LSP identifier
@@ -65,16 +55,45 @@ object Utils {
   }
 
   /**
-    * Calculates a Position given a document and an offset
+    * Calculates a Position given an editor and an offset
     *
-    * @param doc    The document
+    * @param editor The editor
     * @param offset The offset
     * @return an LSP position
     */
-  def offsetToLSPPos(doc: Document, offset: Int): Position = {
-    val line = doc.getLineNumber(offset)
-    val col = offset - (if (line > 0) doc.getLineEndOffset(line - 1) else 0)
-    new Position(line, col)
+  def offsetToLSPPos(editor: Editor, offset: Int): Position = {
+    logicalToLSPPos(editor.offsetToLogicalPosition(offset))
+  }
+
+  /**
+    * Transforms a LogicalPosition (IntelliJ) to an LSP Position
+    *
+    * @param position the LogicalPosition
+    * @return the Position
+    */
+  def logicalToLSPPos(position: LogicalPosition): Position = {
+    new Position(position.line, position.column)
+  }
+
+  /**
+    * Transforms an LSP position to an editor offset
+    *
+    * @param editor The editor
+    * @param pos    The LSPPos
+    * @return The offset
+    */
+  def LSPPosToOffset(editor: Editor, pos: Position): Int = {
+    editor.logicalPositionToOffset(LSPToLogicalPos(pos))
+  }
+
+  /**
+    * Transforms an LSP position to a LogicalPosition
+    *
+    * @param position The LSPPos
+    * @return The LogicalPos
+    */
+  def LSPToLogicalPos(position: Position): LogicalPosition = {
+    new LogicalPosition(position.getLine, position.getCharacter)
   }
 
   /**
