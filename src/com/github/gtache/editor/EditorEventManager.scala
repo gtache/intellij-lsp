@@ -253,10 +253,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     try {
       val res = future.get(RESPONSE_TIME, TimeUnit.MILLISECONDS)
       import scala.collection.JavaConverters._
-      val completion = if (res.isLeft) res.getLeft.asScala else res.getRight
+      val completion /*: CompletionList | List[CompletionItem] */ = if (res.isLeft) res.getLeft.asScala else res.getRight
       completion match {
         case c: CompletionList => c.getItems.asScala.map(item => LookupElementBuilder.create(item.getLabel))
-        case l: List[CompletionItem] => l.map(item => {
+        case l: List[CompletionItem@unchecked] => l.map(item => {
           LookupElementBuilder.create(item.getLabel)
         })
       }
@@ -264,6 +264,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       case e: TimeoutException =>
         LOG.warn(e)
         Iterable.empty
+
     }
   }
 
