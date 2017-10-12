@@ -10,7 +10,7 @@ import java.awt.*;
 /**
  * Multi-purpose dialog, which just shows a text message and an ok button
  */
-public class MessageDialog extends JDialog {
+public final class MessageDialog extends JDialog {
     private JPanel contentPane;
     private JButton buttonOK;
     private JPanel centerPanel;

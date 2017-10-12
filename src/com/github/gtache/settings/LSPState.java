@@ -12,10 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 
-@State(
-        name = "LSPState",
-        storages = {@Storage(id = "LSPState", file = "LSPState.xml")}
-)
+@State(name = "LSPState", storages = @Storage(id = "LSPState", file = "LSPState.xml"))
 
 /**
  * Class representing the state of the LSP settings
@@ -25,6 +22,7 @@ public class LSPState implements PersistentStateComponent<LSPState> {
     private static final Logger LOG = Logger.getInstance(LSPState.class);
 
 
+    @SuppressWarnings("WeakerAccess")
     public Map<String, String> extToServ = new HashMap<>(); //Must be public to be saved
 
     @Nullable
@@ -34,12 +32,12 @@ public class LSPState implements PersistentStateComponent<LSPState> {
 
     public String getFirstExt() {
         final Map.Entry<String, String> entry = extToServ.isEmpty() ? null : extToServ.entrySet().iterator().next();
-        return entry == null ? "" : entry.getKey();
+        return (entry == null) ? "" : entry.getKey();
     }
 
     public String getFirstServ() {
         final Map.Entry<String, String> entry = extToServ.isEmpty() ? null : extToServ.entrySet().iterator().next();
-        return entry == null ? "" : entry.getValue();
+        return (entry == null) ? "" : entry.getValue();
     }
 
     public Map<String, String> getExtToServ() {

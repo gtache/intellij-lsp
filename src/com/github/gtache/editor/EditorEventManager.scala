@@ -99,9 +99,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 currentHighlights.add(highlight)
               }))
             } catch {
-              case e: TimeoutException => {
+              case e: TimeoutException =>
                 LOG.warn(e)
-              }
             }
 
           }
@@ -153,10 +152,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                       LOG.warn("String returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
                     }
                   } catch {
-                    case e: TimeoutException => {
+                    case e: TimeoutException =>
                       isPopupOpen = false
                       LOG.warn(e)
-                    }
                   }
 
 
