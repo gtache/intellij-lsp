@@ -14,9 +14,9 @@
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
          on how to target different products -->
-    <!-- uncomment to enable plugin in all products
+    <!-- uncomment to enable plugin in all products -->
     <depends>com.intellij.modules.lang</depends>
-    -->
+
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Add your extensions here -->
@@ -25,8 +25,11 @@
         <applicationService id="LSPState"
                             serviceInterface="com.github.gtache.settings.LSPState"
                             serviceImplementation="com.github.gtache.settings.LSPState"/>
-        <!-- <completion.contributor implementationClass="com.github.gtache.contributors.CompletionHandler" /> TODO -->
     </extensions>
+
+    <extensionPoints>
+        <extensionPoint name="ServerDefinition" interface="com.github.gtache.ServerDefinitionExtensionPoint"/>
+    </extensionPoints>
 
     <actions>
     </actions>

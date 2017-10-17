@@ -1,8 +1,9 @@
 package com.github.gtache
 
 import java.io.File
-import java.net.URL
+import java.net.{MalformedURLException, URL}
 
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileTypes.FileType
@@ -13,6 +14,8 @@ import org.eclipse.lsp4j.{Position, TextDocumentIdentifier}
   * Object containing some useful methods for the plugin
   */
 object Utils {
+
+  private val LOG: Logger = Logger.getInstance(Utils.getClass)
 
   /**
     * Transforms an editor (Document) identifier to an LSP identifier
@@ -41,7 +44,13 @@ object Utils {
     * @return the URI
     */
   def VFSToURIString(file: VirtualFile): String = {
-    new URL(file.getUrl).toURI.toString
+    try {
+      new URL(file.getUrl).toURI.toString
+    } catch {
+      case e: MalformedURLException =>
+        LOG.warn(e)
+        null
+    }
   }
 
   /**
@@ -104,6 +113,28 @@ object Utils {
     */
   def fileTypeFromEditor(editor: Editor): FileType = {
     FileDocumentManager.getInstance().getFile(editor.getDocument).getFileType
+  }
+
+  def arrayToString(arr: Array[Any], sep: String = ""): String = {
+    arr.mkString(sep)
+  }
+
+  def serverDefinitionExtensionPointMapToArrayMap(map: java.util.Map[String, ServerDefinitionExtensionPoint]): java.util.Map[String, Array[String]] = {
+    import scala.collection.JavaConverters._
+    map.asScala.map(e => (e._1, serverDefinitionExtensionPointToArray(e._2))).asJava
+  }
+
+  def serverDefinitionExtensionPointToArray(serverDefinitionExtensionPoint: ServerDefinitionExtensionPoint): Array[String] = {
+    Array(serverDefinitionExtensionPoint.ext, serverDefinitionExtensionPoint.packge, serverDefinitionExtensionPoint.mainClass) ++ serverDefinitionExtensionPoint.args
+  }
+
+  def arrayMapToServerDefinitionExtensionPointMap(map: java.util.Map[String, Array[String]]): java.util.Map[String, ServerDefinitionExtensionPoint] = {
+    import scala.collection.JavaConverters._
+    map.asScala.map(e => (e._1, arrayToServerDefinitionExtensionPoint(e._2))).asJava
+  }
+
+  def arrayToServerDefinitionExtensionPoint(arr: Array[String]): ServerDefinitionExtensionPoint = {
+    ServerDefinitionExtensionPoint(arr.head, arr.tail.head, arr.tail.tail.head, arr.tail.tail.tail)
   }
 
 }

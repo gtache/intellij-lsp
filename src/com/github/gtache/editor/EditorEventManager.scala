@@ -7,7 +7,7 @@ import java.util.{Collections, Timer, TimerTask}
 import com.github.gtache.Utils
 import com.github.gtache.client.{LanguageServerWrapper, RequestManager}
 import com.github.gtache.requests.HoverHandler
-import com.intellij.codeInsight.lookup.{LookupElement, LookupElementBuilder}
+import com.intellij.codeInsight.lookup.{AutoCompletionPolicy, LookupElement, LookupElementBuilder}
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.event._
@@ -17,6 +17,13 @@ import com.intellij.openapi.ui.popup.{JBPopupFactory, JBPopupListener, Lightweig
 import org.eclipse.lsp4j._
 
 import scala.collection.mutable
+
+object EditorEventManager {
+  val RESPONSE_TIME: Int = 500 //Time in millis to get a response
+  val HOVER_TIME_THRES: Long = 2000000000L //2 sec
+  val SCHEDULE_THRES = 10000000 //Time before the Timer is scheduled
+  val POPUP_THRES = HOVER_TIME_THRES / 1000000 + 200
+}
 
 /**
   * Class handling events related to an Editor (a Document)
@@ -29,13 +36,11 @@ import scala.collection.mutable
 class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListener, val mouseMotionListener: EditorMouseMotionListener, val documentListener: DocumentListener, val selectionListener: SelectionListener, val requestManager: RequestManager, val syncKind: TextDocumentSyncKind = TextDocumentSyncKind.Full, val wrapper: LanguageServerWrapper) {
 
 
-  private val RESPONSE_TIME: Int = 500 //Time in millis to get a response
-  private val HOVER_TIME_THRES: Long = 2000000000L //2 sec
+  import com.github.gtache.editor.EditorEventManager._
+
   private val identifier: TextDocumentIdentifier = new TextDocumentIdentifier(Utils.editorToURIString(editor))
   private val LOG: Logger = Logger.getInstance(classOf[EditorEventManager])
   private val hoverThread = new Timer("Hover", true)
-  private val scheduleThres = 10000000 //Time before the Timer is scheduled
-  private val POPUP_THRES = HOVER_TIME_THRES / 1000000 + 200
   private val versionStream = Stream.from(0).iterator
   private val changesParams = new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(), Collections.singletonList(new TextDocumentContentChangeEvent()))
   private val currentHighlights: mutable.Set[RangeHighlighter] = mutable.HashSet()
@@ -79,20 +84,20 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val LSPPos = Utils.offsetToLSPPos(editor, ideRange.getStartOffset)
         val request = requestManager.documentHighlight(new TextDocumentPositionParams(identifier, LSPPos))
         ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
-
           override def run(): Unit = {
             import scala.collection.JavaConverters._
-            val resp = request.get(RESPONSE_TIME, TimeUnit.MILLISECONDS).asScala
-            ApplicationManager.getApplication.invokeLater(() => resp.foreach(dh => {
-              val range = dh.getRange
-              val kind = dh.getKind
-              val startOffset = Utils.LSPPosToOffset(editor, range.getStart)
-              val endOffset = Utils.LSPPosToOffset(editor, range.getEnd)
-              val colorScheme = editor.getColorsScheme
-              //TODO hardcoded
-              val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION, new TextAttributes(colorScheme.getDefaultForeground, new Color(54, 64, 55), null, null, Font.PLAIN), HighlighterTargetArea.EXACT_RANGE)
-              currentHighlights.add(highlight)
-            }))
+            val resp = request.get(EditorEventManager.RESPONSE_TIME, TimeUnit.MILLISECONDS).asScala
+            ApplicationManager.getApplication.invokeLater(() =>
+              resp.foreach(dh => {
+                val range = dh.getRange
+                val kind = dh.getKind
+                val startOffset = Utils.LSPPosToOffset(editor, range.getStart)
+                val endOffset = Utils.LSPPosToOffset(editor, range.getEnd)
+                val colorScheme = editor.getColorsScheme
+                //TODO hardcoded
+                val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION, new TextAttributes(colorScheme.getDefaultForeground, new Color(54, 64, 55), null, null, Font.PLAIN), HighlighterTargetArea.EXACT_RANGE)
+                currentHighlights.add(highlight)
+              }))
           }
         })
       }
@@ -112,7 +117,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       } else {
         if (!isPopupOpen) {
           val editorPos = getPos(e)
-          if (curTime - predTime > scheduleThres) {
+          if (curTime - predTime > SCHEDULE_THRES) {
             hoverThread.schedule(new TimerTask {
               override def run(): Unit = {
                 val curTime = System.nanoTime()
@@ -236,9 +241,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     import scala.collection.JavaConverters._
     val completion = if (res.isLeft) res.getLeft.asScala else res.getRight
     completion match {
-      case c: CompletionList => c.getItems.asScala.map(item => LookupElementBuilder.create(item.getLabel))
+      case c: CompletionList => c.getItems.asScala.map(item => LookupElementBuilder.create(item.getLabel).withPresentableText(item.getLabel).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT))
       case l: List[CompletionItem] => l.map(item => {
-        LookupElementBuilder.create(item.getLabel)
+        LookupElementBuilder.create(item.getLabel).withPresentableText(item.getLabel).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT)
       })
     }
   }

@@ -19,20 +19,20 @@ import scala.collection.mutable
   * The main class of the plugin
   */
 object PluginMain {
-  private val dottyM = "dotty.tools.languageserver.Main" //TODO
   private val LOG: Logger = Logger.getInstance(classOf[PluginMain])
-  private val extToLanguageWrapper: mutable.Map[String, LanguageServerWrapper] = mutable.HashMap()
+  private val extToLanguageWrapper: mutable.Map[(String, String), LanguageServerWrapper] = mutable.HashMap()
   private val uriToLanguageWrapper: mutable.Map[String, LanguageServerWrapper] = mutable.HashMap()
-  private var extToServLoc: Map[String, String] = HashMap()
+  private var extToServerDefinition: Map[String, ServerDefinitionExtensionPoint] = HashMap()
+  private var loadedExtensions: Boolean = false
 
   /**
     * Sets the extensions->languageServer mapping
     *
     * @param newExt a Java Map
     */
-  def setExtToServ(newExt: java.util.Map[String, String]): Unit = {
+  def setExtToServerDefinition(newExt: java.util.Map[String, ServerDefinitionExtensionPoint]): Unit = {
     import scala.collection.JavaConverters._
-    setExtToServ(newExt.asScala)
+    setExtToServerDefinition(newExt.asScala)
   }
 
   /**
@@ -40,23 +40,23 @@ object PluginMain {
     *
     * @param newExt a Scala map
     */
-  def setExtToServ(newExt: collection.Map[String, String]): Unit = extToServLoc = newExt.toMap
+  def setExtToServerDefinition(newExt: collection.Map[String, ServerDefinitionExtensionPoint]): Unit = extToServerDefinition = newExt.toMap
 
   /**
     * Returns the extensions->languageServer mapping
     *
     * @return the Scala map
     */
-  def getExtToServLoc: Map[String, String] = extToServLoc
+  def getExtToServerDefinition: Map[String, ServerDefinitionExtensionPoint] = extToServerDefinition
 
   /**
     * Returns the extensions->languageServer mapping
     *
     * @return The Java map
     */
-  def getExtToServLocJava: java.util.Map[String, String] = {
+  def getExtToServerDefinitionJava: java.util.Map[String, ServerDefinitionExtensionPoint] = {
     import scala.collection.JavaConverters._
-    extToServLoc.asJava
+    extToServerDefinition.asJava
   }
 
 
@@ -66,18 +66,26 @@ object PluginMain {
     * @param editor the editor
     */
   def editorOpened(editor: Editor): Unit = {
+    if (!loadedExtensions) {
+      val extensions = ServerDefinitionExtensionPoint.getAllDefinitions.filter(s => !extToServerDefinition.contains(s.ext))
+      LOG.info("Added serverDefinitions " + extensions + " from plugins")
+      extToServerDefinition = extToServerDefinition ++ extensions.map(s => (s.ext, s))
+      loadedExtensions = true
+    }
     val file: VirtualFile = FileDocumentManager.getInstance.getFile(editor.getDocument)
     if (file != null) {
       val ext: String = file.getExtension
-      extToServLoc.get(ext).foreach(s => {
-        var wrapper = extToLanguageWrapper.get(ext).orNull
+      val project: String = Utils.editorToProjectFolderPath(editor)
+      extToServerDefinition.get(ext).foreach(s => {
+        var wrapper = extToLanguageWrapper.get((ext, project)).orNull
         if (wrapper == null) {
-          LOG.info("Creating wrapper for ext " + ext)
-          //TODO what happens when multiple files not in same project ?
-          val cp = CoursierImpl.resolveClasspath(s)
-          //TODO this line is for dotty
-          wrapper = new LanguageServerWrapper(new LanguageServerDefinition(ext), Seq("java", "-cp", cp, dottyM, "-stdio"), Utils.editorToProjectFolderPath(editor))
-          extToLanguageWrapper.put(ext, wrapper)
+          LOG.info("Creating wrapper for ext " + ext + " project " + editor.getProject.getBasePath)
+          val packge = s.packge
+          val mainClass = s.mainClass
+          val args = s.args
+          val cp = CoursierImpl.resolveClasspath(packge)
+          wrapper = new LanguageServerWrapper(new LanguageServerDefinition(ext), Seq("java", "-cp", cp, mainClass) ++ args, project)
+          extToLanguageWrapper.put((ext, project), wrapper)
         }
         LOG.info("Adding file " + file.getName)
         wrapper.connect(editor)
@@ -95,10 +103,12 @@ object PluginMain {
     */
   def fileChanged(file: VirtualFile): Unit = {
     val uri: String = Utils.VFSToURIString(file)
-    uriToLanguageWrapper.get(uri).foreach(l => {
-      LOG.info("File saved : " + uri)
-      l.getManagerFor(uri).documentSaved()
-    })
+    if (uri != null) {
+      uriToLanguageWrapper.get(uri).foreach(l => {
+        LOG.info("File saved : " + uri)
+        l.getManagerFor(uri).documentSaved()
+      })
+    }
   }
 
   /**
@@ -148,8 +158,8 @@ object PluginMain {
     if (file != null) {
       val ext: String = file.getExtension
       LOG.info("File " + file.getName + " closed.")
-      extToServLoc.get(ext) match {
-        case Some(string) =>
+      extToServerDefinition.get(ext) match {
+        case Some(serverDefinition) =>
           val uri = Utils.editorToURIString(editor)
           uriToLanguageWrapper.get(uri).foreach(l => {
             LOG.info("Disconnecting " + uri)
@@ -183,7 +193,7 @@ object PluginMain {
   */
 class PluginMain extends ApplicationComponent {
 
-  import com.github.gtache.PluginMain._
+  import PluginMain._
 
   override val getComponentName: String = "PluginMain"
 

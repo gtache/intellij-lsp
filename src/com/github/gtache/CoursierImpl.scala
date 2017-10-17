@@ -39,7 +39,6 @@ object CoursierImpl {
     } else {
       val cp = localArtifacts.map(f => f.getOrElse(new File(""))).aggregate("")((s, f) => s + File.pathSeparator + f.getAbsolutePath, (s1, s2) => s1 + File.pathSeparator + s2).tail
       LOG.info("Fetched dependencies for " + toResolve)
-      LOG.info("CP : " + cp)
       cp
     }
   }

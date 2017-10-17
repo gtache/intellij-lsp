@@ -1,6 +1,8 @@
 package com.github.gtache.settings;
 
 import com.github.gtache.PluginMain;
+import com.github.gtache.ServerDefinitionExtensionPoint;
+import com.github.gtache.Utils;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
@@ -42,15 +44,20 @@ public final class LSPSettings implements Configurable {
     @Override
     public JComponent createComponent() {
         lspGUI = new LSPGUI();
-        setGUIFields(PluginMain.getExtToServLocJava());
+        setGUIFields(PluginMain.getExtToServerDefinitionJava());
         return lspGUI.getRootPanel();
     }
 
     //TODO complete
-    public void setGUIFields(final Map<String, String> map) {
-        for (final Map.Entry<String, String> entry : map.entrySet()) {
-            lspGUI.getExtField().setText(entry.getKey());
-            lspGUI.getServField().setText(entry.getValue());
+    public void setGUIFields(final Map<String, ServerDefinitionExtensionPoint> map) {
+        for (final Map.Entry<String, ServerDefinitionExtensionPoint> entry : map.entrySet()) {
+            final ServerDefinitionExtensionPoint def = entry.getValue();
+            if (def != null) {
+                lspGUI.getExtField().setText(def.ext());
+                lspGUI.getServField().setText(def.packge());
+                lspGUI.getMainClassField().setText(def.mainClass());
+                lspGUI.getArgsField().setText(Utils.arrayToString(def.args(), " "));
+            }
         }
     }
 
