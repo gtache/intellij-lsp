@@ -1,7 +1,7 @@
 package com.github.gtache.editor
 
 import java.awt.{Color, Font}
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{TimeUnit, TimeoutException}
 import java.util.{Collections, Timer, TimerTask}
 
 import com.github.gtache.Utils
@@ -29,9 +29,13 @@ object EditorEventManager {
   * Class handling events related to an Editor (a Document)
   *
   * @param editor              The "watched" editor
-  * @param mouseMotionListener A MouseMotionListener listening to the editor
+  * @param mouseListener       A listener for mouse clicks
+  * @param mouseMotionListener A listener for mouse movement
+  * @param documentListener    A listener for keystrokes
+  * @param selectionListener   A listener for selection changes in the editor
   * @param requestManager      The related RequestManager, connected to the right LanguageServer
-  * @param syncKind            The type of synchronisation (unused)
+  * @param syncKind            The type of synchronization
+  * @param wrapper             The corresponding LanguageServerWrapper
   */
 class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListener, val mouseMotionListener: EditorMouseMotionListener, val documentListener: DocumentListener, val selectionListener: SelectionListener, val requestManager: RequestManager, val syncKind: TextDocumentSyncKind = TextDocumentSyncKind.Full, val wrapper: LanguageServerWrapper) {
 
@@ -86,9 +90,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
           override def run(): Unit = {
             import scala.collection.JavaConverters._
-            val resp = request.get(EditorEventManager.RESPONSE_TIME, TimeUnit.MILLISECONDS).asScala
-            ApplicationManager.getApplication.invokeLater(() =>
-              resp.foreach(dh => {
+            try {
+              val resp = request.get(RESPONSE_TIME, TimeUnit.MILLISECONDS).asScala
+              ApplicationManager.getApplication.invokeLater(() => resp.foreach(dh => {
                 val range = dh.getRange
                 val kind = dh.getKind
                 val startOffset = Utils.LSPPosToOffset(editor, range.getStart)
@@ -98,6 +102,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION, new TextAttributes(colorScheme.getDefaultForeground, new Color(54, 64, 55), null, null, Font.PLAIN), HighlighterTargetArea.EXACT_RANGE)
                 currentHighlights.add(highlight)
               }))
+            } catch {
+              case e: TimeoutException =>
+                LOG.warn(e)
+            }
           }
         })
       }
@@ -124,26 +132,32 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor) {
                   isPopupOpen = true
                   val serverPos = Utils.logicalToLSPPos(editorPos)
-                  val response = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
-                  val hover = response.get(RESPONSE_TIME, TimeUnit.MILLISECONDS)
-                  val range = hover.getRange
-                  val string = HoverHandler.getHoverString(hover)
-                  if (string != null) {
-                    ApplicationManager.getApplication.invokeLater(() => {
-                      val popup = JBPopupFactory.getInstance().createMessage(string)
-                      popup.addListener(new JBPopupListener {
-                        override def onClosed(lightweightWindowEvent: LightweightWindowEvent): Unit = {
-                          isPopupOpen = false
-                          predTime = curTime
-                        }
+                  try {
+                    val response = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
+                    val hover = response.get(RESPONSE_TIME, TimeUnit.MILLISECONDS)
+                    val range = hover.getRange
+                    val string = HoverHandler.getHoverString(hover)
+                    if (string != null) {
+                      ApplicationManager.getApplication.invokeLater(() => {
+                        val popup = JBPopupFactory.getInstance().createMessage(string)
+                        popup.addListener(new JBPopupListener {
+                          override def onClosed(lightweightWindowEvent: LightweightWindowEvent): Unit = {
+                            isPopupOpen = false
+                            predTime = curTime
+                          }
 
-                        override def beforeShown(lightweightWindowEvent: LightweightWindowEvent): Unit = {}
+                          override def beforeShown(lightweightWindowEvent: LightweightWindowEvent): Unit = {}
+                        })
+                        popup.showInScreenCoordinates(editor.getComponent, e.getMouseEvent.getLocationOnScreen)
                       })
-                      popup.showInScreenCoordinates(editor.getComponent, e.getMouseEvent.getLocationOnScreen)
-                    })
-                  } else {
-                    isPopupOpen = false
-                    LOG.warn("String returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
+                    } else {
+                      isPopupOpen = false
+                      LOG.warn("String returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
+                    }
+                  } catch {
+                    case e: TimeoutException =>
+                      isPopupOpen = false
+                      LOG.warn(e)
                   }
 
 
@@ -237,14 +251,20 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def completion(pos: Position): Iterable[_ <: LookupElement] = {
     LOG.info("Sending completion request")
     val future = requestManager.completion(new TextDocumentPositionParams(identifier, pos))
-    val res = future.get(RESPONSE_TIME, TimeUnit.MILLISECONDS)
-    import scala.collection.JavaConverters._
-    val completion = if (res.isLeft) res.getLeft.asScala else res.getRight
-    completion match {
-      case c: CompletionList => c.getItems.asScala.map(item => LookupElementBuilder.create(item.getLabel).withPresentableText(item.getLabel).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT))
-      case l: List[CompletionItem] => l.map(item => {
-        LookupElementBuilder.create(item.getLabel).withPresentableText(item.getLabel).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT)
-      })
+    try {
+      val res = future.get(RESPONSE_TIME, TimeUnit.MILLISECONDS)
+      import scala.collection.JavaConverters._
+      val completion /*: CompletionList | List[CompletionItem] */ = if (res.isLeft) res.getLeft.asScala else res.getRight
+      completion match {
+        case c: CompletionList => c.getItems.asScala.map(item => LookupElementBuilder.create(item.getLabel).withPresentableText(item.getLabel).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT))
+        case l: List[CompletionItem@unchecked] => l.map(item => {
+          LookupElementBuilder.create(item.getLabel).withPresentableText(item.getLabel).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT)
+        })
+      }
+    } catch {
+      case e: TimeoutException =>
+        LOG.warn(e)
+        Iterable.empty
     }
   }
 

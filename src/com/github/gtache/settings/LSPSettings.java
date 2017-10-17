@@ -5,8 +5,8 @@ import com.github.gtache.ServerDefinitionExtensionPoint;
 import com.github.gtache.Utils;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.options.Configurable;
-import com.intellij.openapi.options.ConfigurationException;
 import org.jetbrains.annotations.Nls;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.util.Map;
@@ -17,6 +17,7 @@ import java.util.Map;
 public final class LSPSettings implements Configurable {
 
     private static final Logger LOG = Logger.getInstance(LSPSettings.class);
+    @Nullable
     private static LSPGUI lspGUI;
     private static LSPSettings instance;
 
@@ -67,7 +68,7 @@ public final class LSPSettings implements Configurable {
     }
 
     @Override
-    public void apply() throws ConfigurationException {
+    public void apply() {
         lspGUI.apply();
     }
 
