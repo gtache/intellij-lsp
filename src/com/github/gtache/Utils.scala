@@ -115,26 +115,63 @@ object Utils {
     FileDocumentManager.getInstance().getFile(editor.getDocument).getFileType
   }
 
+  /**
+    * Transforms an array into a string (using mkString, useful for Java)
+    *
+    * @param arr The array
+    * @param sep A separator
+    * @return The result of mkString
+    */
   def arrayToString(arr: Array[Any], sep: String = ""): String = {
     arr.mkString(sep)
   }
 
+  /**
+    * Transforms a (java) Map<String, ServerDefinitionExtensionPoint> to a Map<String, String[]>
+    *
+    * @param map A java map
+    * @return the transformed java map
+    */
   def serverDefinitionExtensionPointMapToArrayMap(map: java.util.Map[String, ServerDefinitionExtensionPoint]): java.util.Map[String, Array[String]] = {
     import scala.collection.JavaConverters._
     map.asScala.map(e => (e._1, serverDefinitionExtensionPointToArray(e._2))).asJava
   }
 
+
+  /**
+    * Transforms a ServerDefinitionExtensionPoint into an array of String
+    *
+    * @param serverDefinitionExtensionPoint The ServerDefinition
+    * @return The Array of string
+    */
   def serverDefinitionExtensionPointToArray(serverDefinitionExtensionPoint: ServerDefinitionExtensionPoint): Array[String] = {
     Array(serverDefinitionExtensionPoint.ext, serverDefinitionExtensionPoint.packge, serverDefinitionExtensionPoint.mainClass) ++ serverDefinitionExtensionPoint.args
   }
 
+  /**
+    * Transforms a (java) Map<String, String[]> to a Map<String, ServerDefinitionExtensionPoint>
+    *
+    * @param map A java map
+    * @return the transformed java map
+    */
   def arrayMapToServerDefinitionExtensionPointMap(map: java.util.Map[String, Array[String]]): java.util.Map[String, ServerDefinitionExtensionPoint] = {
     import scala.collection.JavaConverters._
     map.asScala.map(e => (e._1, arrayToServerDefinitionExtensionPoint(e._2))).asJava
   }
 
+  /**
+    * Transforms an array of string into a ServerDefinitionExtensionPoint
+    *
+    * @param arr The array of string
+    * @return The corresponding ServerDefinitionExtensionPoint
+    */
   def arrayToServerDefinitionExtensionPoint(arr: Array[String]): ServerDefinitionExtensionPoint = {
-    ServerDefinitionExtensionPoint(arr.head, arr.tail.head, arr.tail.tail.head, arr.tail.tail.tail)
+    if (arr.length < 3) {
+      LOG.warn("Not enough elements to translate into a ServerDefinition : " + arr)
+      null
+    } else {
+      ServerDefinitionExtensionPoint(arr.head, arr.tail.head, arr.tail.tail.head, if (arr.length > 3) arr.tail.tail.tail else Array())
+    }
   }
 
 }
