@@ -15,8 +15,6 @@ class LSPCompletionContributor extends CompletionContributor {
     val offset = parameters.getOffset
     val serverPos = Utils.logicalToLSPPos(editor.offsetToLogicalPosition(offset))
     val toAdd = PluginMain.completion(editor, serverPos)
-    import scala.collection.JavaConverters._
-    LOG.info("Added completions " + toAdd.asScala.mkString(";"))
     result.addAllElements(toAdd)
     super.fillCompletionVariants(parameters, result)
   }
