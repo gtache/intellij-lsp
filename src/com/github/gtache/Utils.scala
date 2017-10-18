@@ -1,13 +1,14 @@
 package com.github.gtache
 
 import java.io.File
-import java.net.{MalformedURLException, URL}
+import java.net.{MalformedURLException, URI, URL}
+import java.nio.file.Paths
 
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileTypes.FileType
-import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
 import org.eclipse.lsp4j.{Position, TextDocumentIdentifier}
 
 /**
@@ -171,6 +172,19 @@ object Utils {
       null
     } else {
       ServerDefinitionExtensionPoint(arr.head, arr.tail.head, arr.tail.tail.head, if (arr.length > 3) arr.tail.tail.tail else Array())
+    }
+  }
+
+  def URIToVFS(uri: String): VirtualFile = {
+    val res = LocalFileSystem.getInstance().findFileByPath(new File(new URI(uri).getPath).getAbsolutePath)
+    res
+  }
+
+  def getRecursiveChildren(file: VirtualFile): Array[VirtualFile] = {
+    if (file.isDirectory) {
+      file.getChildren.flatMap(f => getRecursiveChildren(f))
+    } else {
+      Array(file)
     }
   }
 

@@ -51,8 +51,12 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
     * @param uri the URI as a string
     * @return the EditorEventManager (or null)
     */
-  def getManagerFor(uri: String): EditorEventManager = {
+  def getEditorManagerFor(uri: String): EditorEventManager = {
     connectedEditors.get(uri).orNull
+  }
+
+  def getRequestManager: RequestManager = {
+    requestManager
   }
 
   /**

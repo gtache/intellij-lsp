@@ -41,7 +41,6 @@ class SimpleRequestManager(server: LanguageServer, client: LanguageClient) exten
   override def exit(): Unit = server.exit()
 
   override def cancelRequest(params: CancelParams): Unit = {
-    //TODO
   }
 
 
@@ -54,6 +53,7 @@ class SimpleRequestManager(server: LanguageServer, client: LanguageClient) exten
 
   override def executeCommand(params: ExecuteCommandParams): CompletableFuture[AnyRef] = workspaceService.executeCommand(params)
 
+  //TextDocument
   override def didOpen(params: DidOpenTextDocumentParams): Unit = textDocumentService.didOpen(params)
 
   override def didChange(params: DidChangeTextDocumentParams): Unit = textDocumentService.didChange(params)

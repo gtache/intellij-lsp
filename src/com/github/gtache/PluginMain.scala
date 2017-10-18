@@ -1,19 +1,25 @@
 package com.github.gtache
 
+import java.util.concurrent.TimeUnit
+
 import com.github.gtache.client.{LanguageServerDefinition, LanguageServerWrapper}
+import com.github.gtache.contributors.LSPNavigationItem
 import com.github.gtache.editor.listeners.{EditorListener, VFSListener}
 import com.github.gtache.settings.LSPState
 import com.intellij.codeInsight.lookup.LookupElement
+import com.intellij.navigation.NavigationItem
 import com.intellij.openapi.components.ApplicationComponent
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, EditorFactory}
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.{VirtualFile, VirtualFileManager}
-import org.eclipse.lsp4j.Position
+import org.eclipse.lsp4j.{DocumentSymbolParams, Position, TextDocumentIdentifier, WorkspaceSymbolParams}
 
 import scala.collection.immutable.HashMap
 import scala.collection.mutable
+import scala.concurrent.TimeoutException
 
 /**
   * The main class of the plugin
@@ -22,6 +28,7 @@ object PluginMain {
   private val LOG: Logger = Logger.getInstance(classOf[PluginMain])
   private val extToLanguageWrapper: mutable.Map[(String, String), LanguageServerWrapper] = mutable.HashMap()
   private val uriToLanguageWrapper: mutable.Map[String, LanguageServerWrapper] = mutable.HashMap()
+  private val projectToLanguageWrapper: mutable.Map[Project, LanguageServerWrapper] = mutable.HashMap()
   private var extToServerDefinition: Map[String, ServerDefinitionExtensionPoint] = HashMap()
   private var loadedExtensions: Boolean = false
 
@@ -86,6 +93,7 @@ object PluginMain {
           val cp = CoursierImpl.resolveClasspath(packge)
           wrapper = new LanguageServerWrapper(new LanguageServerDefinition(ext), Seq("java", "-cp", cp, mainClass) ++ args, project)
           extToLanguageWrapper.put((ext, project), wrapper)
+          projectToLanguageWrapper.put(editor.getProject, wrapper)
         }
         LOG.info("Adding file " + file.getName)
         wrapper.connect(editor)
@@ -106,7 +114,7 @@ object PluginMain {
     if (uri != null) {
       uriToLanguageWrapper.get(uri).foreach(l => {
         LOG.info("File saved : " + uri)
-        l.getManagerFor(uri).documentSaved()
+        l.getEditorManagerFor(uri).documentSaved()
       })
     }
   }
@@ -127,6 +135,7 @@ object PluginMain {
     */
   def fileDeleted(file: VirtualFile): Unit = {
 
+
   }
 
   /**
@@ -145,7 +154,12 @@ object PluginMain {
     * @param file The file
     */
   def fileCreated(file: VirtualFile): Unit = {
-
+    val ext = file.getExtension
+    val uri = Utils.VFSToURIString(file)
+    extToServerDefinition.get(ext) match {
+      case Some(s) => // extToLanguageWrapper.get(ext).foreach(f => f.)
+      case None =>
+    }
   }
 
   /**
@@ -184,7 +198,46 @@ object PluginMain {
   def completion(editor: Editor, pos: Position): java.lang.Iterable[_ <: LookupElement] = {
     val uri = Utils.editorToURIString(editor)
     import scala.collection.JavaConverters._
-    uriToLanguageWrapper.get(uri).map(l => l.getManagerFor(uri).completion(pos)).getOrElse(Iterable()).asJava
+    uriToLanguageWrapper.get(uri).map(l => l.getEditorManagerFor(uri).completion(pos)).getOrElse(Iterable()).asJava
+  }
+
+  def workspaceSymbols(name: String, pattern: String, project: Project, includeNonProjectItems: Boolean): Array[NavigationItem] = {
+    projectToLanguageWrapper.get(project) match {
+      case Some(wrapper) =>
+        val params: WorkspaceSymbolParams = new WorkspaceSymbolParams(name)
+        val res = wrapper.getRequestManager.symbol(params)
+        import scala.collection.JavaConverters._
+        val arr = res.get(1, TimeUnit.SECONDS).asScala.toArray
+
+        arr.map(f => {
+          new LSPNavigationItem(f.getName, f.getContainerName, project, Utils.URIToVFS(f.getLocation.getUri), f.getLocation.getRange.getStart.getLine, f.getLocation.getRange.getStart.getCharacter)
+        })
+      case None => LOG.info("No wrapper for project " + project.getBasePath)
+        Array()
+    }
+  }
+
+  def allWorkspaceSymbols(project: Project): Array[String] = {
+    projectToLanguageWrapper.get(project) match {
+      case Some(wrapper) =>
+        project.getBaseDir.findChild("src").getChildren.flatMap(f => Utils.getRecursiveChildren(f).map(c => {
+          val param = new DocumentSymbolParams(new TextDocumentIdentifier(Utils.VFSToURIString(c)))
+          import scala.collection.JavaConverters._
+          try {
+            val res = wrapper.getRequestManager.documentSymbol(param).get(1000, TimeUnit.MILLISECONDS)
+            if (res != null) {
+              res.asScala.map(f => f.getName)
+            } else {
+              mutable.Buffer[String]()
+            }
+          } catch {
+            case e: TimeoutException => LOG.warn(e)
+              mutable.Buffer[String]()
+          }
+        })).flatten.distinct
+      case None => LOG.info("No wrapper for project " + project.getBasePath)
+        Array()
+    }
   }
 }
 
@@ -193,7 +246,7 @@ object PluginMain {
   */
 class PluginMain extends ApplicationComponent {
 
-  import PluginMain._
+  import com.github.gtache.PluginMain._
 
   override val getComponentName: String = "PluginMain"
 
