@@ -1,5 +1,15 @@
 # intellij-lsp
-Plugin adding support for Language Server Protocol for IntelliJ
+Plugin adding support for Language Server Protocol for IntelliJ     
 
+What's working :      
+Requests to the server:     
+-Hover     
+-DocumentHighlight     
+-Completion     
+-didSave, didClose, didOpen, didChange     
+     
+Client :      
+-showMessage     
+-logMessage
 
-Nothing much done at the moment, but can process Hover and DocumentHighlight requests/responses with (at least) the Dotty Language Server
+There is a skeleton of an LSP plugin for Dotty in the intellij-lsp-dotty folder.
