@@ -25,7 +25,8 @@
         <applicationService id="LSPState"
                             serviceInterface="com.github.gtache.settings.LSPState"
                             serviceImplementation="com.github.gtache.settings.LSPState"/>
-        <gotoSymbolContributor implementation="com.github.gtache.contributors.LSPGotoContributor"/>
+        <gotoSymbolContributor implementation="com.github.gtache.contributors.LSPGotoSymbolContributor"/>
+        <gotoClassContributor implementation="com.github.gtache.contributors.LSPGotoClassContributor"/>
     </extensions>
 
     <extensionPoints>

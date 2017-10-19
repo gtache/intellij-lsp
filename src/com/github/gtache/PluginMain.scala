@@ -15,7 +15,7 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.{VirtualFile, VirtualFileManager}
-import org.eclipse.lsp4j.{Position, WorkspaceSymbolParams}
+import org.eclipse.lsp4j.{Position, SymbolKind, WorkspaceSymbolParams}
 
 import scala.collection.immutable.HashMap
 import scala.collection.mutable
@@ -209,9 +209,10 @@ object PluginMain {
     * @param pattern                The pattern (unused)
     * @param project                The project in which to search
     * @param includeNonProjectItems Whether to search in libraries for example (unused)
+    * @param onlyKind               Filter the results to only the kinds in the set (all by default)
     * @return An array of NavigationItem
     */
-  def workspaceSymbols(name: String, pattern: String, project: Project, includeNonProjectItems: Boolean): Array[NavigationItem] = {
+  def workspaceSymbols(name: String, pattern: String, project: Project, includeNonProjectItems: Boolean = false, onlyKind: Set[SymbolKind] = Set()): Array[NavigationItem] = {
     projectToLanguageWrapper.get(project) match {
       case Some(wrapper) =>
         val params: WorkspaceSymbolParams = new WorkspaceSymbolParams(name)
@@ -220,7 +221,7 @@ object PluginMain {
         try {
           val arr = res.get(Timeout.SYMBOLS_TIMEOUT, TimeUnit.MILLISECONDS).asScala.toArray
 
-          arr.map(f => {
+          arr.filter(s => if (onlyKind.isEmpty) true else onlyKind.contains(s.getKind)).map(f => {
             LSPNavigationItem(f.getName, f.getContainerName, project, Utils.URIToVFS(f.getLocation.getUri), f.getLocation.getRange.getStart.getLine, f.getLocation.getRange.getStart.getCharacter)
           }).distinct.asInstanceOf[Array[NavigationItem]]
         } catch {
