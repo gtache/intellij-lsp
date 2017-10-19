@@ -30,7 +30,13 @@ import org.jetbrains.annotations.Nullable
 
 import scala.collection.mutable
 
+object LanguageServerWrapper {
+  private val SHUTDOWN_TIMEOUT = 5000
+}
+
 class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val commands: Seq[String], val workingDir: String) {
+
+  import LanguageServerWrapper._
 
   private val lspStreamProvider: StreamConnectionProvider = serverDefinition.createConnectionProvider(commands, workingDir)
   private val connectedEditors: mutable.Map[String, EditorEventManager] = mutable.HashMap()
@@ -55,6 +61,9 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
     connectedEditors.get(uri).orNull
   }
 
+  /**
+    * @return The request manager for this wrapper
+    */
   def getRequestManager: RequestManager = {
     requestManager
   }
@@ -68,31 +77,23 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
       try {
         this.lspStreamProvider.start()
         client = serverDefinition.createLanguageClient
-        val executorService = Executors.newCachedThreadPool
         val initParams = new InitializeParams
         initParams.setRootUri(new File(rootFolder).toURI.toString)
-        //initParams.setRootPath(project.getLocation.toFile.getAbsolutePath)
-        /*val launcher = LSPLauncher.createClientLauncher(client, this.lspStreamProvider.getInputStream, this.lspStreamProvider.getOutputStream, executorService, (consumer: MessageConsumer) => (message: Message) => {
-        consumer.consume(message)
-        logMessage(message)
-        this.lspStreamProvider.handleMessage(message, this.languageServer, URI.create(initParams.getRootUri))
-      })
-      */
         val launcher = LSPLauncher.createClientLauncher(client, this.lspStreamProvider.getInputStream, this.lspStreamProvider.getOutputStream)
 
         this.languageServer = launcher.getRemoteProxy
         client.connect(languageServer)
         requestManager = new SimpleRequestManager(languageServer, client)
         this.launcherFuture = launcher.startListening
-        val name = "Intellij" //$NON-NLS-1$
+        //TODO update capabilities when implemented
         val workspaceClientCapabilites = new WorkspaceClientCapabilities
-        workspaceClientCapabilites.setApplyEdit(true)
+        workspaceClientCapabilites.setApplyEdit(false)
         workspaceClientCapabilites.setExecuteCommand(new ExecuteCommandCapabilities)
         workspaceClientCapabilites.setSymbol(new SymbolCapabilities)
         val textDocumentClientCapabilities = new TextDocumentClientCapabilities
         textDocumentClientCapabilities.setCodeAction(new CodeActionCapabilities)
         textDocumentClientCapabilities.setCodeLens(new CodeLensCapabilities)
-        textDocumentClientCapabilities.setCompletion(new CompletionCapabilities(new CompletionItemCapabilities(true)))
+        textDocumentClientCapabilities.setCompletion(new CompletionCapabilities(new CompletionItemCapabilities(false)))
         textDocumentClientCapabilities.setDefinition(new DefinitionCapabilities)
         textDocumentClientCapabilities.setDocumentHighlight(new DocumentHighlightCapabilities)
         textDocumentClientCapabilities.setDocumentLink(new DocumentLinkCapabilities)
@@ -105,7 +106,7 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
         textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
         textDocumentClientCapabilities.setRename(new RenameCapabilities)
         textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
-        textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, true, true))
+        textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(false, false, true))
         initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilites, textDocumentClientCapabilities, null))
         initParams.setInitializationOptions(this.lspStreamProvider.getInitializationOptions(URI.create(initParams.getRootUri)))
         initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
@@ -247,7 +248,7 @@ class LanguageServerWrapper(val serverDefinition: LanguageServerDefinition, val 
     this.capabilitiesAlreadyRequested = false
     if (this.languageServer != null) try {
       val shutdown: CompletableFuture[AnyRef] = this.languageServer.shutdown
-      shutdown.get(5000, TimeUnit.MILLISECONDS)
+      shutdown.get(SHUTDOWN_TIMEOUT, TimeUnit.MILLISECONDS)
     } catch {
       case _: Exception =>
 

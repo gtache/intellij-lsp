@@ -2,7 +2,6 @@ package com.github.gtache
 
 import java.io.File
 import java.net.{MalformedURLException, URI, URL}
-import java.nio.file.Paths
 
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
@@ -17,6 +16,16 @@ import org.eclipse.lsp4j.{Position, TextDocumentIdentifier}
 object Utils {
 
   private val LOG: Logger = Logger.getInstance(Utils.getClass)
+
+  /**
+    * Returns a file type given an editor
+    *
+    * @param editor The editor
+    * @return The FileType
+    */
+  def fileTypeFromEditor(editor: Editor): FileType = {
+    FileDocumentManager.getInstance().getFile(editor.getDocument).getFileType
+  }
 
   /**
     * Transforms an editor (Document) identifier to an LSP identifier
@@ -35,7 +44,8 @@ object Utils {
     * @return The URI
     */
   def editorToURIString(editor: Editor): String = {
-    new URL(FileDocumentManager.getInstance().getFile(editor.getDocument).getUrl).toURI.toString
+    val uri = new URL(FileDocumentManager.getInstance().getFile(editor.getDocument).getUrl).toURI.toString
+    uri
   }
 
   /**
@@ -46,7 +56,8 @@ object Utils {
     */
   def VFSToURIString(file: VirtualFile): String = {
     try {
-      new URL(file.getUrl).toURI.toString
+      val uri = new URL(file.getUrl).toURI.toString
+      uri
     } catch {
       case e: MalformedURLException =>
         LOG.warn(e)
@@ -55,10 +66,35 @@ object Utils {
   }
 
   /**
+    * Transforms an URI string into a VFS file
+    *
+    * @param uri The uri
+    * @return The virtual file
+    */
+  def URIToVFS(uri: String): VirtualFile = {
+    val res = LocalFileSystem.getInstance().findFileByPath(new File(new URI(uri).getPath).getAbsolutePath)
+    res
+  }
+
+  /**
+    * Get all file childs of a given VirtualFile, recursively
+    *
+    * @param file The base file
+    * @return All the childs
+    */
+  def getRecursiveChildren(file: VirtualFile): Array[VirtualFile] = {
+    if (file.isDirectory) {
+      file.getChildren.flatMap(f => getRecursiveChildren(f))
+    } else {
+      Array(file)
+    }
+  }
+
+  /**
     * Returns the project path given an editor
     *
     * @param editor The editor
-    * @return The project whose belongs the editor
+    * @return The project whose the editor belongs
     */
   def editorToProjectFolderPath(editor: Editor): String = {
     new File(editor.getProject.getBaseDir.getPath).getAbsolutePath
@@ -104,16 +140,6 @@ object Utils {
     */
   def LSPToLogicalPos(position: Position): LogicalPosition = {
     new LogicalPosition(position.getLine, position.getCharacter)
-  }
-
-  /**
-    * Returns a file type given an editor
-    *
-    * @param editor The editor
-    * @return The FileType
-    */
-  def fileTypeFromEditor(editor: Editor): FileType = {
-    FileDocumentManager.getInstance().getFile(editor.getDocument).getFileType
   }
 
   /**
@@ -172,19 +198,6 @@ object Utils {
       null
     } else {
       ServerDefinitionExtensionPoint(arr.head, arr.tail.head, arr.tail.tail.head, if (arr.length > 3) arr.tail.tail.tail else Array())
-    }
-  }
-
-  def URIToVFS(uri: String): VirtualFile = {
-    val res = LocalFileSystem.getInstance().findFileByPath(new File(new URI(uri).getPath).getAbsolutePath)
-    res
-  }
-
-  def getRecursiveChildren(file: VirtualFile): Array[VirtualFile] = {
-    if (file.isDirectory) {
-      file.getChildren.flatMap(f => getRecursiveChildren(f))
-    } else {
-      Array(file)
     }
   }
 

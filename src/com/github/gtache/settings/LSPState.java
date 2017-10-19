@@ -60,7 +60,7 @@ public class LSPState implements PersistentStateComponent<LSPState> {
 
     @Override
     public void loadState(final LSPState lspState) {
-        LOG.info("State loaded");
+        LOG.info("LSP State loaded");
         XmlSerializerUtil.copyBean(lspState, this);
         PluginMain.setExtToServerDefinition(Utils.arrayMapToServerDefinitionExtensionPointMap(extToServ));
     }

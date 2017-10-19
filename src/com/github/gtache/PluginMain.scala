@@ -15,7 +15,7 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.{VirtualFile, VirtualFileManager}
-import org.eclipse.lsp4j.{DocumentSymbolParams, Position, TextDocumentIdentifier, WorkspaceSymbolParams}
+import org.eclipse.lsp4j.{Position, WorkspaceSymbolParams}
 
 import scala.collection.immutable.HashMap
 import scala.collection.mutable
@@ -25,6 +25,7 @@ import scala.concurrent.TimeoutException
   * The main class of the plugin
   */
 object PluginMain {
+
   private val LOG: Logger = Logger.getInstance(classOf[PluginMain])
   private val extToLanguageWrapper: mutable.Map[(String, String), LanguageServerWrapper] = mutable.HashMap()
   private val uriToLanguageWrapper: mutable.Map[String, LanguageServerWrapper] = mutable.HashMap()
@@ -201,40 +202,31 @@ object PluginMain {
     uriToLanguageWrapper.get(uri).map(l => l.getEditorManagerFor(uri).completion(pos)).getOrElse(Iterable()).asJava
   }
 
+  /**
+    * Returns the corresponding workspaceSymbols given a name and a project
+    *
+    * @param name                   The name to search for
+    * @param pattern                The pattern (unused)
+    * @param project                The project in which to search
+    * @param includeNonProjectItems Whether to search in libraries for example (unused)
+    * @return An array of NavigationItem
+    */
   def workspaceSymbols(name: String, pattern: String, project: Project, includeNonProjectItems: Boolean): Array[NavigationItem] = {
     projectToLanguageWrapper.get(project) match {
       case Some(wrapper) =>
         val params: WorkspaceSymbolParams = new WorkspaceSymbolParams(name)
         val res = wrapper.getRequestManager.symbol(params)
         import scala.collection.JavaConverters._
-        val arr = res.get(1, TimeUnit.SECONDS).asScala.toArray
+        try {
+          val arr = res.get(Timeout.SYMBOLS_TIMEOUT, TimeUnit.MILLISECONDS).asScala.toArray
 
-        arr.map(f => {
-          new LSPNavigationItem(f.getName, f.getContainerName, project, Utils.URIToVFS(f.getLocation.getUri), f.getLocation.getRange.getStart.getLine, f.getLocation.getRange.getStart.getCharacter)
-        })
-      case None => LOG.info("No wrapper for project " + project.getBasePath)
-        Array()
-    }
-  }
-
-  def allWorkspaceSymbols(project: Project): Array[String] = {
-    projectToLanguageWrapper.get(project) match {
-      case Some(wrapper) =>
-        project.getBaseDir.findChild("src").getChildren.flatMap(f => Utils.getRecursiveChildren(f).map(c => {
-          val param = new DocumentSymbolParams(new TextDocumentIdentifier(Utils.VFSToURIString(c)))
-          import scala.collection.JavaConverters._
-          try {
-            val res = wrapper.getRequestManager.documentSymbol(param).get(1000, TimeUnit.MILLISECONDS)
-            if (res != null) {
-              res.asScala.map(f => f.getName)
-            } else {
-              mutable.Buffer[String]()
-            }
-          } catch {
-            case e: TimeoutException => LOG.warn(e)
-              mutable.Buffer[String]()
-          }
-        })).flatten.distinct
+          arr.map(f => {
+            LSPNavigationItem(f.getName, f.getContainerName, project, Utils.URIToVFS(f.getLocation.getUri), f.getLocation.getRange.getStart.getLine, f.getLocation.getRange.getStart.getCharacter)
+          }).distinct.asInstanceOf[Array[NavigationItem]]
+        } catch {
+          case e: TimeoutException => LOG.warn(e)
+            Array()
+        }
       case None => LOG.info("No wrapper for project " + project.getBasePath)
         Array()
     }

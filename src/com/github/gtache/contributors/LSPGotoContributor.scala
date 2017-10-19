@@ -12,14 +12,12 @@ class LSPGotoContributor extends ChooseByNameContributor {
   private val LOG: Logger = Logger.getInstance(classOf[LSPGotoContributor])
 
   override def getItemsByName(name: String, pattern: String, project: Project, includeNonProjectItems: Boolean): Array[NavigationItem] = {
-    val res = PluginMain.workspaceSymbols(name, pattern, project, includeNonProjectItems)
-    LOG.info("Getting items by name : " + res.length)
+    val res = PluginMain.workspaceSymbols(if (name.endsWith("$")) name.dropRight(1) else name, pattern, project, includeNonProjectItems)
     res
   }
 
   override def getNames(project: Project, includeNonProjectItems: Boolean): Array[String] = {
-    val res = PluginMain.allWorkspaceSymbols(project)
-    LOG.info("Getting names : " + res.mkString(";"))
+    val res = PluginMain.workspaceSymbols("", "", project, includeNonProjectItems).map(f => f.getName)
     res
   }
 }

@@ -19,10 +19,9 @@ import org.eclipse.lsp4j._
 import scala.collection.mutable
 
 object EditorEventManager {
-  val RESPONSE_TIME: Int = 500 //Time in millis to get a response
-  val HOVER_TIME_THRES: Long = 2000000000L //2 sec
-  val SCHEDULE_THRES = 10000000 //Time before the Timer is scheduled
-  val POPUP_THRES = HOVER_TIME_THRES / 1000000 + 200
+  private val HOVER_TIME_THRES: Long = 2000000000L //2 sec
+  private val SCHEDULE_THRES = 10000000 //Time before the Timer is scheduled
+  private val POPUP_THRES = HOVER_TIME_THRES / 1000000 + 200
 }
 
 /**
@@ -40,6 +39,7 @@ object EditorEventManager {
 class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListener, val mouseMotionListener: EditorMouseMotionListener, val documentListener: DocumentListener, val selectionListener: SelectionListener, val requestManager: RequestManager, val syncKind: TextDocumentSyncKind = TextDocumentSyncKind.Full, val wrapper: LanguageServerWrapper) {
 
 
+  import com.github.gtache.Timeout._
   import com.github.gtache.editor.EditorEventManager._
 
   private val identifier: TextDocumentIdentifier = new TextDocumentIdentifier(Utils.editorToURIString(editor))
@@ -91,7 +91,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           override def run(): Unit = {
             import scala.collection.JavaConverters._
             try {
-              val resp = request.get(RESPONSE_TIME, TimeUnit.MILLISECONDS).asScala
+              val resp = request.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS).asScala
               ApplicationManager.getApplication.invokeLater(() => resp.foreach(dh => {
                 val range = dh.getRange
                 val kind = dh.getKind
@@ -134,7 +134,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                   val serverPos = Utils.logicalToLSPPos(editorPos)
                   try {
                     val response = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
-                    val hover = response.get(RESPONSE_TIME, TimeUnit.MILLISECONDS)
+                    val hover = response.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
                     val range = hover.getRange
                     val string = HoverHandler.getHoverString(hover)
                     if (string != null) {
@@ -152,7 +152,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                       })
                     } else {
                       isPopupOpen = false
-                      LOG.warn("String returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
+                      LOG.warn("Hover string returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
                     }
                   } catch {
                     case e: TimeoutException =>
@@ -215,7 +215,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         case TextDocumentSyncKind.Full =>
           changesParams.getContentChanges.get(0).setText(editor.getDocument.getText())
       }
-      LOG.info("Document changed")
       requestManager.didChange(changesParams)
     } else {
       LOG.error("Wrong document for the EditorEventManager")
@@ -249,10 +248,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @return The suggestions
     */
   def completion(pos: Position): Iterable[_ <: LookupElement] = {
-    LOG.info("Sending completion request")
     val future = requestManager.completion(new TextDocumentPositionParams(identifier, pos))
     try {
-      val res = future.get(RESPONSE_TIME, TimeUnit.MILLISECONDS)
+      val res = future.get(COMPLETION_TIMEOUT, TimeUnit.MILLISECONDS)
       import scala.collection.JavaConverters._
       val completion /*: CompletionList | List[CompletionItem] */ = if (res.isLeft) res.getLeft.asScala else res.getRight
       completion match {

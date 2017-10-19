@@ -8,7 +8,7 @@ import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 
-class LSPNavigationItem(name: String, container: String, project: Project, file: VirtualFile, line: Int, col: Int) extends OpenFileDescriptor(project, file, line, col) with NavigationItem {
+case class LSPNavigationItem(name: String, container: String, project: Project, file: VirtualFile, line: Int, col: Int) extends OpenFileDescriptor(project, file, line, col) with NavigationItem {
 
   override def getName: String = name
 
@@ -16,8 +16,8 @@ class LSPNavigationItem(name: String, container: String, project: Project, file:
 
     override def getPresentableText: String = name
 
-    override def getLocationString: String = container + name
+    override def getLocationString: String = (if (container != null) container else "") + name
 
-    override def getIcon(unused: Boolean): Icon = if (unused) null else AllIcons.Icon_CE_64
+    override def getIcon(unused: Boolean): Icon = if (unused) null else AllIcons.Icon_small
   }
 }

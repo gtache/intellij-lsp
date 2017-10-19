@@ -2,3 +2,5 @@ out/
 .gradle/
 .idea/
 LSP.iml
+LSP.zip
+LSP/
