@@ -225,9 +225,7 @@ object PluginMain {
           val arr = res.get(Timeout.SYMBOLS_TIMEOUT, TimeUnit.MILLISECONDS).asScala.toArray
 
           arr.filter(s => if (onlyKind.isEmpty) true else onlyKind.contains(s.getKind)).map(f => {
-            val fName = f.getName
-            val name = if (fName.endsWith("$")) fName.dropRight(1) else fName
-            LSPNavigationItem(name, f.getContainerName, project, Utils.URIToVFS(f.getLocation.getUri), f.getLocation.getRange.getStart.getLine, f.getLocation.getRange.getStart.getCharacter)
+            LSPNavigationItem(f.getName, f.getContainerName, project, Utils.URIToVFS(f.getLocation.getUri), f.getLocation.getRange.getStart.getLine, f.getLocation.getRange.getStart.getCharacter)
           }).distinct.asInstanceOf[Array[NavigationItem]]
         } catch {
           case e: TimeoutException => LOG.warn(e)

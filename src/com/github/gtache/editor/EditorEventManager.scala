@@ -129,7 +129,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             hoverThread.schedule(new TimerTask {
               override def run(): Unit = {
                 val curTime = System.nanoTime()
-                if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor) {
+                if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus) {
                   isPopupOpen = true
                   val serverPos = Utils.logicalToLSPPos(editorPos)
                   try {

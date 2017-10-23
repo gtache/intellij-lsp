@@ -9,8 +9,7 @@ trait LSPGotoContributor extends ChooseByNameContributor {
   protected val LOG: Logger = Logger.getInstance(this.getClass)
 
   override def getNames(project: Project, includeNonProjectItems: Boolean): Array[String] = {
-    val res = PluginMain.workspaceSymbols("", "", project, includeNonProjectItems).map(f => f.getName).map(f => if (f.endsWith("$")) f.dropRight(1) else f)
-    LOG.info(res.mkString(";"))
+    val res = PluginMain.workspaceSymbols("", "", project, includeNonProjectItems).map(f => f.getName)
     res
   }
 }
