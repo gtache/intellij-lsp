@@ -11,4 +11,5 @@ Client :
 -showMessage     
 -logMessage
 
+
 There is a skeleton of an LSP plugin for Dotty in the intellij-lsp-dotty folder (mainly for testing purposes).

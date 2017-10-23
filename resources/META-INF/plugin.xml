@@ -33,11 +33,9 @@
         <extensionPoint name="ServerDefinition" interface="com.github.gtache.ServerDefinitionExtensionPoint"/>
     </extensionPoints>
 
-    <!-- use-shortcut-of doesn't work -->
     <actions>
-        <action class="com.github.gtache.editor.LSPQuickDocAction" id="LSPQuickDoc" text="Quick Doc">
-            <keyboard-shortcut first-keystroke="control alt Q" keymap="$default"/>
-        </action>
+        <action class="com.github.gtache.editor.LSPQuickDocAction" id="QuickJavaDoc" text="Quick Doc"
+                overrides="true"/> <!-- Overrides quickdoc if possible, otherwise delegates to it -->
     </actions>
 
     <application-components>

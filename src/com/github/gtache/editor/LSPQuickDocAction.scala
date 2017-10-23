@@ -1,11 +1,15 @@
 package com.github.gtache.editor
 
 import com.github.gtache.PluginMain
+import com.intellij.codeInsight.documentation.actions.ShowQuickDocInfoAction
 import com.intellij.openapi.actionSystem.{AnActionEvent, CommonDataKeys}
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.project.DumbAwareAction
+import com.intellij.openapi.project.DumbAware
 
-class LSPQuickDocAction extends DumbAwareAction {
+/**
+  * Action overriding QuickDoc (CTRL+Q) : If editor / document is LSP-supported, shows the LSP doc, otherwise shows the default doc
+  */
+class LSPQuickDocAction extends ShowQuickDocInfoAction with DumbAware {
   private val LOG: Logger = Logger.getInstance(classOf[LSPQuickDocAction])
 
   override def actionPerformed(e: AnActionEvent): Unit = {
@@ -13,6 +17,8 @@ class LSPQuickDocAction extends DumbAwareAction {
     val manager = PluginMain.getManagerForEditor(editor)
     if (manager != null) {
       manager.quickDoc(editor)
+    } else {
+      super.actionPerformed(e)
     }
   }
 }
