@@ -4,6 +4,7 @@ import java.util.concurrent.TimeUnit
 
 import com.github.gtache.client.{LanguageServerDefinition, LanguageServerWrapper}
 import com.github.gtache.contributors.LSPNavigationItem
+import com.github.gtache.editor.EditorEventManager
 import com.github.gtache.editor.listeners.{EditorListener, FileDocumentManagerListenerImpl, VFSListener}
 import com.github.gtache.settings.LSPState
 import com.intellij.AppTopics
@@ -243,6 +244,26 @@ object PluginMain {
 
   def willSaveAllDocuments(): Unit = {
     uriToLanguageWrapper.foreach(u => u._2.getEditorManagerFor(u._1).willSave())
+  }
+
+  def getWrapperForEditor(e: Editor): LanguageServerWrapper = {
+    val uri = Utils.editorToURIString(e)
+    uriToLanguageWrapper.get(uri) match {
+      case Some(l) => l
+      case None =>
+        LOG.warn("No wrapper for editor " + uri)
+        null
+    }
+  }
+
+  def getManagerForEditor(e: Editor): EditorEventManager = {
+    val uri = Utils.editorToURIString(e)
+    uriToLanguageWrapper.get(uri) match {
+      case Some(l) => l.getEditorManagerFor(uri)
+      case None =>
+        LOG.warn("No wrapper for editor " + uri)
+        null
+    }
   }
 }
 

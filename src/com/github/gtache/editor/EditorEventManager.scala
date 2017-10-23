@@ -1,6 +1,6 @@
 package com.github.gtache.editor
 
-import java.awt.{Color, Font}
+import java.awt.{Color, Font, Point}
 import java.util.concurrent.{TimeUnit, TimeoutException}
 import java.util.{Collections, Timer, TimerTask}
 
@@ -22,7 +22,7 @@ import scala.collection.mutable
 object EditorEventManager {
   private val HOVER_TIME_THRES: Long = 2000000000L //2 sec
   private val SCHEDULE_THRES = 10000000 //Time before the Timer is scheduled
-  private val POPUP_THRES = HOVER_TIME_THRES / 1000000 + 200
+  private val POPUP_THRES = HOVER_TIME_THRES / 1000000 + 50
 }
 
 /**
@@ -115,7 +115,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
-    * Handles the mouseMoved event : If the mouse doesn't move for 2s, an Hover request will be sent
+    * Will show documentation if the mosue doesn't move for a given time (Hover)
     *
     * @param e the event
     */
@@ -126,49 +126,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         predTime = curTime
       } else {
         if (!isPopupOpen) {
-          val editorPos = getPos(e)
-          if (curTime - predTime > SCHEDULE_THRES) {
-            hoverThread.schedule(new TimerTask {
-              override def run(): Unit = {
-                val curTime = System.nanoTime()
-                if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && !isPopupOpen) {
-                  isPopupOpen = true
-                  val serverPos = Utils.logicalToLSPPos(editorPos)
-                  try {
-                    val response = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
-                    val hover = response.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
-                    val range = hover.getRange
-                    val string = HoverHandler.getHoverString(hover)
-                    if (string != null) {
-                      ApplicationManager.getApplication.invokeLater(() => {
-                        val popupBuilder = JBPopupFactory.getInstance().createHtmlTextBalloonBuilder(string, com.intellij.openapi.ui.MessageType.INFO, null)
-                        popupBuilder.setHideOnKeyOutside(true).setHideOnAction(true).setHideOnClickOutside(true).setHideOnCloseClick(true).setHideOnLinkClick(true).setHideOnFrameResize(true)
-                        currentPopup = popupBuilder.createBalloon()
-                        currentPopup.addListener(new JBPopupListener {
-                          override def onClosed(lightweightWindowEvent: LightweightWindowEvent): Unit = {
-                            isPopupOpen = false
-                            predTime = curTime
-                          }
-
-                          override def beforeShown(lightweightWindowEvent: LightweightWindowEvent): Unit = {}
-                        })
-                        currentPopup.show(new RelativePoint(editor.getContentComponent, e.getMouseEvent.getPoint), Balloon.Position.above)
-                      })
-                    } else {
-                      isPopupOpen = false
-                      LOG.warn("Hover string returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
-                    }
-                  } catch {
-                    case e: TimeoutException =>
-                      isPopupOpen = false
-                      LOG.warn(e)
-                  }
-
-
-                }
-              }
-            }, POPUP_THRES)
-          }
+          scheduleDocumentation(curTime, getPos(e), e.getMouseEvent.getPoint)
         } else if (currentPopup != null) {
           currentPopup.hide()
           currentPopup = null
@@ -196,6 +154,70 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       editorPos = new LogicalPosition(editorPos.line, maxY)
     }
     editorPos
+  }
+
+  private def scheduleDocumentation(time: Long, editorPos: LogicalPosition, point: Point): Unit = {
+    if (time - predTime > SCHEDULE_THRES) {
+      hoverThread.schedule(new TimerTask {
+        override def run(): Unit = {
+          val curTime = System.nanoTime()
+          if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && !isPopupOpen) {
+            requestAndShowDoc(curTime, editorPos, point)
+          }
+        }
+      }, POPUP_THRES)
+    }
+  }
+
+  /**
+    * Immediately requests the server for documentation at the current editor position
+    *
+    * @param editor The editor
+    */
+  def quickDoc(editor: Editor): Unit = {
+    val caretPos = editor.getCaretModel.getLogicalPosition
+    val pointPos = editor.logicalPositionToXY(caretPos)
+    val currentTime = System.nanoTime()
+    ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
+      override def run(): Unit = requestAndShowDoc(currentTime, caretPos, pointPos)
+    })
+    predTime = currentTime
+  }
+
+  private def requestAndShowDoc(curTime: Long, editorPos: LogicalPosition, point: Point): Unit = {
+    isPopupOpen = true
+    val serverPos = Utils.logicalToLSPPos(editorPos)
+    try {
+      val response = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
+      val hover = response.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
+      val range = hover.getRange
+      val string = HoverHandler.getHoverString(hover)
+      if (string != null) {
+        ApplicationManager.getApplication.invokeLater(() => {
+          val popupBuilder = JBPopupFactory.getInstance().createHtmlTextBalloonBuilder(string, com.intellij.openapi.ui.MessageType.INFO, null)
+          popupBuilder.setHideOnKeyOutside(true).setHideOnAction(true).setHideOnClickOutside(true).setHideOnCloseClick(true).setHideOnLinkClick(true).setHideOnFrameResize(true)
+          currentPopup = popupBuilder.createBalloon()
+          currentPopup.addListener(new JBPopupListener {
+            override def onClosed(lightweightWindowEvent: LightweightWindowEvent): Unit = {
+              isPopupOpen = false
+              predTime = curTime
+            }
+
+            override def beforeShown(lightweightWindowEvent: LightweightWindowEvent): Unit = {}
+          })
+          currentPopup.show(new RelativePoint(editor.getContentComponent, point), Balloon.Position.above)
+        })
+      } else {
+        isPopupOpen = false
+        LOG.warn("Hover string returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
+      }
+    } catch {
+      case e: TimeoutException =>
+        isPopupOpen = false
+        LOG.warn(e)
+    }
+
+
   }
 
   /**

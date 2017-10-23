@@ -6,4 +6,5 @@ object Timeout {
   val COMPLETION_TIMEOUT: Int = 1000
   val DOC_HIGHLIGHT_TIMEOUT: Int = 1000
   val STOP_TIMEOUT: Int = 5000
+  val IMMEDIATELY: Int = 0
 }

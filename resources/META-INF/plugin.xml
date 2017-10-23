@@ -20,7 +20,7 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Add your extensions here -->
-        <applicationConfigurable groupId="editor" displayName="Language Server Protocol"
+        <applicationConfigurable groupId="language" displayName="Language Server Protocol"
                                  instance="com.github.gtache.settings.LSPSettings"/>
         <applicationService id="LSPState"
                             serviceInterface="com.github.gtache.settings.LSPState"
@@ -33,7 +33,11 @@
         <extensionPoint name="ServerDefinition" interface="com.github.gtache.ServerDefinitionExtensionPoint"/>
     </extensionPoints>
 
+    <!-- use-shortcut-of doesn't work -->
     <actions>
+        <action class="com.github.gtache.editor.LSPQuickDocAction" id="LSPQuickDoc" text="Quick Doc">
+            <keyboard-shortcut first-keystroke="control alt Q" keymap="$default"/>
+        </action>
     </actions>
 
     <application-components>
