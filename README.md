@@ -6,8 +6,7 @@ Requests to the server:
 -Hover     
 -DocumentHighlight     
 -Completion     
--didSave, didClose, didOpen, didChange     
-     
+-willSave, didSave, didClose, didOpen, didChange       
 Client :      
 -showMessage     
 -logMessage

@@ -13,7 +13,8 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.event._
 import com.intellij.openapi.editor.markup.{HighlighterLayer, HighlighterTargetArea, RangeHighlighter, TextAttributes}
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
-import com.intellij.openapi.ui.popup.{JBPopupFactory, JBPopupListener, LightweightWindowEvent}
+import com.intellij.openapi.ui.popup.{Balloon, JBPopupFactory, JBPopupListener, LightweightWindowEvent}
+import com.intellij.ui.awt.RelativePoint
 import org.eclipse.lsp4j._
 
 import scala.collection.mutable
@@ -52,6 +53,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private var isOpen: Boolean = true
   @volatile private var isPopupOpen: Boolean = false
   private var mouseInEditor: Boolean = true
+  @volatile private var currentPopup: Balloon = _
 
   changesParams.getTextDocument.setUri(Utils.editorToURIString(editor))
   editor.addEditorMouseListener(mouseListener)
@@ -129,7 +131,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             hoverThread.schedule(new TimerTask {
               override def run(): Unit = {
                 val curTime = System.nanoTime()
-                if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus) {
+                if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && !isPopupOpen) {
                   isPopupOpen = true
                   val serverPos = Utils.logicalToLSPPos(editorPos)
                   try {
@@ -139,8 +141,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                     val string = HoverHandler.getHoverString(hover)
                     if (string != null) {
                       ApplicationManager.getApplication.invokeLater(() => {
-                        val popup = JBPopupFactory.getInstance().createMessage(string)
-                        popup.addListener(new JBPopupListener {
+                        val popupBuilder = JBPopupFactory.getInstance().createHtmlTextBalloonBuilder(string, com.intellij.openapi.ui.MessageType.INFO, null)
+                        popupBuilder.setHideOnKeyOutside(true).setHideOnAction(true).setHideOnClickOutside(true).setHideOnCloseClick(true).setHideOnLinkClick(true).setHideOnFrameResize(true)
+                        currentPopup = popupBuilder.createBalloon()
+                        currentPopup.addListener(new JBPopupListener {
                           override def onClosed(lightweightWindowEvent: LightweightWindowEvent): Unit = {
                             isPopupOpen = false
                             predTime = curTime
@@ -148,7 +152,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
                           override def beforeShown(lightweightWindowEvent: LightweightWindowEvent): Unit = {}
                         })
-                        popup.showInScreenCoordinates(editor.getComponent, e.getMouseEvent.getLocationOnScreen)
+                        currentPopup.show(new RelativePoint(editor.getContentComponent, e.getMouseEvent.getPoint), Balloon.Position.above)
                       })
                     } else {
                       isPopupOpen = false
@@ -165,6 +169,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               }
             }, POPUP_THRES)
           }
+        } else if (currentPopup != null) {
+          currentPopup.hide()
+          currentPopup = null
         }
         predTime = curTime
       }
