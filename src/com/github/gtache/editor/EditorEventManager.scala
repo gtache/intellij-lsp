@@ -4,7 +4,7 @@ import java.awt.{Color, Font, Point}
 import java.util.concurrent.{TimeUnit, TimeoutException}
 import java.util.{Collections, Timer, TimerTask}
 
-import com.github.gtache.client.{LanguageServerWrapper, RequestManager}
+import com.github.gtache.client.{LanguageServerWrapperImpl, RequestManager}
 import com.github.gtache.requests.HoverHandler
 import com.github.gtache.{LSPPsiElement, Utils}
 import com.intellij.codeInsight.lookup.{AutoCompletionPolicy, LookupElement, LookupElementBuilder}
@@ -39,7 +39,7 @@ object EditorEventManager {
   * @param syncKind            The type of synchronization
   * @param wrapper             The corresponding LanguageServerWrapper
   */
-class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListener, val mouseMotionListener: EditorMouseMotionListener, val documentListener: DocumentListener, val selectionListener: SelectionListener, val requestManager: RequestManager, val syncKind: TextDocumentSyncKind = TextDocumentSyncKind.Full, val wrapper: LanguageServerWrapper) {
+class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListener, val mouseMotionListener: EditorMouseMotionListener, val documentListener: DocumentListener, val selectionListener: SelectionListener, val requestManager: RequestManager, val syncKind: TextDocumentSyncKind = TextDocumentSyncKind.Full, val wrapper: LanguageServerWrapperImpl) {
 
 
   import com.github.gtache.Timeout._
@@ -48,9 +48,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private val identifier: TextDocumentIdentifier = new TextDocumentIdentifier(Utils.editorToURIString(editor))
   private val LOG: Logger = Logger.getInstance(classOf[EditorEventManager])
   private val hoverThread = new Timer("Hover", true)
-  private val versionStream = Stream.from(0).iterator
   private val changesParams = new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(), Collections.singletonList(new TextDocumentContentChangeEvent()))
   private val currentHighlights: mutable.Set[RangeHighlighter] = mutable.HashSet()
+  private var version: Int = -1
   private var predTime: Long = -1L
   private var isOpen: Boolean = true
   @volatile private var isPopupOpen: Boolean = false
@@ -62,7 +62,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   editor.addEditorMouseMotionListener(mouseMotionListener)
   editor.getDocument.addDocumentListener(documentListener)
   editor.getSelectionModel.addSelectionListener(selectionListener)
-  requestManager.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(Utils.editorToURIString(editor), wrapper.serverDefinition.id, versionStream.next, editor.getDocument.getText)))
+  requestManager.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(Utils.editorToURIString(editor), wrapper.serverDefinition.id, {
+    version += 1;
+    version
+  }, editor.getDocument.getText)))
 
   /**
     * Tells the manager that the mouse is in the editor
@@ -226,6 +229,13 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   }
 
+  /**
+    * Requests the Hover information, synchronously
+    *
+    * @param editor The editor
+    * @param offset The offset in the editor
+    * @return The information
+    */
   def requestDoc(editor: Editor, offset: Int): String = {
     if (editor == this.editor) {
       val serverPos = Utils.logicalToLSPPos(editor.offsetToLogicalPosition(offset))
@@ -250,7 +260,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def documentChanged(event: DocumentEvent): Unit = {
     if (event.getDocument == editor.getDocument) {
       predTime = System.nanoTime() //So that there are no hover events while typing
-      changesParams.getTextDocument.setVersion(versionStream.next())
+      changesParams.getTextDocument.setVersion({
+        version += 1;
+        version
+      })
       syncKind match {
         case TextDocumentSyncKind.None =>
         case TextDocumentSyncKind.Incremental =>
@@ -318,10 +331,19 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   //TODO Manual
+  /**
+    * Indicates that the document will be saved
+    */
   def willSave(): Unit = {
     requestManager.willSave(new WillSaveTextDocumentParams(identifier, TextDocumentSaveReason.Manual))
   }
 
+  /**
+    * Returns the references given the position of the word to search for
+    *
+    * @param pos A logical position
+    * @return An array of PsiReference
+    */
   def references(pos: LogicalPosition): Array[PsiReference] = {
     LOG.info("References")
     val lspPos = Utils.logicalToLSPPos(pos)
@@ -347,22 +369,33 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
+  /**
+    * Applies the edits given a version
+    *
+    * @param version The version of the changes ; If it is lower than the current version, they are discarded
+    * @param edits   The edits
+    * @return True if the edits have been applied, false otherwise
+    */
   def applyEdit(version: Int = -1, edits: List[TextEdit]): Boolean = {
-    edits.foreach(edit => {
-      val text = edit.getNewText
-      val range = edit.getRange
-      val start = Utils.LSPPosToOffset(editor, range.getStart)
-      val end = Utils.LSPPosToOffset(editor, range.getEnd)
-      val document = editor.getDocument
-      if (text == "") {
-        document.deleteString(start, end)
-      } else if (end - start <= 0) {
-        document.insertString(start, text)
-      } else {
-        document.replaceString(start, end, text)
-      }
-    })
-    true
+    if (version >= this.version) {
+      edits.foreach(edit => {
+        val text = edit.getNewText
+        val range = edit.getRange
+        val start = Utils.LSPPosToOffset(editor, range.getStart)
+        val end = Utils.LSPPosToOffset(editor, range.getEnd)
+        val document = editor.getDocument
+        if (text == "") {
+          document.deleteString(start, end)
+        } else if (end - start <= 0) {
+          document.insertString(start, text)
+        } else {
+          document.replaceString(start, end, text)
+        }
+      })
+      true
+    } else {
+      false
+    }
   }
 
 }

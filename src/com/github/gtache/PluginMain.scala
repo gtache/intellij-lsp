@@ -2,7 +2,7 @@ package com.github.gtache
 
 import java.util.concurrent.TimeUnit
 
-import com.github.gtache.client.{LanguageServerDefinition, LanguageServerWrapper}
+import com.github.gtache.client.{DummyLanguageServerWrapper, LanguageServerDefinition, LanguageServerWrapper, LanguageServerWrapperImpl}
 import com.github.gtache.contributors.LSPNavigationItem
 import com.github.gtache.editor.EditorEventManager
 import com.github.gtache.editor.listeners.{EditorListener, FileDocumentManagerListenerImpl, VFSListener}
@@ -31,9 +31,9 @@ import scala.concurrent.TimeoutException
 object PluginMain {
 
   private val LOG: Logger = Logger.getInstance(classOf[PluginMain])
-  private val extToLanguageWrapper: mutable.Map[(String, String), LanguageServerWrapper] = mutable.HashMap()
-  private val uriToLanguageWrapper: mutable.Map[String, LanguageServerWrapper] = mutable.HashMap()
-  private val projectToLanguageWrapper: mutable.Map[Project, LanguageServerWrapper] = mutable.HashMap()
+  private val extToLanguageWrapper: mutable.Map[(String, String), LanguageServerWrapper] = scala.collection.concurrent.TrieMap()
+  private val uriToLanguageWrapper: mutable.Map[String, LanguageServerWrapper] = scala.collection.concurrent.TrieMap()
+  private val projectToLanguageWrapper: mutable.Map[Project, LanguageServerWrapper] = scala.collection.concurrent.TrieMap()
   private var extToServerDefinition: Map[String, ServerDefinitionExtensionPoint] = HashMap()
   private var loadedExtensions: Boolean = false
 
@@ -93,15 +93,27 @@ object PluginMain {
           LOG.info("Opened a file with extension " + ext)
           extToServerDefinition.get(ext).foreach(s => {
             var wrapper = extToLanguageWrapper.get((ext, project)).orNull
-            if (wrapper == null) {
-              LOG.info("Creating wrapper for ext " + ext + " project " + editor.getProject.getBasePath)
-              val packge = s.packge
-              val mainClass = s.mainClass
-              val args = s.args
-              val cp = CoursierImpl.resolveClasspath(packge)
-              wrapper = new LanguageServerWrapper(new LanguageServerDefinition(ext), Seq("java", "-cp", cp, mainClass) ++ args, project)
-              extToLanguageWrapper.put((ext, project), wrapper)
-              projectToLanguageWrapper.put(editor.getProject, wrapper)
+            wrapper match {
+              case null =>
+                extToLanguageWrapper.put((ext, project), new DummyLanguageServerWrapper)
+                LOG.info("Creating wrapper for ext " + ext + " project " + editor.getProject.getBasePath)
+                val packge = s.packge
+                val mainClass = s.mainClass
+                val args = s.args
+                if (s.inputStream != null && s.outputStream != null) {
+                  wrapper = new LanguageServerWrapperImpl(new LanguageServerDefinition(ext), workingDir = project, in = s.inputStream, out = s.outputStream)
+                } else {
+                  val cp = CoursierImpl.resolveClasspath(packge)
+                  wrapper = new LanguageServerWrapperImpl(new LanguageServerDefinition(ext), Seq("java", "-cp", cp, mainClass) ++ args, project)
+                }
+                extToLanguageWrapper.update((ext, project), wrapper)
+                projectToLanguageWrapper.put(editor.getProject, wrapper)
+              case d: DummyLanguageServerWrapper =>
+                while (extToLanguageWrapper((ext, project)).isInstanceOf[DummyLanguageServerWrapper]) {
+                  Thread.sleep(500)
+                }
+                wrapper = extToLanguageWrapper((ext, project))
+              case l: LanguageServerWrapperImpl =>
             }
             LOG.info("Adding file " + file.getName)
             wrapper.connect(editor)
@@ -242,15 +254,27 @@ object PluginMain {
     }
   }
 
+  /**
+    * Indicates that a document will be saved
+    *
+    * @param doc The document
+    */
   def willSave(doc: Document): Unit = {
     val uri = Utils.VFSToURIString(FileDocumentManager.getInstance().getFile(doc))
     uriToLanguageWrapper.get(uri).foreach(f => f.getEditorManagerFor(uri).willSave())
   }
 
+  /**
+    * Indicates that all documents will be saved
+    */
   def willSaveAllDocuments(): Unit = {
     uriToLanguageWrapper.foreach(u => u._2.getEditorManagerFor(u._1).willSave())
   }
 
+  /**
+    * @param e An Editor
+    * @return The LanguageServerWrapper for the given editor
+    */
   def getWrapperForEditor(e: Editor): LanguageServerWrapper = {
     val uri = Utils.editorToURIString(e)
     uriToLanguageWrapper.get(uri) match {
@@ -261,6 +285,13 @@ object PluginMain {
     }
   }
 
+  /**
+    * Asks for references given an editor and a position
+    *
+    * @param e   The editor
+    * @param pos The LogicalPosition
+    * @return An Array of PsiReference
+    */
   def references(e: Editor, pos: LogicalPosition): Array[PsiReference] = {
     val manager = getManagerForEditor(e)
     if (manager != null) {
@@ -270,11 +301,19 @@ object PluginMain {
     }
   }
 
+  /**
+    * @param e An Editor
+    * @return The EditorEventManager for the given editor
+    */
   def getManagerForEditor(e: Editor): EditorEventManager = {
     val uri = Utils.editorToURIString(e)
     getManagerForURI(uri)
   }
 
+  /**
+    * @param uri An uri
+    * @return The EditorEventManager for the given uri
+    */
   def getManagerForURI(uri: String): EditorEventManager = {
     uriToLanguageWrapper.get(uri) match {
       case Some(l) => l.getEditorManagerFor(uri)
@@ -284,6 +323,10 @@ object PluginMain {
     }
   }
 
+  /**
+    * @param uri An uri
+    * @return The language server wrapper for the given uri
+    */
   def getWrapperForURI(uri: String): LanguageServerWrapper = {
     uriToLanguageWrapper.get(uri).orNull
   }

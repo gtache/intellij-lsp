@@ -61,7 +61,7 @@ public class LSPGUI {
         final String mainClass = mainClassField.getText();
         final String args = argsField.getText();
         LOG.info("Extracted " + ext + ", " + serv + ", " + mainClass + ", " + args + " from GUI");
-        serverDefinition = new ServerDefinitionExtensionPoint(ext, serv, mainClass, args.split(" "));
+        serverDefinition = new ServerDefinitionExtensionPoint(ext, serv, mainClass, args.split(" "), null, null);
         LSPState.getInstance().setExtToServ(Collections.singletonMap(ext, serverDefinition));
     }
 

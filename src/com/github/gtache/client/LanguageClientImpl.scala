@@ -86,7 +86,7 @@ class LanguageClientImpl extends LanguageClient {
     for (action <- actions.asScala) {
     }
     MessageDialog.main(showMessageRequestParams.getMessage)
-    null
+    CompletableFuture.completedFuture(new MessageActionItem())
   }
 
   override def logMessage(messageParams: MessageParams): Unit = {

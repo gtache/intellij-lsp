@@ -40,7 +40,6 @@
     </extensions>
 
     <extensionPoints>
-        <extensionPoint name="ServerDefinition" interface="com.github.gtache.ServerDefinitionExtensionPoint"/>
     </extensionPoints>
 
     <actions>

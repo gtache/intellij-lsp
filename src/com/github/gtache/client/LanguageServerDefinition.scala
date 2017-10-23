@@ -1,6 +1,8 @@
 /* Adapted from lsp4e */
 package com.github.gtache.client
 
+import java.io.{InputStream, OutputStream}
+
 import scala.collection.mutable
 
 /**
@@ -38,9 +40,13 @@ class LanguageServerDefinition(val id: String) {
     * @param workingDir The current working directory
     * @return The StreamConnectionProvider
     */
-  def createConnectionProvider(commands: Seq[String], workingDir: String): StreamConnectionProvider = {
+  def createConnectionProvider(commands: Seq[String] = Seq(), workingDir: String = "", inputStream: InputStream = null, outputStream: OutputStream = null): StreamConnectionProvider = {
     if (streamConnectionProvider == null) {
-      streamConnectionProvider = new ProcessStreamConnectionProvider(commands, workingDir)
+      if (inputStream!=null && outputStream!=null) {
+        streamConnectionProvider = BasicStreamConnectionProvider(inputStream, outputStream)
+      } else {
+        streamConnectionProvider = new ProcessStreamConnectionProvider(commands, workingDir)
+      }
     }
     streamConnectionProvider
   }
