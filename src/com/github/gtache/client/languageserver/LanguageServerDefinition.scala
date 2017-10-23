@@ -1,7 +1,10 @@
 /* Adapted from lsp4e */
-package com.github.gtache.client
+package com.github.gtache.client.languageserver
 
 import java.io.{InputStream, OutputStream}
+
+import com.github.gtache.client.LanguageClientImpl
+import com.github.gtache.client.connection.{BasicStreamConnectionProvider, ProcessStreamConnectionProvider, StreamConnectionProvider}
 
 import scala.collection.mutable
 
@@ -42,7 +45,7 @@ class LanguageServerDefinition(val id: String) {
     */
   def createConnectionProvider(commands: Seq[String] = Seq(), workingDir: String = "", inputStream: InputStream = null, outputStream: OutputStream = null): StreamConnectionProvider = {
     if (streamConnectionProvider == null) {
-      if (inputStream!=null && outputStream!=null) {
+      if (inputStream != null && outputStream != null) {
         streamConnectionProvider = BasicStreamConnectionProvider(inputStream, outputStream)
       } else {
         streamConnectionProvider = new ProcessStreamConnectionProvider(commands, workingDir)

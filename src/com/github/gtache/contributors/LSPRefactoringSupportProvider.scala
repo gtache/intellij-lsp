@@ -1,6 +1,6 @@
 package com.github.gtache.contributors
 
-import com.github.gtache.LSPPsiElement
+import com.github.gtache.contributors.psi.LSPPsiElement
 import com.intellij.lang.refactoring.RefactoringSupportProvider
 import com.intellij.psi.PsiElement
 

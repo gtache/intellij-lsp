@@ -1,4 +1,4 @@
-package com.github.gtache
+package com.github.gtache.requests
 
 /**
   * An object containing the Timeout for the various requests
@@ -9,6 +9,6 @@ object Timeout {
   val COMPLETION_TIMEOUT: Int = 1000
   val DOC_HIGHLIGHT_TIMEOUT: Int = 1000
   val REFERENCES_TIMEOUT: Int = 2000
-  val STOP_TIMEOUT: Int = 5000
+  val SHUTDOWN_TIMEOUT: Int = 5000
   val IMMEDIATELY: Int = 0
 }

@@ -2,10 +2,11 @@ package com.github.gtache
 
 import java.util.concurrent.TimeUnit
 
-import com.github.gtache.client.{DummyLanguageServerWrapper, LanguageServerDefinition, LanguageServerWrapper, LanguageServerWrapperImpl}
+import com.github.gtache.client.languageserver.{DummyLanguageServerWrapper, LanguageServerDefinition, LanguageServerWrapper, LanguageServerWrapperImpl}
 import com.github.gtache.contributors.LSPNavigationItem
 import com.github.gtache.editor.EditorEventManager
 import com.github.gtache.editor.listeners.{EditorListener, FileDocumentManagerListenerImpl, VFSListener}
+import com.github.gtache.requests.Timeout
 import com.github.gtache.settings.LSPState
 import com.intellij.AppTopics
 import com.intellij.codeInsight.lookup.LookupElement

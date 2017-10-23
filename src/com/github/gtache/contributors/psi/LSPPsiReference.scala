@@ -1,4 +1,4 @@
-package com.github.gtache
+package com.github.gtache.contributors.psi
 
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.{PsiElement, PsiReference}

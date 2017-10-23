@@ -1,13 +1,16 @@
 /* Adapted from lsp4e */
-package com.github.gtache.client
+package com.github.gtache.client.languageserver
 
 import java.io.{File, IOException, InputStream, OutputStream}
 import java.net.URI
 import java.util.concurrent._
 
 import com.github.gtache.Utils
+import com.github.gtache.client._
+import com.github.gtache.client.connection.StreamConnectionProvider
 import com.github.gtache.editor.EditorEventManager
 import com.github.gtache.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
+import com.github.gtache.requests.Timeout
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import org.eclipse.lsp4j._
@@ -24,8 +27,6 @@ object LanguageServerWrapperImpl {
 }
 
 class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, val commands: Seq[String] = Seq(), val workingDir: String, val in: InputStream = null, val out: OutputStream = null) extends LanguageServerWrapper {
-
-  import com.github.gtache.client.LanguageServerWrapperImpl._
 
   private val lspStreamProvider: StreamConnectionProvider = serverDefinition.createConnectionProvider(commands, workingDir, in, out)
   private val connectedEditors: mutable.Map[String, EditorEventManager] = mutable.HashMap()
@@ -238,7 +239,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     this.capabilitiesAlreadyRequested = false
     if (this.languageServer != null) try {
       val shutdown: CompletableFuture[AnyRef] = this.languageServer.shutdown
-      shutdown.get(SHUTDOWN_TIMEOUT, TimeUnit.MILLISECONDS)
+      shutdown.get(Timeout.SHUTDOWN_TIMEOUT, TimeUnit.MILLISECONDS)
     } catch {
       case _: Exception =>
 

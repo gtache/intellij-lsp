@@ -1,6 +1,6 @@
 package com.github.gtache.contributors
 
-import com.github.gtache.LSPPsiElement
+import com.github.gtache.contributors.psi.LSPPsiElement
 import com.intellij.lang.cacheBuilder.WordsScanner
 import com.intellij.lang.findUsages.FindUsagesProvider
 import com.intellij.openapi.diagnostic.Logger

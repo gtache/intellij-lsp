@@ -1,7 +1,8 @@
-package com.github.gtache.client
+package com.github.gtache.client.languageserver
 
 import java.io.IOException
 
+import com.github.gtache.client.RequestManager
 import com.github.gtache.editor.EditorEventManager
 import com.intellij.openapi.editor.Editor
 import org.eclipse.lsp4j.ServerCapabilities

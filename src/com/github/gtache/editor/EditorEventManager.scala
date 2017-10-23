@@ -4,9 +4,11 @@ import java.awt.{Color, Font, Point}
 import java.util.concurrent.{TimeUnit, TimeoutException}
 import java.util.{Collections, Timer, TimerTask}
 
-import com.github.gtache.client.{LanguageServerWrapperImpl, RequestManager}
+import com.github.gtache.Utils
+import com.github.gtache.client.RequestManager
+import com.github.gtache.client.languageserver.LanguageServerWrapperImpl
+import com.github.gtache.contributors.psi.LSPPsiElement
 import com.github.gtache.requests.HoverHandler
-import com.github.gtache.{LSPPsiElement, Utils}
 import com.intellij.codeInsight.lookup.{AutoCompletionPolicy, LookupElement, LookupElementBuilder}
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
@@ -42,8 +44,8 @@ object EditorEventManager {
 class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListener, val mouseMotionListener: EditorMouseMotionListener, val documentListener: DocumentListener, val selectionListener: SelectionListener, val requestManager: RequestManager, val syncKind: TextDocumentSyncKind = TextDocumentSyncKind.Full, val wrapper: LanguageServerWrapperImpl) {
 
 
-  import com.github.gtache.Timeout._
   import com.github.gtache.editor.EditorEventManager._
+  import com.github.gtache.requests.Timeout._
 
   private val identifier: TextDocumentIdentifier = new TextDocumentIdentifier(Utils.editorToURIString(editor))
   private val LOG: Logger = Logger.getInstance(classOf[EditorEventManager])

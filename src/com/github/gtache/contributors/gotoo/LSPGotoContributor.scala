@@ -1,4 +1,4 @@
-package com.github.gtache.contributors
+package com.github.gtache.contributors.gotoo
 
 import com.github.gtache.PluginMain
 import com.intellij.navigation.ChooseByNameContributor

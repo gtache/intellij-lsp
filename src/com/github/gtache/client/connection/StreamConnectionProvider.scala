@@ -1,5 +1,5 @@
 /* Adapted from lsp4e */
-package com.github.gtache.client
+package com.github.gtache.client.connection
 
 import java.io.{IOException, InputStream, OutputStream}
 import java.net.URI
