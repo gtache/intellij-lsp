@@ -4,9 +4,9 @@ import java.awt.{Color, Font, Point}
 import java.util.concurrent.{TimeUnit, TimeoutException}
 import java.util.{Collections, Timer, TimerTask}
 
-import com.github.gtache.Utils
 import com.github.gtache.client.{LanguageServerWrapper, RequestManager}
 import com.github.gtache.requests.HoverHandler
+import com.github.gtache.{LSPPsiElement, Utils}
 import com.intellij.codeInsight.lookup.{AutoCompletionPolicy, LookupElement, LookupElementBuilder}
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
@@ -14,6 +14,8 @@ import com.intellij.openapi.editor.event._
 import com.intellij.openapi.editor.markup.{HighlighterLayer, HighlighterTargetArea, RangeHighlighter, TextAttributes}
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.ui.popup.{Balloon, JBPopupFactory, JBPopupListener, LightweightWindowEvent}
+import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiReference
 import com.intellij.ui.awt.RelativePoint
 import org.eclipse.lsp4j._
 
@@ -175,13 +177,17 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param editor The editor
     */
   def quickDoc(editor: Editor): Unit = {
-    val caretPos = editor.getCaretModel.getLogicalPosition
-    val pointPos = editor.logicalPositionToXY(caretPos)
-    val currentTime = System.nanoTime()
-    ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
-      override def run(): Unit = requestAndShowDoc(currentTime, caretPos, pointPos)
-    })
-    predTime = currentTime
+    if (editor == this.editor) {
+      val caretPos = editor.getCaretModel.getLogicalPosition
+      val pointPos = editor.logicalPositionToXY(caretPos)
+      val currentTime = System.nanoTime()
+      ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
+        override def run(): Unit = requestAndShowDoc(currentTime, caretPos, pointPos)
+      })
+      predTime = currentTime
+    } else {
+      LOG.warn("Not same editor!")
+    }
   }
 
   private def requestAndShowDoc(curTime: Long, editorPos: LogicalPosition, point: Point): Unit = {
@@ -218,6 +224,22 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
 
 
+  }
+
+  def requestDoc(editor: Editor, offset: Int): String = {
+    if (editor == this.editor) {
+      val serverPos = Utils.logicalToLSPPos(editor.offsetToLogicalPosition(offset))
+      try {
+        val response = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos)).get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
+        HoverHandler.getHoverString(response)
+      } catch {
+        case e: TimeoutException => LOG.warn(e)
+          ""
+      }
+    } else {
+      LOG.warn("Not same editor")
+      ""
+    }
   }
 
   /**
@@ -298,6 +320,49 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   //TODO Manual
   def willSave(): Unit = {
     requestManager.willSave(new WillSaveTextDocumentParams(identifier, TextDocumentSaveReason.Manual))
+  }
+
+  def references(pos: LogicalPosition): Array[PsiReference] = {
+    LOG.info("References")
+    val lspPos = Utils.logicalToLSPPos(pos)
+    val params = new ReferenceParams(new ReferenceContext(false))
+    params.setPosition(lspPos)
+    params.setTextDocument(identifier)
+    val references = requestManager.references(params)
+    try {
+      val res = references.get(REFERENCES_TIMEOUT, TimeUnit.MILLISECONDS)
+      import scala.collection.JavaConverters._
+      res.asScala.map(l => {
+        val start = l.getRange.getStart
+        val end = l.getRange.getEnd
+        val logicalStart = Utils.LSPPosToOffset(editor, start)
+        val logicalEnd = Utils.LSPPosToOffset(editor, end)
+        val name = editor.getDocument.getText(new TextRange(logicalStart, logicalEnd))
+        LSPPsiElement(name, editor.getProject, logicalStart, logicalEnd).getReference
+      }).toArray
+    } catch {
+      case e: TimeoutException =>
+        LOG.warn(e)
+        Array()
+    }
+  }
+
+  def applyEdit(version: Int = -1, edits: List[TextEdit]): Boolean = {
+    edits.foreach(edit => {
+      val text = edit.getNewText
+      val range = edit.getRange
+      val start = Utils.LSPPosToOffset(editor, range.getStart)
+      val end = Utils.LSPPosToOffset(editor, range.getEnd)
+      val document = editor.getDocument
+      if (text == "") {
+        document.deleteString(start, end)
+      } else if (end - start <= 0) {
+        document.insertString(start, text)
+      } else {
+        document.replaceString(start, end, text)
+      }
+    })
+    true
   }
 
 }

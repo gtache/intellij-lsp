@@ -26,9 +26,12 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Add your extensions here -->
-        <fileTypeFactory implementation="DottyFileTypeFactory"/>
-        <completion.contributor language="any" implementationClass="com.github.gtache.contributors.LSPCompletionContributor" order="first"/>
-        <lang.parserDefinition implementationClass="DottyParser" language="dotty" order="first"/>
+        <fileTypeFactory implementation="DottyFileTypeFactory" id="DottyFileTypeFactory"/>
+        <completion.contributor language="Dotty"
+                                implementationClass="com.github.gtache.contributors.LSPCompletionContributor"
+                                id="LSPCompletionContributorDotty"/>
+        <lang.parserDefinition implementationClass="DottyParserDefinition" language="Dotty" id="DottyParserDefinition"/>
+
     </extensions>
 
     <project-components>

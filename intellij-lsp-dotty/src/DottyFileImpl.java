@@ -12,8 +12,8 @@ public class DottyFileImpl extends PsiFileImpl {
     private final FileType myFileType;
 
     protected DottyFileImpl(@NotNull FileViewProvider provider) {
-        super(DottyParser.DOTTY_TOKEN_TYPE, DottyParser.DOTTY_TOKEN_TYPE, provider);
-        myFileType = Objects.equals(provider.getBaseLanguage(), DottyLanguage.INSTANCE) ? provider.getFileType() : DottyFileType.instance();
+        super(DottyParserDefinition.DOTTY_TOKEN_TYPE, DottyParserDefinition.DOTTY_TOKEN_TYPE, provider);
+        myFileType = Objects.equals(provider.getBaseLanguage(), DottyLanguage.INSTANCE) ? provider.getFileType() : DottyFileType.INSTANCE;
     }
 
     @NotNull
@@ -30,6 +30,6 @@ public class DottyFileImpl extends PsiFileImpl {
     @Override
     @NotNull
     public PsiReference[] getReferences() {
-        return ReferenceProvidersRegistry.getReferencesFromProviders(this, DottyFileType.class);
+        return ReferenceProvidersRegistry.getReferencesFromProviders(this);
     }
 }

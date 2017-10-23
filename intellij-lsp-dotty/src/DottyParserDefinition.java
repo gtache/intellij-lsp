@@ -1,23 +1,3 @@
-/*
- * Copyright 2000-2009 JetBrains s.r.o.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/*
- * @author max
- */
-
 import com.intellij.lang.ASTFactory;
 import com.intellij.lang.ASTNode;
 import com.intellij.lang.ParserDefinition;
@@ -32,27 +12,26 @@ import com.intellij.psi.impl.source.PsiPlainTextFileImpl;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.IFileElementType;
 import com.intellij.psi.tree.TokenSet;
-import com.intellij.psi.util.PsiUtilBase;
 import org.jetbrains.annotations.NotNull;
 
-public class DottyParser implements ParserDefinition {
+public class DottyParserDefinition implements ParserDefinition {
     public static final IElementType DOTTY_TOKEN_TYPE = new IElementType("Dotty", DottyLanguage.INSTANCE);
+
     private static final IFileElementType DOTTY_FILE_ELEMENT_TYPE = new IFileElementType(DottyLanguage.INSTANCE) {
         @Override
         public ASTNode parseContents(ASTNode chameleon) {
-            final CharSequence chars = chameleon.getChars();
+            CharSequence chars = chameleon.getChars();
             return ASTFactory.leaf(DOTTY_TOKEN_TYPE, chars);
         }
     };
 
-    @Override
     @NotNull
+    @Override
     public Lexer createLexer(Project project) {
         return new EmptyLexer();
     }
 
     @Override
-    @NotNull
     public PsiParser createParser(Project project) {
         throw new UnsupportedOperationException("Not supported");
     }
@@ -62,33 +41,33 @@ public class DottyParser implements ParserDefinition {
         return DOTTY_FILE_ELEMENT_TYPE;
     }
 
-    @Override
     @NotNull
+    @Override
     public TokenSet getWhitespaceTokens() {
         return TokenSet.EMPTY;
     }
 
-    @Override
     @NotNull
+    @Override
     public TokenSet getCommentTokens() {
         return TokenSet.EMPTY;
     }
 
-    @Override
     @NotNull
+    @Override
     public TokenSet getStringLiteralElements() {
         return TokenSet.EMPTY;
     }
 
-    @Override
     @NotNull
+    @Override
     public PsiElement createElement(ASTNode node) {
-        return PsiUtilBase.NULL_PSI_ELEMENT;
+        return null;
     }
 
     @Override
     public PsiFile createFile(FileViewProvider viewProvider) {
-        return new PsiPlainTextFileImpl(viewProvider);
+        return new PsiPlainTextFileImpl(viewProvider); //TODO DottyFileImpl error
     }
 
     @Override

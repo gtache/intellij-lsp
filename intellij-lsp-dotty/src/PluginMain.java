@@ -6,9 +6,6 @@ public class PluginMain implements ProjectComponent {
 
     public PluginMain(Project project) {
         Logger.getInstance(PluginMain.class).info("Instantiating Dotty");
-        if (DottyLanguageExtension.INSTANCE == null) {
-            DottyLanguageExtension.INSTANCE = new DottyLanguageExtension();
-        }
     }
 
     @Override

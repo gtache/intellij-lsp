@@ -21,12 +21,22 @@
     <extensions defaultExtensionNs="com.intellij">
         <!-- Add your extensions here -->
         <applicationConfigurable groupId="language" displayName="Language Server Protocol"
-                                 instance="com.github.gtache.settings.LSPSettings"/>
+                                 instance="com.github.gtache.settings.LSPSettings" id="LSPSettings"/>
         <applicationService id="LSPState"
                             serviceInterface="com.github.gtache.settings.LSPState"
                             serviceImplementation="com.github.gtache.settings.LSPState"/>
-        <gotoSymbolContributor implementation="com.github.gtache.contributors.LSPGotoSymbolContributor"/>
-        <gotoClassContributor implementation="com.github.gtache.contributors.LSPGotoClassContributor"/>
+        <gotoSymbolContributor implementation="com.github.gtache.contributors.LSPGotoSymbolContributor"
+                               id="LSPGotoSymbolContributor"/>
+        <gotoClassContributor implementation="com.github.gtache.contributors.LSPGotoClassContributor"
+                              id="LSPGotoClassContributor"/>
+        <psi.referenceContributor implementation="com.github.gtache.contributors.LSPReferenceContributor"
+                                  id="LSPReferenceContributor" language=""/>
+        <documentationProvider implementation="com.github.gtache.contributors.LSPDocumentationProvider"
+                               id="LSPDocumentationProvider"/>
+        <lang.findUsagesProvider implementationClass="com.github.gtache.contributors.LSPFindUsagesProvider"
+                                 id="LSPFindUsagesProvider" language=""/>
+        <lang.refactoringSupport implementationClass="com.github.gtache.contributors.LSPRefactoringSupportProvider"
+                                 id="LSPRefactoringSSupportProvider" language=""/>
     </extensions>
 
     <extensionPoints>
