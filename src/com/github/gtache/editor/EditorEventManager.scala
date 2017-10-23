@@ -266,4 +266,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
+  //TODO Manual
+  def willSave(): Unit = {
+    requestManager.willSave(new WillSaveTextDocumentParams(identifier, TextDocumentSaveReason.Manual))
+  }
+
 }

@@ -4,13 +4,15 @@ import java.util.concurrent.TimeUnit
 
 import com.github.gtache.client.{LanguageServerDefinition, LanguageServerWrapper}
 import com.github.gtache.contributors.LSPNavigationItem
-import com.github.gtache.editor.listeners.{EditorListener, VFSListener}
+import com.github.gtache.editor.listeners.{EditorListener, FileDocumentManagerListenerImpl, VFSListener}
 import com.github.gtache.settings.LSPState
+import com.intellij.AppTopics
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.navigation.NavigationItem
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.ApplicationComponent
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.editor.{Editor, EditorFactory}
+import com.intellij.openapi.editor.{Document, Editor, EditorFactory}
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
@@ -84,6 +86,7 @@ object PluginMain {
     if (file != null) {
       val ext: String = file.getExtension
       val project: String = Utils.editorToProjectFolderPath(editor)
+      LOG.info("Opened a file with extension " + ext)
       extToServerDefinition.get(ext).foreach(s => {
         var wrapper = extToLanguageWrapper.get((ext, project)).orNull
         if (wrapper == null) {
@@ -222,7 +225,9 @@ object PluginMain {
           val arr = res.get(Timeout.SYMBOLS_TIMEOUT, TimeUnit.MILLISECONDS).asScala.toArray
 
           arr.filter(s => if (onlyKind.isEmpty) true else onlyKind.contains(s.getKind)).map(f => {
-            LSPNavigationItem(f.getName, f.getContainerName, project, Utils.URIToVFS(f.getLocation.getUri), f.getLocation.getRange.getStart.getLine, f.getLocation.getRange.getStart.getCharacter)
+            val fName = f.getName
+            val name = if (fName.endsWith("$")) fName.dropRight(1) else fName
+            LSPNavigationItem(name, f.getContainerName, project, Utils.URIToVFS(f.getLocation.getUri), f.getLocation.getRange.getStart.getLine, f.getLocation.getRange.getStart.getCharacter)
           }).distinct.asInstanceOf[Array[NavigationItem]]
         } catch {
           case e: TimeoutException => LOG.warn(e)
@@ -231,6 +236,15 @@ object PluginMain {
       case None => LOG.info("No wrapper for project " + project.getBasePath)
         Array()
     }
+  }
+
+  def willSave(doc: Document): Unit = {
+    val uri = Utils.VFSToURIString(FileDocumentManager.getInstance().getFile(doc))
+    uriToLanguageWrapper.get(uri).foreach(f => f.getEditorManagerFor(uri).willSave())
+  }
+
+  def willSaveAllDocuments(): Unit = {
+    uriToLanguageWrapper.foreach(u => u._2.getEditorManagerFor(u._1).willSave())
   }
 }
 
@@ -248,6 +262,7 @@ class PluginMain extends ApplicationComponent {
 
     EditorFactory.getInstance.addEditorFactoryListener(new EditorListener, Disposer.newDisposable())
     VirtualFileManager.getInstance().addVirtualFileListener(VFSListener)
+    ApplicationManager.getApplication.getMessageBus.connect().subscribe(AppTopics.FILE_DOCUMENT_SYNC, FileDocumentManagerListenerImpl)
     LOG.info("PluginMain init finished")
   }
 }

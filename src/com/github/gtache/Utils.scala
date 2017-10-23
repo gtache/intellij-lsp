@@ -77,20 +77,6 @@ object Utils {
   }
 
   /**
-    * Get all file childs of a given VirtualFile, recursively
-    *
-    * @param file The base file
-    * @return All the childs
-    */
-  def getRecursiveChildren(file: VirtualFile): Array[VirtualFile] = {
-    if (file.isDirectory) {
-      file.getChildren.flatMap(f => getRecursiveChildren(f))
-    } else {
-      Array(file)
-    }
-  }
-
-  /**
     * Returns the project path given an editor
     *
     * @param editor The editor
