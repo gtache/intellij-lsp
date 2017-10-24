@@ -6,6 +6,9 @@ import com.intellij.lang.findUsages.FindUsagesProvider
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.psi.PsiElement
 
+/**
+  * A findUsagesProvider for LSP (ALT+F7)
+  */
 class LSPFindUsagesProvider extends FindUsagesProvider {
 
   override def getHelpId(psiElement: PsiElement): String = null

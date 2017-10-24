@@ -1,16 +1,16 @@
 /* Adapted from lsp4e */
 package com.github.gtache.client.languageserver
 
-import java.io.{File, IOException, InputStream, OutputStream}
+import java.io.{File, IOException}
 import java.net.URI
 import java.util.concurrent._
 
-import com.github.gtache.Utils
 import com.github.gtache.client._
 import com.github.gtache.client.connection.StreamConnectionProvider
 import com.github.gtache.editor.EditorEventManager
 import com.github.gtache.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.requests.Timeout
+import com.github.gtache.{ServerDefinitionExtensionPoint, Utils}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import org.eclipse.lsp4j._
@@ -22,13 +22,15 @@ import org.jetbrains.annotations.Nullable
 
 import scala.collection.mutable
 
-object LanguageServerWrapperImpl {
-  private val SHUTDOWN_TIMEOUT = 5000
-}
+/**
+  * The working implementation of a LanguageServerWrapper
+  *
+  * @param serverDefinition The serverDefinition
+  * @param workingDir       The root directory
+  */
+class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionPoint, val workingDir: String) extends LanguageServerWrapper {
 
-class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, val commands: Seq[String] = Seq(), val workingDir: String, val in: InputStream = null, val out: OutputStream = null) extends LanguageServerWrapper {
-
-  private val lspStreamProvider: StreamConnectionProvider = serverDefinition.createConnectionProvider(commands, workingDir, in, out)
+  private val lspStreamProvider: StreamConnectionProvider = serverDefinition.createConnectionProvider(workingDir)
   private val connectedEditors: mutable.Map[String, EditorEventManager] = mutable.HashMap()
   private val LOG: Logger = Logger.getInstance(classOf[LanguageServerWrapperImpl])
   private var languageServer: LanguageServer = _
@@ -63,13 +65,13 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     * Starts the LanguageServer
     */
   @throws[IOException]
-  def start(rootFolder: String): Unit = {
+  def start(): Unit = {
     if (!started) {
       try {
         this.lspStreamProvider.start()
         client = serverDefinition.createLanguageClient
         val initParams = new InitializeParams
-        initParams.setRootUri(new File(rootFolder).toURI.toString)
+        initParams.setRootUri(new File(workingDir).toURI.toString)
         val launcher = LSPLauncher.createClientLauncher(client, this.lspStreamProvider.getInputStream, this.lspStreamProvider.getOutputStream)
 
         this.languageServer = launcher.getRemoteProxy
@@ -78,7 +80,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         this.launcherFuture = launcher.startListening
         //TODO update capabilities when implemented
         val workspaceClientCapabilites = new WorkspaceClientCapabilities
-        workspaceClientCapabilites.setApplyEdit(false)
+        workspaceClientCapabilites.setApplyEdit(true)
         workspaceClientCapabilites.setExecuteCommand(new ExecuteCommandCapabilities)
         workspaceClientCapabilites.setSymbol(new SymbolCapabilities)
         val textDocumentClientCapabilities = new TextDocumentClientCapabilities
@@ -97,12 +99,12 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
         textDocumentClientCapabilities.setRename(new RenameCapabilities)
         textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
-        textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(false, false, true))
+        textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, false, true))
         initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilites, textDocumentClientCapabilities, null))
         initParams.setInitializationOptions(this.lspStreamProvider.getInitializationOptions(URI.create(initParams.getRootUri)))
         initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
           initializeResult = res
-          LOG.info("Got initializeResult")
+          LOG.info("Got initializeResult for " + workingDir)
           res
         })
         initializeStartTime = System.currentTimeMillis
@@ -130,7 +132,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   def connect(editor: Editor): Unit = {
     val path = Utils.editorToURIString(editor)
     if (!this.connectedEditors.contains(path)) {
-      start(Utils.editorToProjectFolderPath(editor))
+      start()
       if (this.initializeFuture != null && editor != null) {
         initializeFuture.thenRun(() => {
           if (!this.connectedEditors.contains(path)) {
@@ -185,7 +187,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     */
   @Nullable def getServer: LanguageServer = {
     try
-      start(".")
+      start()
     catch {
       case ex: IOException =>
         LOG.error(ex)
@@ -201,7 +203,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     */
   @Nullable def getServerCapabilities: ServerCapabilities = {
     try {
-      start(".")
+      start()
       if (this.initializeFuture != null) this.initializeFuture.get(if (capabilitiesAlreadyRequested) 0
       else 1000, TimeUnit.MILLISECONDS)
     } catch {

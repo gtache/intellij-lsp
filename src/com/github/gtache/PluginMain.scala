@@ -2,7 +2,7 @@ package com.github.gtache
 
 import java.util.concurrent.TimeUnit
 
-import com.github.gtache.client.languageserver.{DummyLanguageServerWrapper, LanguageServerDefinition, LanguageServerWrapper, LanguageServerWrapperImpl}
+import com.github.gtache.client.languageserver._
 import com.github.gtache.contributors.LSPNavigationItem
 import com.github.gtache.editor.EditorEventManager
 import com.github.gtache.editor.listeners.{EditorListener, FileDocumentManagerListenerImpl, VFSListener}
@@ -43,7 +43,7 @@ object PluginMain {
     *
     * @param newExt a Java Map
     */
-  def setExtToServerDefinition(newExt: java.util.Map[String, ServerDefinitionExtensionPoint]): Unit = {
+  def setExtToServerDefinition(newExt: java.util.Map[String, ServerDefinitionExtensionPointArtifact]): Unit = {
     import scala.collection.JavaConverters._
     setExtToServerDefinition(newExt.asScala)
   }
@@ -53,7 +53,7 @@ object PluginMain {
     *
     * @param newExt a Scala map
     */
-  def setExtToServerDefinition(newExt: collection.Map[String, ServerDefinitionExtensionPoint]): Unit = extToServerDefinition = newExt.toMap
+  def setExtToServerDefinition(newExt: collection.Map[String, ServerDefinitionExtensionPointArtifact]): Unit = extToServerDefinition = newExt.toMap
 
   /**
     * Returns the extensions->languageServer mapping
@@ -90,30 +90,21 @@ object PluginMain {
       ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
         override def run(): Unit = {
           val ext: String = file.getExtension
-          val project: String = Utils.editorToProjectFolderPath(editor)
+          val workingDir: String = Utils.editorToProjectFolderPath(editor)
           LOG.info("Opened a file with extension " + ext)
           extToServerDefinition.get(ext).foreach(s => {
-            var wrapper = extToLanguageWrapper.get((ext, project)).orNull
+            var wrapper = extToLanguageWrapper.get((ext, workingDir)).orNull
             wrapper match {
               case null =>
-                extToLanguageWrapper.put((ext, project), new DummyLanguageServerWrapper)
-                LOG.info("Creating wrapper for ext " + ext + " project " + editor.getProject.getBasePath)
-                val packge = s.packge
-                val mainClass = s.mainClass
-                val args = s.args
-                if (s.inputStream != null && s.outputStream != null) {
-                  wrapper = new LanguageServerWrapperImpl(new LanguageServerDefinition(ext), workingDir = project, in = s.inputStream, out = s.outputStream)
-                } else {
-                  val cp = CoursierImpl.resolveClasspath(packge)
-                  wrapper = new LanguageServerWrapperImpl(new LanguageServerDefinition(ext), Seq("java", "-cp", cp, mainClass) ++ args, project)
-                }
-                extToLanguageWrapper.update((ext, project), wrapper)
+                extToLanguageWrapper.put((ext, workingDir), new DummyLanguageServerWrapper)
+                wrapper = new LanguageServerWrapperImpl(s, workingDir)
+                extToLanguageWrapper.update((ext, workingDir), wrapper)
                 projectToLanguageWrapper.put(editor.getProject, wrapper)
               case d: DummyLanguageServerWrapper =>
-                while (extToLanguageWrapper((ext, project)).isInstanceOf[DummyLanguageServerWrapper]) {
+                while (extToLanguageWrapper((ext, workingDir)).isInstanceOf[DummyLanguageServerWrapper]) {
                   Thread.sleep(500)
                 }
-                wrapper = extToLanguageWrapper((ext, project))
+                wrapper = extToLanguageWrapper((ext, workingDir))
               case l: LanguageServerWrapperImpl =>
             }
             LOG.info("Adding file " + file.getName)

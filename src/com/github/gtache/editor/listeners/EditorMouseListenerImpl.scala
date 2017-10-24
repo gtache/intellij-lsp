@@ -2,6 +2,9 @@ package com.github.gtache.editor.listeners
 
 import com.intellij.openapi.editor.event.{EditorMouseEvent, EditorMouseListener}
 
+/**
+  * An EditorMouseListener implementation which just listens to mouseExited and mouseEntered
+  */
 class EditorMouseListenerImpl extends EditorMouseListener with LSPListener {
 
   override def mouseExited(e: EditorMouseEvent): Unit = {

@@ -140,50 +140,50 @@ object Utils {
   }
 
   /**
-    * Transforms a (java) Map<String, ServerDefinitionExtensionPoint> to a Map<String, String[]>
+    * Transforms a (java) Map<String, ServerDefinitionExtensionPointArtifact> to a Map<String, String[]>
     *
     * @param map A java map
     * @return the transformed java map
     */
-  def serverDefinitionExtensionPointMapToArrayMap(map: java.util.Map[String, ServerDefinitionExtensionPoint]): java.util.Map[String, Array[String]] = {
+  def serverDefinitionArtifactMapToArrayMap(map: java.util.Map[String, ServerDefinitionExtensionPointArtifact]): java.util.Map[String, Array[String]] = {
     import scala.collection.JavaConverters._
-    map.asScala.map(e => (e._1, serverDefinitionExtensionPointToArray(e._2))).asJava
+    map.asScala.map(e => (e._1, serverDefinitionArtifactToArray(e._2))).asJava
   }
 
 
   /**
-    * Transforms a ServerDefinitionExtensionPoint into an array of String
+    * Transforms a ServerDefinitionExtensionPointArtifact into an array of String
     *
     * @param serverDefinitionExtensionPoint The ServerDefinition
     * @return The Array of string
     */
-  def serverDefinitionExtensionPointToArray(serverDefinitionExtensionPoint: ServerDefinitionExtensionPoint): Array[String] = {
+  def serverDefinitionArtifactToArray(serverDefinitionExtensionPoint: ServerDefinitionExtensionPointArtifact): Array[String] = {
     Array(serverDefinitionExtensionPoint.ext, serverDefinitionExtensionPoint.packge, serverDefinitionExtensionPoint.mainClass) ++ serverDefinitionExtensionPoint.args
   }
 
   /**
-    * Transforms a (java) Map<String, String[]> to a Map<String, ServerDefinitionExtensionPoint>
+    * Transforms a (java) Map<String, String[]> to a Map<String, ServerDefinitionExtensionPointArtifact>
     *
     * @param map A java map
     * @return the transformed java map
     */
-  def arrayMapToServerDefinitionExtensionPointMap(map: java.util.Map[String, Array[String]]): java.util.Map[String, ServerDefinitionExtensionPoint] = {
+  def arrayMapToServerDefinitionArtifactMap(map: java.util.Map[String, Array[String]]): java.util.Map[String, ServerDefinitionExtensionPointArtifact] = {
     import scala.collection.JavaConverters._
-    map.asScala.map(e => (e._1, arrayToServerDefinitionExtensionPoint(e._2))).asJava
+    map.asScala.map(e => (e._1, arrayToServerDefinitionArtifact(e._2))).asJava
   }
 
   /**
-    * Transforms an array of string into a ServerDefinitionExtensionPoint
+    * Transforms an array of string into a ServerDefinitionExtensionPointArtifact
     *
     * @param arr The array of string
     * @return The corresponding ServerDefinitionExtensionPoint
     */
-  def arrayToServerDefinitionExtensionPoint(arr: Array[String]): ServerDefinitionExtensionPoint = {
+  def arrayToServerDefinitionArtifact(arr: Array[String]): ServerDefinitionExtensionPointArtifact = {
     if (arr.length < 3) {
       LOG.warn("Not enough elements to translate into a ServerDefinition : " + arr)
       null
     } else {
-      ServerDefinitionExtensionPoint(arr.head, arr.tail.head, arr.tail.tail.head, if (arr.length > 3) arr.tail.tail.tail else Array())
+      ServerDefinitionExtensionPointArtifact(arr.head, arr.tail.head, arr.tail.tail.head, if (arr.length > 3) arr.tail.tail.tail else Array())
     }
   }
 

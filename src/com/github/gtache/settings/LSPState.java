@@ -1,7 +1,7 @@
 package com.github.gtache.settings;
 
 import com.github.gtache.PluginMain;
-import com.github.gtache.ServerDefinitionExtensionPoint;
+import com.github.gtache.ServerDefinitionExtensionPointArtifact;
 import com.github.gtache.Utils;
 import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.ServiceManager;
@@ -39,17 +39,17 @@ public class LSPState implements PersistentStateComponent<LSPState> {
         return entry == null ? "" : entry.getKey();
     }
 
-    public ServerDefinitionExtensionPoint getFirstServerDefinition() {
+    public ServerDefinitionExtensionPointArtifact getFirstServerDefinition() {
         final Map.Entry<String, String[]> entry = extToServ.isEmpty() ? null : extToServ.entrySet().iterator().next();
-        return entry == null ? null : Utils.arrayToServerDefinitionExtensionPoint(entry.getValue());
+        return entry == null ? null : Utils.arrayToServerDefinitionArtifact(entry.getValue());
     }
 
-    public Map<String, ServerDefinitionExtensionPoint> getExtToServ() {
-        return Utils.arrayMapToServerDefinitionExtensionPointMap(extToServ);
+    public Map<String, ServerDefinitionExtensionPointArtifact> getExtToServ() {
+        return Utils.arrayMapToServerDefinitionArtifactMap(extToServ);
     }
 
-    public void setExtToServ(final Map<String, ServerDefinitionExtensionPoint> extToServ) {
-        this.extToServ = Utils.serverDefinitionExtensionPointMapToArrayMap(extToServ);
+    public void setExtToServ(final Map<String, ServerDefinitionExtensionPointArtifact> extToServ) {
+        this.extToServ = Utils.serverDefinitionArtifactMapToArrayMap(extToServ);
     }
 
     @Nullable
@@ -62,7 +62,7 @@ public class LSPState implements PersistentStateComponent<LSPState> {
     public void loadState(final LSPState lspState) {
         LOG.info("LSP State loaded");
         XmlSerializerUtil.copyBean(lspState, this);
-        PluginMain.setExtToServerDefinition(Utils.arrayMapToServerDefinitionExtensionPointMap(extToServ));
+        PluginMain.setExtToServerDefinition(Utils.arrayMapToServerDefinitionArtifactMap(extToServ));
     }
 
 }

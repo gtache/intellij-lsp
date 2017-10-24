@@ -4,7 +4,12 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.{PsiElement, PsiReference}
 import com.intellij.util.IncorrectOperationException
 
-class LSPPsiReference(var element: PsiElement) extends PsiReference {
+/**
+  * A simple PsiReference for LSP
+  *
+  * @param element The corresponding PsiElement
+  */
+case class LSPPsiReference(var element: PsiElement) extends PsiReference {
   /**
     * Returns the underlying (referencing) element of the reference.
     *

@@ -2,6 +2,7 @@ package com.github.gtache.settings;
 
 import com.github.gtache.PluginMain;
 import com.github.gtache.ServerDefinitionExtensionPoint;
+import com.github.gtache.ServerDefinitionExtensionPointArtifact;
 import com.github.gtache.Utils;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.options.Configurable;
@@ -53,11 +54,12 @@ public final class LSPSettings implements Configurable {
     public void setGUIFields(final Map<String, ServerDefinitionExtensionPoint> map) {
         for (final Map.Entry<String, ServerDefinitionExtensionPoint> entry : map.entrySet()) {
             final ServerDefinitionExtensionPoint def = entry.getValue();
-            if (def != null) {
-                lspGUI.getExtField().setText(def.ext());
-                lspGUI.getServField().setText(def.packge());
-                lspGUI.getMainClassField().setText(def.mainClass());
-                lspGUI.getArgsField().setText(Utils.arrayToString(def.args(), " "));
+            if (def instanceof ServerDefinitionExtensionPointArtifact) {
+                final ServerDefinitionExtensionPointArtifact defImpl = (ServerDefinitionExtensionPointArtifact) def;
+                lspGUI.getExtField().setText(defImpl.ext());
+                lspGUI.getServField().setText(defImpl.packge());
+                lspGUI.getMainClassField().setText(defImpl.mainClass());
+                lspGUI.getArgsField().setText(Utils.arrayToString(defImpl.args(), " "));
             }
         }
     }

@@ -5,6 +5,9 @@ import com.intellij.navigation.ChooseByNameContributor
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 
+/**
+  * This trait is the base implementation of a GotoContributor
+  */
 trait LSPGotoContributor extends ChooseByNameContributor {
   protected val LOG: Logger = Logger.getInstance(this.getClass)
 
