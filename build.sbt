@@ -23,6 +23,9 @@ lazy val commonSettings = Seq(
 )
 
 lazy val root = (project in file(".")).
+  aggregate(`intellij-lsp`, `intellij-lsp-dotty`)
+
+lazy val `intellij-lsp` = (project in file("intellij-lsp")).
   enablePlugins(SbtIdeaPlugin). // See https://github.com/JetBrains/sbt-idea-plugin for documentation
   settings(commonSettings).
   settings(
@@ -43,7 +46,7 @@ lazy val root = (project in file(".")).
 
 lazy val `intellij-lsp-dotty` = (project in file("intellij-lsp-dotty")).
   enablePlugins(SbtIdeaPlugin).
-  dependsOn(root).
+  dependsOn(`intellij-lsp`).
   settings(commonSettings).
   settings(
     name := "intellij-lsp-dotty",
