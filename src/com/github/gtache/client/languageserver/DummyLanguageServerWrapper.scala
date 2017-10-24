@@ -22,7 +22,7 @@ class DummyLanguageServerWrapper extends LanguageServerWrapper {
 
   override def getRequestManager: RequestManager = throw new UnsupportedOperationException
 
-  override def start(rootFolder: String): Unit = throw new UnsupportedOperationException
+  override def start(): Unit = throw new UnsupportedOperationException
 
   override def isActive: Boolean = throw new UnsupportedOperationException
 

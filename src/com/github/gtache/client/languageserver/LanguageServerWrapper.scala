@@ -30,7 +30,7 @@ trait LanguageServerWrapper {
   /**
     * Starts the LanguageServer
     */
-  def start(rootFolder: String): Unit
+  def start(): Unit
 
   /**
     * @return whether the underlying connection to language languageServer is still active

@@ -3,11 +3,10 @@ package com.github.gtache
 import java.io.{InputStream, OutputStream}
 
 import com.github.gtache.client.LanguageClientImpl
-import com.github.gtache.client.connection.{ProcessStreamConnectionProvider, StreamConnectionProvider}
+import com.github.gtache.client.connection.StreamConnectionProvider
 import com.intellij.openapi.diagnostic.Logger
 
 import scala.collection.mutable
-
 
 object ServerDefinitionExtensionPoint {
   val allDefinitions: mutable.Set[ServerDefinitionExtensionPoint] = mutable.Set()
@@ -15,26 +14,40 @@ object ServerDefinitionExtensionPoint {
   def getAllDefinitions: mutable.Set[ServerDefinitionExtensionPoint] = allDefinitions.clone()
 }
 
-case class ServerDefinitionExtensionPoint(ext: String, packge: String = "", mainClass: String = "", args: Array[String] = Array()) {
-  val id : String = ext
-  private val LOG: Logger = Logger.getInstance(this.getClass)
+/**
+  * A trait representing a ServerDefinition
+  */
+trait ServerDefinitionExtensionPoint {
+  private val LOG: Logger = Logger.getInstance(classOf[ServerDefinitionExtensionPoint])
   private val mappedExtensions: mutable.Set[String] = mutable.Set(ext)
-  private var streamConnectionProvider: StreamConnectionProvider = _
+  protected var streamConnectionProvider: StreamConnectionProvider = _
+
+  /**
+    * @return The extension that the language server manages
+    */
+  def ext: String
+
+  /**
+    * @return The id of the language server (same as extension)
+    */
+  def id: String = ext
 
   import com.github.gtache.ServerDefinitionExtensionPoint._
 
   allDefinitions.add(this)
-  LOG.info("Added definition for " + ext + " : " + packge + " ; " + mainClass + " ; " + args.mkString(" "))
+  LOG.info("Added definition for " + this)
 
-  def start(): (InputStream, OutputStream) = {
-    streamConnectionProvider.start()
-    (streamConnectionProvider.getInputStream, streamConnectionProvider.getOutputStream)
-  }
+  /**
+    * Starts the Language server and returns a tuple (InputStream, OutputStream)
+    *
+    * @return The input and output streams of the server
+    */
+  def start(): (InputStream, OutputStream)
 
-
-  def stop(): Unit = {
-    streamConnectionProvider.stop()
-  }
+  /**
+    * Stops the Language server
+    */
+  def stop(): Unit
 
   /**
     * Instantiates a StreamConnectionProvider for this ServerDefinition
@@ -43,19 +56,7 @@ case class ServerDefinitionExtensionPoint(ext: String, packge: String = "", main
     * @param workingDir The current working directory
     * @return The StreamConnectionProvider
     */
-  def createConnectionProvider(workingDir: String): StreamConnectionProvider = {
-    if (streamConnectionProvider == null) {
-      if (isArtifactDependent) {
-        val cp = CoursierImpl.resolveClasspath(packge)
-        streamConnectionProvider = new ProcessStreamConnectionProvider(Seq("java", "-cp", cp, mainClass) ++ args, workingDir)
-      } else {
-
-      }
-    }
-    streamConnectionProvider
-  }
-
-  def isArtifactDependent: Boolean = true
+  def createConnectionProvider(workingDir: String): StreamConnectionProvider
 
   /**
     * Adds a file extension for this LanguageServer
@@ -85,4 +86,5 @@ case class ServerDefinitionExtensionPoint(ext: String, packge: String = "", main
     * @return the LanguageClient for this LanguageServer
     */
   def createLanguageClient: LanguageClientImpl = new LanguageClientImpl
+
 }

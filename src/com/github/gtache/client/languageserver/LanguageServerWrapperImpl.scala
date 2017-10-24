@@ -22,7 +22,12 @@ import org.jetbrains.annotations.Nullable
 
 import scala.collection.mutable
 
-
+/**
+  * The working implementation of a LanguageServerWrapper
+  *
+  * @param serverDefinition The serverDefinition
+  * @param workingDir       The root directory
+  */
 class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionPoint, val workingDir: String) extends LanguageServerWrapper {
 
   private val lspStreamProvider: StreamConnectionProvider = serverDefinition.createConnectionProvider(workingDir)
@@ -60,13 +65,13 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
     * Starts the LanguageServer
     */
   @throws[IOException]
-  def start(rootFolder: String): Unit = {
+  def start(): Unit = {
     if (!started) {
       try {
         this.lspStreamProvider.start()
         client = serverDefinition.createLanguageClient
         val initParams = new InitializeParams
-        initParams.setRootUri(new File(rootFolder).toURI.toString)
+        initParams.setRootUri(new File(workingDir).toURI.toString)
         val launcher = LSPLauncher.createClientLauncher(client, this.lspStreamProvider.getInputStream, this.lspStreamProvider.getOutputStream)
 
         this.languageServer = launcher.getRemoteProxy
@@ -75,7 +80,7 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
         this.launcherFuture = launcher.startListening
         //TODO update capabilities when implemented
         val workspaceClientCapabilites = new WorkspaceClientCapabilities
-        workspaceClientCapabilites.setApplyEdit(false)
+        workspaceClientCapabilites.setApplyEdit(true)
         workspaceClientCapabilites.setExecuteCommand(new ExecuteCommandCapabilities)
         workspaceClientCapabilites.setSymbol(new SymbolCapabilities)
         val textDocumentClientCapabilities = new TextDocumentClientCapabilities
@@ -94,12 +99,12 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
         textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
         textDocumentClientCapabilities.setRename(new RenameCapabilities)
         textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
-        textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(false, false, true))
+        textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, false, true))
         initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilites, textDocumentClientCapabilities, null))
         initParams.setInitializationOptions(this.lspStreamProvider.getInitializationOptions(URI.create(initParams.getRootUri)))
         initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
           initializeResult = res
-          LOG.info("Got initializeResult")
+          LOG.info("Got initializeResult for " + workingDir)
           res
         })
         initializeStartTime = System.currentTimeMillis
@@ -127,7 +132,7 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
   def connect(editor: Editor): Unit = {
     val path = Utils.editorToURIString(editor)
     if (!this.connectedEditors.contains(path)) {
-      start(Utils.editorToProjectFolderPath(editor))
+      start()
       if (this.initializeFuture != null && editor != null) {
         initializeFuture.thenRun(() => {
           if (!this.connectedEditors.contains(path)) {
@@ -182,7 +187,7 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
     */
   @Nullable def getServer: LanguageServer = {
     try
-      start(".")
+      start()
     catch {
       case ex: IOException =>
         LOG.error(ex)
@@ -198,7 +203,7 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
     */
   @Nullable def getServerCapabilities: ServerCapabilities = {
     try {
-      start(".")
+      start()
       if (this.initializeFuture != null) this.initializeFuture.get(if (capabilitiesAlreadyRequested) 0
       else 1000, TimeUnit.MILLISECONDS)
     } catch {

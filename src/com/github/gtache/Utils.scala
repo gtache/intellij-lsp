@@ -145,7 +145,7 @@ object Utils {
     * @param map A java map
     * @return the transformed java map
     */
-  def serverDefinitionExtensionPointMapToArrayMap(map: java.util.Map[String, ServerDefinitionExtensionPoint]): java.util.Map[String, Array[String]] = {
+  def serverDefinitionExtensionPointMapToArrayMap(map: java.util.Map[String, ServerDefinitionExtensionPointArtifact]): java.util.Map[String, Array[String]] = {
     import scala.collection.JavaConverters._
     map.asScala.map(e => (e._1, serverDefinitionExtensionPointToArray(e._2))).asJava
   }
@@ -157,7 +157,7 @@ object Utils {
     * @param serverDefinitionExtensionPoint The ServerDefinition
     * @return The Array of string
     */
-  def serverDefinitionExtensionPointToArray(serverDefinitionExtensionPoint: ServerDefinitionExtensionPoint): Array[String] = {
+  def serverDefinitionExtensionPointToArray(serverDefinitionExtensionPoint: ServerDefinitionExtensionPointArtifact): Array[String] = {
     Array(serverDefinitionExtensionPoint.ext, serverDefinitionExtensionPoint.packge, serverDefinitionExtensionPoint.mainClass) ++ serverDefinitionExtensionPoint.args
   }
 
@@ -167,7 +167,7 @@ object Utils {
     * @param map A java map
     * @return the transformed java map
     */
-  def arrayMapToServerDefinitionExtensionPointMap(map: java.util.Map[String, Array[String]]): java.util.Map[String, ServerDefinitionExtensionPoint] = {
+  def arrayMapToServerDefinitionExtensionPointMap(map: java.util.Map[String, Array[String]]): java.util.Map[String, ServerDefinitionExtensionPointArtifact] = {
     import scala.collection.JavaConverters._
     map.asScala.map(e => (e._1, arrayToServerDefinitionExtensionPoint(e._2))).asJava
   }
@@ -178,12 +178,12 @@ object Utils {
     * @param arr The array of string
     * @return The corresponding ServerDefinitionExtensionPoint
     */
-  def arrayToServerDefinitionExtensionPoint(arr: Array[String]): ServerDefinitionExtensionPoint = {
+  def arrayToServerDefinitionExtensionPoint(arr: Array[String]): ServerDefinitionExtensionPointArtifact = {
     if (arr.length < 3) {
       LOG.warn("Not enough elements to translate into a ServerDefinition : " + arr)
       null
     } else {
-      ServerDefinitionExtensionPoint(arr.head, arr.tail.head, arr.tail.tail.head, if (arr.length > 3) arr.tail.tail.tail else Array())
+      ServerDefinitionExtensionPointArtifact(arr.head, arr.tail.head, arr.tail.tail.head, if (arr.length > 3) arr.tail.tail.tail else Array())
     }
   }
 

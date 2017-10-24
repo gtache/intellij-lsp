@@ -43,7 +43,7 @@ object PluginMain {
     *
     * @param newExt a Java Map
     */
-  def setExtToServerDefinition(newExt: java.util.Map[String, ServerDefinitionExtensionPoint]): Unit = {
+  def setExtToServerDefinition(newExt: java.util.Map[String, ServerDefinitionExtensionPointArtifact]): Unit = {
     import scala.collection.JavaConverters._
     setExtToServerDefinition(newExt.asScala)
   }
@@ -53,7 +53,7 @@ object PluginMain {
     *
     * @param newExt a Scala map
     */
-  def setExtToServerDefinition(newExt: collection.Map[String, ServerDefinitionExtensionPoint]): Unit = extToServerDefinition = newExt.toMap
+  def setExtToServerDefinition(newExt: collection.Map[String, ServerDefinitionExtensionPointArtifact]): Unit = extToServerDefinition = newExt.toMap
 
   /**
     * Returns the extensions->languageServer mapping
@@ -97,7 +97,7 @@ object PluginMain {
             wrapper match {
               case null =>
                 extToLanguageWrapper.put((ext, workingDir), new DummyLanguageServerWrapper)
-                wrapper = new LanguageServerWrapperImpl(s,workingDir)
+                wrapper = new LanguageServerWrapperImpl(s, workingDir)
                 extToLanguageWrapper.update((ext, workingDir), wrapper)
                 projectToLanguageWrapper.put(editor.getProject, wrapper)
               case d: DummyLanguageServerWrapper =>

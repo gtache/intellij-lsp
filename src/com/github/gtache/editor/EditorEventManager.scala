@@ -176,25 +176,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
-  /**
-    * Immediately requests the server for documentation at the current editor position
-    *
-    * @param editor The editor
-    */
-  def quickDoc(editor: Editor): Unit = {
-    if (editor == this.editor) {
-      val caretPos = editor.getCaretModel.getLogicalPosition
-      val pointPos = editor.logicalPositionToXY(caretPos)
-      val currentTime = System.nanoTime()
-      ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
-        override def run(): Unit = requestAndShowDoc(currentTime, caretPos, pointPos)
-      })
-      predTime = currentTime
-    } else {
-      LOG.warn("Not same editor!")
-    }
-  }
-
   private def requestAndShowDoc(curTime: Long, editorPos: LogicalPosition, point: Point): Unit = {
     isPopupOpen = true
     val serverPos = Utils.logicalToLSPPos(editorPos)
@@ -229,6 +210,25 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
 
 
+  }
+
+  /**
+    * Immediately requests the server for documentation at the current editor position
+    *
+    * @param editor The editor
+    */
+  def quickDoc(editor: Editor): Unit = {
+    if (editor == this.editor) {
+      val caretPos = editor.getCaretModel.getLogicalPosition
+      val pointPos = editor.logicalPositionToXY(caretPos)
+      val currentTime = System.nanoTime()
+      ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
+        override def run(): Unit = requestAndShowDoc(currentTime, caretPos, pointPos)
+      })
+      predTime = currentTime
+    } else {
+      LOG.warn("Not same editor!")
+    }
   }
 
   /**

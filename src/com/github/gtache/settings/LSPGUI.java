@@ -1,6 +1,6 @@
 package com.github.gtache.settings;
 
-import com.github.gtache.ServerDefinitionExtensionPoint;
+import com.github.gtache.ServerDefinitionExtensionPointArtifact;
 import com.github.gtache.Utils;
 import com.github.gtache.client.MessageDialog;
 import com.intellij.openapi.diagnostic.Logger;
@@ -19,7 +19,7 @@ public class LSPGUI {
 
     private static final Logger LOG = Logger.getInstance(LSPGUI.class);
     private final LSPState state;
-    private ServerDefinitionExtensionPoint serverDefinition;
+    private ServerDefinitionExtensionPointArtifact serverDefinition;
     private JLabel extLabel;
     private JPanel rootPanel;
     private JTextField extField;
@@ -61,7 +61,7 @@ public class LSPGUI {
         final String mainClass = mainClassField.getText();
         final String args = argsField.getText();
         LOG.info("Extracted " + ext + ", " + serv + ", " + mainClass + ", " + args + " from GUI");
-        serverDefinition = new ServerDefinitionExtensionPoint(ext, serv, mainClass, args.split(" "));
+        serverDefinition = new ServerDefinitionExtensionPointArtifact(ext, serv, mainClass, args.split(" "));
         LSPState.getInstance().setExtToServ(Collections.singletonMap(ext, serverDefinition));
     }
 
