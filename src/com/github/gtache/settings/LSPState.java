@@ -41,15 +41,15 @@ public class LSPState implements PersistentStateComponent<LSPState> {
 
     public ServerDefinitionExtensionPointArtifact getFirstServerDefinition() {
         final Map.Entry<String, String[]> entry = extToServ.isEmpty() ? null : extToServ.entrySet().iterator().next();
-        return entry == null ? null : Utils.arrayToServerDefinitionExtensionPoint(entry.getValue());
+        return entry == null ? null : Utils.arrayToServerDefinitionArtifact(entry.getValue());
     }
 
     public Map<String, ServerDefinitionExtensionPointArtifact> getExtToServ() {
-        return Utils.arrayMapToServerDefinitionExtensionPointMap(extToServ);
+        return Utils.arrayMapToServerDefinitionArtifactMap(extToServ);
     }
 
     public void setExtToServ(final Map<String, ServerDefinitionExtensionPointArtifact> extToServ) {
-        this.extToServ = Utils.serverDefinitionExtensionPointMapToArrayMap(extToServ);
+        this.extToServ = Utils.serverDefinitionArtifactMapToArrayMap(extToServ);
     }
 
     @Nullable
@@ -62,7 +62,7 @@ public class LSPState implements PersistentStateComponent<LSPState> {
     public void loadState(final LSPState lspState) {
         LOG.info("LSP State loaded");
         XmlSerializerUtil.copyBean(lspState, this);
-        PluginMain.setExtToServerDefinition(Utils.arrayMapToServerDefinitionExtensionPointMap(extToServ));
+        PluginMain.setExtToServerDefinition(Utils.arrayMapToServerDefinitionArtifactMap(extToServ));
     }
 
 }
