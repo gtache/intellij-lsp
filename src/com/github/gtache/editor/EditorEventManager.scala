@@ -65,7 +65,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   editor.getDocument.addDocumentListener(documentListener)
   editor.getSelectionModel.addSelectionListener(selectionListener)
   requestManager.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(Utils.editorToURIString(editor), wrapper.serverDefinition.id, {
-    version += 1;
+    version += 1
     version
   }, editor.getDocument.getText)))
 

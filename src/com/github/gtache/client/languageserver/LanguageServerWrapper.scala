@@ -10,6 +10,9 @@ import org.eclipse.lsp4j.jsonrpc.messages.Message
 import org.eclipse.lsp4j.services.LanguageServer
 import org.jetbrains.annotations.Nullable
 
+/**
+  * A LanguageServerWrapper represents a connection to a LanguageServer and manages starting / stopping it as well as  connecting / disconnecting documents to it
+  */
 trait LanguageServerWrapper {
   /**
     * Returns the EditorEventManager for a given uri

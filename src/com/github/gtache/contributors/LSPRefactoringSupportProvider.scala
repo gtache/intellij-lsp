@@ -4,6 +4,9 @@ import com.github.gtache.contributors.psi.LSPPsiElement
 import com.intellij.lang.refactoring.RefactoringSupportProvider
 import com.intellij.psi.PsiElement
 
+/**
+  * The refactoringSupportProvider for LSP
+  */
 class LSPRefactoringSupportProvider extends RefactoringSupportProvider {
 
   override def isMemberInplaceRenameAvailable(element: PsiElement, context: PsiElement): Boolean = element.isInstanceOf[LSPPsiElement]

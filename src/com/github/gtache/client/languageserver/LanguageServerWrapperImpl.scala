@@ -1,16 +1,16 @@
 /* Adapted from lsp4e */
 package com.github.gtache.client.languageserver
 
-import java.io.{File, IOException, InputStream, OutputStream}
+import java.io.{File, IOException}
 import java.net.URI
 import java.util.concurrent._
 
-import com.github.gtache.Utils
 import com.github.gtache.client._
 import com.github.gtache.client.connection.StreamConnectionProvider
 import com.github.gtache.editor.EditorEventManager
 import com.github.gtache.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.requests.Timeout
+import com.github.gtache.{ServerDefinitionExtensionPoint, Utils}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import org.eclipse.lsp4j._
@@ -22,13 +22,10 @@ import org.jetbrains.annotations.Nullable
 
 import scala.collection.mutable
 
-object LanguageServerWrapperImpl {
-  private val SHUTDOWN_TIMEOUT = 5000
-}
 
-class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, val commands: Seq[String] = Seq(), val workingDir: String, val in: InputStream = null, val out: OutputStream = null) extends LanguageServerWrapper {
+class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionPoint, val workingDir: String) extends LanguageServerWrapper {
 
-  private val lspStreamProvider: StreamConnectionProvider = serverDefinition.createConnectionProvider(commands, workingDir, in, out)
+  private val lspStreamProvider: StreamConnectionProvider = serverDefinition.createConnectionProvider(workingDir)
   private val connectedEditors: mutable.Map[String, EditorEventManager] = mutable.HashMap()
   private val LOG: Logger = Logger.getInstance(classOf[LanguageServerWrapperImpl])
   private var languageServer: LanguageServer = _

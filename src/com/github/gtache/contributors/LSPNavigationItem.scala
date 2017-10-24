@@ -9,6 +9,16 @@ import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 
+/**
+  * An LSP NavigationItem
+  *
+  * @param name      The name of the item
+  * @param container The container name (a file, ...)
+  * @param project   The project the item belongs to
+  * @param file      The file it belongs to
+  * @param line      Its line
+  * @param col       Its column
+  */
 case class LSPNavigationItem(name: String, container: String, project: Project, file: VirtualFile, line: Int, col: Int) extends OpenFileDescriptor(project, file, line, col) with NavigationItem {
 
   private val LOG: Logger = Logger.getInstance(classOf[LSPNavigationItem])

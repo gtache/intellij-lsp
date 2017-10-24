@@ -8,6 +8,9 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.psi.{PsiElement, PsiManager}
 
+/**
+  * A documentation provider for LSP (is called when CTRL is pushed while staying on a token)
+  */
 class LSPDocumentationProvider extends DocumentationProvider {
   private val LOG: Logger = Logger.getInstance(classOf[LSPDocumentationProvider])
 

@@ -10,6 +10,14 @@ import com.intellij.psi.scope.PsiScopeProcessor
 import com.intellij.psi.search.{GlobalSearchScope, SearchScope}
 import com.intellij.util.IncorrectOperationException
 
+/**
+  * A simple PsiElement for LSP
+  *
+  * @param name    The name (text) of the element
+  * @param project The project it belongs to
+  * @param start   The offset in the editor where the element starts
+  * @param end     The offset where it ends
+  */
 case class LSPPsiElement(var name: String, project: Project, start: Int, end: Int) extends PsiNameIdentifierOwner {
   /**
     * Returns the project to which the PSI element belongs.

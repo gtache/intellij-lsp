@@ -5,7 +5,7 @@ import com.intellij.navigation.NavigationItem
 import com.intellij.openapi.project.Project
 
 /**
-  * The Go-to contributor for LSP
+  * The GotoSymbol contributor for LSP
   */
 class LSPGotoSymbolContributor extends LSPGotoContributor {
 
