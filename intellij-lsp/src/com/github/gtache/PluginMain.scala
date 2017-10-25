@@ -33,8 +33,7 @@ object PluginMain {
 
   private val LOG: Logger = Logger.getInstance(classOf[PluginMain])
   private val extToLanguageWrapper: mutable.Map[(String, String), LanguageServerWrapper] = scala.collection.concurrent.TrieMap()
-  private val uriToLanguageWrapper: mutable.Map[String, LanguageServerWrapper] = scala.collection.concurrent.TrieMap()
-  private val projectToLanguageWrapper: mutable.Map[Project, LanguageServerWrapper] = scala.collection.concurrent.TrieMap()
+  private val projectToLanguageWrappers: mutable.Map[Project, mutable.Set[LanguageServerWrapper]] = scala.collection.concurrent.TrieMap()
   private var extToServerDefinition: Map[String, ServerDefinitionExtensionPoint] = HashMap()
   private var loadedExtensions: Boolean = false
 
@@ -99,7 +98,12 @@ object PluginMain {
                 extToLanguageWrapper.put((ext, workingDir), new DummyLanguageServerWrapper)
                 wrapper = new LanguageServerWrapperImpl(s, workingDir)
                 extToLanguageWrapper.update((ext, workingDir), wrapper)
-                projectToLanguageWrapper.put(editor.getProject, wrapper)
+                projectToLanguageWrappers.get(editor.getProject) match {
+                  case Some(set) =>
+                    set.add(wrapper)
+                  case None =>
+                    projectToLanguageWrappers.put(editor.getProject, mutable.Set(wrapper))
+                }
               case d: DummyLanguageServerWrapper =>
                 while (extToLanguageWrapper((ext, workingDir)).isInstanceOf[DummyLanguageServerWrapper]) {
                   Thread.sleep(500)
@@ -109,7 +113,6 @@ object PluginMain {
             }
             LOG.info("Adding file " + file.getName)
             wrapper.connect(editor)
-            uriToLanguageWrapper.put(Utils.editorToURIString(editor), wrapper)
           })
         }
       })
@@ -127,10 +130,7 @@ object PluginMain {
   def fileChanged(file: VirtualFile): Unit = {
     val uri: String = Utils.VFSToURIString(file)
     if (uri != null) {
-      uriToLanguageWrapper.get(uri).foreach(l => {
-        LOG.info("File saved : " + uri)
-        l.getEditorManagerFor(uri).documentSaved()
-      })
+      EditorEventManager.forUri(uri).foreach(e => e.documentSaved())
     }
   }
 
@@ -186,15 +186,13 @@ object PluginMain {
     val file: VirtualFile = FileDocumentManager.getInstance.getFile(editor.getDocument)
     if (file != null) {
       val ext: String = file.getExtension
-      LOG.info("File " + file.getName + " closed.")
       extToServerDefinition.get(ext) match {
-        case Some(serverDefinition) =>
+        case Some(_) =>
           val uri = Utils.editorToURIString(editor)
-          uriToLanguageWrapper.get(uri).foreach(l => {
+          LanguageServerWrapperImpl.forUri(uri).foreach(l => {
             LOG.info("Disconnecting " + uri)
             l.disconnect(uri)
           })
-          uriToLanguageWrapper.remove(uri)
         case None =>
           LOG.info("Closing LSP-unsupported file with extension " + ext)
       }
@@ -211,9 +209,8 @@ object PluginMain {
     * @return The suggestions
     */
   def completion(editor: Editor, pos: Position): java.lang.Iterable[_ <: LookupElement] = {
-    val uri = Utils.editorToURIString(editor)
     import scala.collection.JavaConverters._
-    uriToLanguageWrapper.get(uri).map(l => l.getEditorManagerFor(uri).completion(pos)).getOrElse(Iterable()).asJava
+    EditorEventManager.forEditor(editor).map(e => e.completion(pos)).getOrElse(Iterable()).asJava
   }
 
   /**
@@ -227,16 +224,16 @@ object PluginMain {
     * @return An array of NavigationItem
     */
   def workspaceSymbols(name: String, pattern: String, project: Project, includeNonProjectItems: Boolean = false, onlyKind: Set[SymbolKind] = Set()): Array[NavigationItem] = {
-    projectToLanguageWrapper.get(project) match {
-      case Some(wrapper) =>
+    projectToLanguageWrappers.get(project) match {
+      case Some(set) =>
         val params: WorkspaceSymbolParams = new WorkspaceSymbolParams(name)
-        val res = wrapper.getRequestManager.symbol(params)
+        val res = set.map(f => f.getRequestManager.symbol(params))
         import scala.collection.JavaConverters._
         try {
-          val arr = res.get(Timeout.SYMBOLS_TIMEOUT, TimeUnit.MILLISECONDS).asScala.toArray
+          val arr = res.flatMap(r => r.get(Timeout.SYMBOLS_TIMEOUT, TimeUnit.MILLISECONDS).asScala)
           arr.filter(s => if (onlyKind.isEmpty) true else onlyKind.contains(s.getKind)).map(f => {
             LSPNavigationItem(f.getName, f.getContainerName, project, Utils.URIToVFS(f.getLocation.getUri), f.getLocation.getRange.getStart.getLine, f.getLocation.getRange.getStart.getCharacter)
-          }).distinct.asInstanceOf[Array[NavigationItem]]
+          }).asInstanceOf[Array[NavigationItem]]
         } catch {
           case e: TimeoutException => LOG.warn(e)
             Array()
@@ -253,28 +250,14 @@ object PluginMain {
     */
   def willSave(doc: Document): Unit = {
     val uri = Utils.VFSToURIString(FileDocumentManager.getInstance().getFile(doc))
-    uriToLanguageWrapper.get(uri).foreach(f => f.getEditorManagerFor(uri).willSave())
+    EditorEventManager.forUri(uri).foreach(e => e.willSave())
   }
 
   /**
     * Indicates that all documents will be saved
     */
   def willSaveAllDocuments(): Unit = {
-    uriToLanguageWrapper.foreach(u => u._2.getEditorManagerFor(u._1).willSave())
-  }
-
-  /**
-    * @param e An Editor
-    * @return The LanguageServerWrapper for the given editor
-    */
-  def getWrapperForEditor(e: Editor): LanguageServerWrapper = {
-    val uri = Utils.editorToURIString(e)
-    uriToLanguageWrapper.get(uri) match {
-      case Some(l) => l
-      case None =>
-        LOG.warn("No wrapper for editor " + uri)
-        null
-    }
+    EditorEventManager.willSaveAll()
   }
 
   /**
@@ -285,42 +268,7 @@ object PluginMain {
     * @return An Array of PsiReference
     */
   def references(e: Editor, pos: LogicalPosition): Array[PsiReference] = {
-    val manager = getManagerForEditor(e)
-    if (manager != null) {
-      manager.references(pos)
-    } else {
-      Array()
-    }
-  }
-
-  /**
-    * @param e An Editor
-    * @return The EditorEventManager for the given editor
-    */
-  def getManagerForEditor(e: Editor): EditorEventManager = {
-    val uri = Utils.editorToURIString(e)
-    getManagerForURI(uri)
-  }
-
-  /**
-    * @param uri An uri
-    * @return The EditorEventManager for the given uri
-    */
-  def getManagerForURI(uri: String): EditorEventManager = {
-    uriToLanguageWrapper.get(uri) match {
-      case Some(l) => l.getEditorManagerFor(uri)
-      case None =>
-        LOG.warn("No wrapper for editor " + uri)
-        null
-    }
-  }
-
-  /**
-    * @param uri An uri
-    * @return The language server wrapper for the given uri
-    */
-  def getWrapperForURI(uri: String): LanguageServerWrapper = {
-    uriToLanguageWrapper.get(uri).orNull
+    EditorEventManager.forEditor(e).map(e => e.references(pos)).getOrElse(Array())
   }
 }
 

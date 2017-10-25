@@ -2,7 +2,7 @@ package com.github.gtache.contributors
 
 import java.util
 
-import com.github.gtache.PluginMain
+import com.github.gtache.editor.EditorEventManager
 import com.intellij.lang.documentation.DocumentationProvider
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -29,21 +29,12 @@ class LSPDocumentationProvider extends DocumentationProvider {
 
   override def getQuickNavigateInfo(element: PsiElement, originalElement: PsiElement): String = {
     val editor = FileEditorManager.getInstance(element.getProject).getSelectedTextEditor
-    val manager = PluginMain.getManagerForEditor(editor)
-    if (manager != null) {
-      manager.requestDoc(editor, element.getTextOffset)
-    } else {
-      ""
-    }
+    EditorEventManager.forEditor(editor).map(e => e.requestDoc(editor, element.getTextOffset)).getOrElse("")
+
   }
 
   override def generateDoc(element: PsiElement, originalElement: PsiElement): String = {
     val editor = FileEditorManager.getInstance(element.getProject).getSelectedTextEditor
-    val manager = PluginMain.getManagerForEditor(editor)
-    if (manager != null) {
-      manager.requestDoc(editor, element.getTextOffset)
-    } else {
-      ""
-    }
+    EditorEventManager.forEditor(editor).map(e => e.requestDoc(editor, element.getTextOffset)).getOrElse("")
   }
 }

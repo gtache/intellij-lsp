@@ -14,11 +14,9 @@ class LSPQuickDocAction extends ShowQuickDocInfoAction with DumbAware {
 
   override def actionPerformed(e: AnActionEvent): Unit = {
     val editor = e.getData(CommonDataKeys.EDITOR)
-    val manager = PluginMain.getManagerForEditor(editor)
-    if (manager != null) {
-      manager.quickDoc(editor)
-    } else {
-      super.actionPerformed(e)
+    EditorEventManager.forEditor(editor) match {
+      case Some(manager) => manager.quickDoc(editor)
+      case None => super.actionPerformed(e)
     }
   }
 }

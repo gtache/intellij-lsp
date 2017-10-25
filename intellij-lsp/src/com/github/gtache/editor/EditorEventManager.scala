@@ -38,6 +38,10 @@ object EditorEventManager {
   def forEditor(editor: Editor): Option[EditorEventManager] = {
     editorToManager.get(editor)
   }
+
+  def willSaveAll(): Unit = {
+    editorToManager.foreach(e => e._2.willSave())
+  }
 }
 
 /**
