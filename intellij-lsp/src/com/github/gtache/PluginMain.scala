@@ -41,7 +41,7 @@ object PluginMain {
     *
     * @param newExt a Java Map
     */
-  def setExtToServerDefinition(newExt: java.util.Map[String, ArtifactLanguageServerDefinition]): Unit = {
+  def setExtToServerDefinition(newExt: java.util.Map[String, LanguageServerDefinition]): Unit = {
     import scala.collection.JavaConverters._
     setExtToServerDefinition(newExt.asScala)
   }
@@ -51,7 +51,7 @@ object PluginMain {
     *
     * @param newExt a Scala map
     */
-  def setExtToServerDefinition(newExt: collection.Map[String, ArtifactLanguageServerDefinition]): Unit = extToServerDefinition = newExt.toMap
+  def setExtToServerDefinition(newExt: collection.Map[String, LanguageServerDefinition]): Unit = extToServerDefinition = newExt.toMap
 
   /**
     * Returns the extensions->languageServer mapping
