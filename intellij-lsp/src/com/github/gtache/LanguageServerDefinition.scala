@@ -8,17 +8,22 @@ import com.intellij.openapi.diagnostic.Logger
 
 import scala.collection.mutable
 
-object ServerDefinitionExtensionPoint {
-  val allDefinitions: mutable.Set[ServerDefinitionExtensionPoint] = mutable.Set()
+object LanguageServerDefinition {
+  private val LOG: Logger = Logger.getInstance(LanguageServerDefinition.getClass)
+  val allDefinitions: mutable.Set[LanguageServerDefinition] = mutable.Set()
 
-  def getAllDefinitions: mutable.Set[ServerDefinitionExtensionPoint] = allDefinitions.clone()
+  def getAllDefinitions: mutable.Set[LanguageServerDefinition] = allDefinitions.clone()
+
+  def register(definition: LanguageServerDefinition): Unit = {
+    allDefinitions.add(definition)
+    LOG.info("Added definition for " + definition)
+  }
 }
 
 /**
   * A trait representing a ServerDefinition
   */
-trait ServerDefinitionExtensionPoint {
-  private val LOG: Logger = Logger.getInstance(classOf[ServerDefinitionExtensionPoint])
+trait LanguageServerDefinition {
   private val mappedExtensions: mutable.Set[String] = mutable.Set(ext)
   protected var streamConnectionProvider: StreamConnectionProvider = _
 
@@ -32,10 +37,6 @@ trait ServerDefinitionExtensionPoint {
     */
   def id: String = ext
 
-  import com.github.gtache.ServerDefinitionExtensionPoint._
-
-  allDefinitions.add(this)
-  LOG.info("Added definition for " + this)
 
   /**
     * Starts the Language server and returns a tuple (InputStream, OutputStream)
@@ -51,7 +52,6 @@ trait ServerDefinitionExtensionPoint {
 
   /**
     * Instantiates a StreamConnectionProvider for this ServerDefinition
-    * Warning: Long running, run asynchronously
     *
     * @param workingDir The current working directory
     * @return The StreamConnectionProvider
@@ -86,5 +86,7 @@ trait ServerDefinitionExtensionPoint {
     * @return the LanguageClient for this LanguageServer
     */
   def createLanguageClient: LanguageClientImpl = new LanguageClientImpl
+
+  override def toString: String = "ServerDefinition for " + ext
 
 }

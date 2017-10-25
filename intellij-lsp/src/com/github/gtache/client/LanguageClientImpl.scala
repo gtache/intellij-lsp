@@ -2,7 +2,7 @@ package com.github.gtache.client
 
 import java.util.concurrent.CompletableFuture
 
-import com.github.gtache.PluginMain
+import com.github.gtache.editor.EditorEventManager
 import com.intellij.openapi.diagnostic.Logger
 import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.services.{LanguageClient, LanguageServer}
@@ -38,19 +38,13 @@ class LanguageClientImpl extends LanguageClient {
           val doc = edit.getTextDocument
           val version = doc.getVersion
           val uri = doc.getUri
-          val manager = PluginMain.getManagerForURI(uri)
-          if (manager != null) {
-            if (!manager.applyEdit(version, edit.getEdits.asScala.toList)) didApply = false
-          }
+          EditorEventManager.forUri(uri).foreach(m => if (!m.applyEdit(version, edit.getEdits.asScala.toList)) didApply = false)
         })
       } else {
         changes.foreach(edit => {
           val uri = edit._1
           val changes = edit._2.asScala
-          val manager = PluginMain.getManagerForURI(uri)
-          if (manager != null) {
-            if (!manager.applyEdit(edits = changes.toList)) didApply = false
-          }
+          EditorEventManager.forUri(uri).foreach(m => if (!m.applyEdit(edits = changes.toList)) didApply = false)
         })
       }
       new ApplyWorkspaceEditResponse(didApply)
@@ -66,7 +60,7 @@ class LanguageClientImpl extends LanguageClient {
   }
 
   override def publishDiagnostics(publishDiagnosticsParams: PublishDiagnosticsParams): Unit = {
-    val URI = publishDiagnosticsParams.getUri
+    val uri = publishDiagnosticsParams.getUri
     val diagnostics = publishDiagnosticsParams.getDiagnostics
     for (diagnostic <- diagnostics.asScala) {
       val code = diagnostic.getCode

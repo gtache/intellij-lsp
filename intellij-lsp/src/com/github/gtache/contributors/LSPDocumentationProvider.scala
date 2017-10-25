@@ -2,10 +2,8 @@ package com.github.gtache.contributors
 
 import java.util
 
-import com.github.gtache.PluginMain
 import com.intellij.lang.documentation.DocumentationProvider
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.psi.{PsiElement, PsiManager}
 
 /**
@@ -27,23 +25,16 @@ class LSPDocumentationProvider extends DocumentationProvider {
     null
   }
 
+  //FIXME getSelectedTextEditor needs EventDispatchThread
   override def getQuickNavigateInfo(element: PsiElement, originalElement: PsiElement): String = {
-    val editor = FileEditorManager.getInstance(element.getProject).getSelectedTextEditor
-    val manager = PluginMain.getManagerForEditor(editor)
-    if (manager != null) {
-      manager.requestDoc(editor, element.getTextOffset)
-    } else {
-      ""
-    }
+    //val editor = FileEditorManager.getInstance(originalElement.getProject).getSelectedTextEditor
+    //EditorEventManager.forEditor(editor).fold("")(e => e.requestDoc(editor, originalElement.getTextOffset))
+    ""
   }
 
   override def generateDoc(element: PsiElement, originalElement: PsiElement): String = {
-    val editor = FileEditorManager.getInstance(element.getProject).getSelectedTextEditor
-    val manager = PluginMain.getManagerForEditor(editor)
-    if (manager != null) {
-      manager.requestDoc(editor, element.getTextOffset)
-    } else {
-      ""
-    }
+    //val editor = FileEditorManager.getInstance(originalElement.getProject).getSelectedTextEditor
+    //EditorEventManager.forEditor(editor).fold("")(e => e.requestDoc(editor, originalElement.getTextOffset))
+    ""
   }
 }

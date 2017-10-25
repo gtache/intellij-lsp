@@ -1,6 +1,7 @@
 package com.github.gtache.editor.listeners
 
 import com.github.gtache.PluginMain
+import com.github.gtache.requests.FileEventManager
 import com.intellij.openapi.vfs._
 
 /**
@@ -14,7 +15,7 @@ object VFSListener extends VirtualFileListener {
     * @param event the event object containing information about the change.
     */
   override def propertyChanged(event: VirtualFilePropertyEvent): Unit = {
-    if (event.getPropertyName == VirtualFile.PROP_NAME) PluginMain.fileRenamed(event.getOldValue.asInstanceOf[String], event.getNewValue.asInstanceOf[String])
+    if (event.getPropertyName == VirtualFile.PROP_NAME) FileEventManager.fileRenamed(event.getOldValue.asInstanceOf[String], event.getNewValue.asInstanceOf[String])
   }
 
   /**
@@ -23,7 +24,7 @@ object VFSListener extends VirtualFileListener {
     * @param event the event object containing information about the change.
     */
   override def contentsChanged(event: VirtualFileEvent): Unit = {
-    PluginMain.fileChanged(event.getFile)
+    FileEventManager.fileChanged(event.getFile)
   }
 
   /**
@@ -32,7 +33,7 @@ object VFSListener extends VirtualFileListener {
     * @param event the event object containing information about the change.
     */
   override def fileDeleted(event: VirtualFileEvent): Unit = {
-    PluginMain.fileDeleted(event.getFile)
+    FileEventManager.fileDeleted(event.getFile)
   }
 
   /**
@@ -41,7 +42,7 @@ object VFSListener extends VirtualFileListener {
     * @param event the event object containing information about the change.
     */
   override def fileMoved(event: VirtualFileMoveEvent): Unit = {
-    PluginMain.fileMoved(event.getFile)
+    FileEventManager.fileMoved(event.getFile)
   }
 
   /**
@@ -59,7 +60,7 @@ object VFSListener extends VirtualFileListener {
     * @param event the event object containing information about the change.
     */
   override def fileCreated(event: VirtualFileEvent): Unit = {
-    PluginMain.fileCreated(event.getFile)
+    FileEventManager.fileCreated(event.getFile)
   }
 
   /**

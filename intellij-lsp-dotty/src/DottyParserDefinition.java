@@ -8,14 +8,15 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.FileViewProvider;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.impl.source.PsiPlainTextFileImpl;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.IFileElementType;
+import com.intellij.psi.tree.ILazyParseableElementType;
 import com.intellij.psi.tree.TokenSet;
+import com.intellij.psi.util.PsiUtilCore;
 import org.jetbrains.annotations.NotNull;
 
 public class DottyParserDefinition implements ParserDefinition {
-    public static final IElementType DOTTY_TOKEN_TYPE = new IElementType("Dotty", DottyLanguage.INSTANCE);
+    public static final IElementType DOTTY_TOKEN_TYPE = new ILazyParseableElementType("Dotty", DottyLanguage.INSTANCE);
 
     private static final IFileElementType DOTTY_FILE_ELEMENT_TYPE = new IFileElementType(DottyLanguage.INSTANCE) {
         @Override
@@ -62,12 +63,12 @@ public class DottyParserDefinition implements ParserDefinition {
     @NotNull
     @Override
     public PsiElement createElement(ASTNode node) {
-        return null;
+        return PsiUtilCore.NULL_PSI_ELEMENT;
     }
 
     @Override
     public PsiFile createFile(FileViewProvider viewProvider) {
-        return new PsiPlainTextFileImpl(viewProvider); //TODO DottyFileImpl error
+        return new DottyFileImpl(viewProvider);
     }
 
     @Override

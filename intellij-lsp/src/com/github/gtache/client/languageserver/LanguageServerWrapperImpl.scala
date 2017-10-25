@@ -10,7 +10,7 @@ import com.github.gtache.client.connection.StreamConnectionProvider
 import com.github.gtache.editor.EditorEventManager
 import com.github.gtache.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.requests.Timeout
-import com.github.gtache.{ServerDefinitionExtensionPoint, Utils}
+import com.github.gtache.{PluginMain, LanguageServerDefinition, Utils}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import org.eclipse.lsp4j._
@@ -22,15 +22,28 @@ import org.jetbrains.annotations.Nullable
 
 import scala.collection.mutable
 
+object LanguageServerWrapperImpl {
+  private val uriToLanguageServerWrapper: mutable.Map[String, LanguageServerWrapper] = mutable.HashMap()
+  private val editorToLanguageServerWrapper: mutable.Map[Editor, LanguageServerWrapper] = mutable.HashMap()
+
+  def forUri(uri: String): Option[LanguageServerWrapper] = {
+    uriToLanguageServerWrapper.get(uri)
+  }
+
+  def forEditor(editor: Editor): Option[LanguageServerWrapper] = {
+    editorToLanguageServerWrapper.get(editor)
+  }
+}
+
 /**
   * The working implementation of a LanguageServerWrapper
   *
   * @param serverDefinition The serverDefinition
-  * @param workingDir       The root directory
+  * @param rootPath       The root directory
   */
-class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionPoint, val workingDir: String) extends LanguageServerWrapper {
+class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, val rootPath: String) extends LanguageServerWrapper {
 
-  private val lspStreamProvider: StreamConnectionProvider = serverDefinition.createConnectionProvider(workingDir)
+  private val lspStreamProvider: StreamConnectionProvider = serverDefinition.createConnectionProvider(rootPath)
   private val connectedEditors: mutable.Map[String, EditorEventManager] = mutable.HashMap()
   private val LOG: Logger = Logger.getInstance(classOf[LanguageServerWrapperImpl])
   private var languageServer: LanguageServer = _
@@ -43,6 +56,7 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
   private var initializeStartTime = 0L
   private var started: Boolean = false
 
+  import com.github.gtache.client.languageserver.LanguageServerWrapperImpl._
 
   /**
     * Returns the EditorEventManager for a given uri
@@ -71,7 +85,7 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
         this.lspStreamProvider.start()
         client = serverDefinition.createLanguageClient
         val initParams = new InitializeParams
-        initParams.setRootUri(new File(workingDir).toURI.toString)
+        initParams.setRootUri(Utils.pathToUri(rootPath))
         val launcher = LSPLauncher.createClientLauncher(client, this.lspStreamProvider.getInputStream, this.lspStreamProvider.getOutputStream)
 
         this.languageServer = launcher.getRemoteProxy
@@ -104,7 +118,7 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
         initParams.setInitializationOptions(this.lspStreamProvider.getInitializationOptions(URI.create(initParams.getRootUri)))
         initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
           initializeResult = res
-          LOG.info("Got initializeResult for " + workingDir)
+          LOG.info("Got initializeResult for " + rootPath)
           res
         })
         initializeStartTime = System.currentTimeMillis
@@ -130,12 +144,14 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
     */
   @throws[IOException]
   def connect(editor: Editor): Unit = {
-    val path = Utils.editorToURIString(editor)
-    if (!this.connectedEditors.contains(path)) {
+    val uri = Utils.editorToURIString(editor)
+    uriToLanguageServerWrapper.put(uri, this)
+    editorToLanguageServerWrapper.put(editor, this)
+    if (!this.connectedEditors.contains(uri)) {
       start()
       if (this.initializeFuture != null && editor != null) {
         initializeFuture.thenRun(() => {
-          if (!this.connectedEditors.contains(path)) {
+          if (!this.connectedEditors.contains(uri)) {
             val syncOptions: Either[TextDocumentSyncKind, TextDocumentSyncOptions] = if (initializeFuture == null) null else initializeResult.getCapabilities.getTextDocumentSync
             var syncKind: TextDocumentSyncKind = null
             if (syncOptions != null) {
@@ -150,8 +166,8 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
               mouseMotionListener.setManager(manager)
               documentListener.setManager(manager)
               selectionListener.setManager(manager)
-              this.connectedEditors.put(path, manager)
-              LOG.info("Created a manager for " + path)
+              this.connectedEditors.put(uri, manager)
+              LOG.info("Created a manager for " + uri)
             }
           }
 
@@ -165,10 +181,12 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
   /**
     * Disconnects an editor from the LanguageServer
     *
-    * @param path The uri of the editor
+    * @param uri The uri of the editor
     */
-  def disconnect(path: String): Unit = {
-    this.connectedEditors.remove(path).foreach({ e =>
+  def disconnect(uri: String): Unit = {
+    this.connectedEditors.remove(uri).foreach({ e =>
+      uriToLanguageServerWrapper.remove(uri)
+      editorToLanguageServerWrapper.remove(e.editor)
       e.editor.removeEditorMouseMotionListener(e.mouseMotionListener)
       e.editor.getDocument.removeDocumentListener(e.documentListener)
       e.documentClosed()
@@ -255,6 +273,7 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
     connectedEditors.foreach(e => disconnect(e._1))
     this.languageServer = null
     started = false
+    PluginMain.languageServerStopped(this)
   }
 
 

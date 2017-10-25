@@ -12,7 +12,7 @@ import com.github.gtache.client.connection.{ProcessStreamConnectionProvider, Str
   * @param mainClass The main class of the server
   * @param args      The arguments to give to the main class
   */
-case class ServerDefinitionExtensionPointArtifact(ext: String, packge: String, mainClass: String, args: Array[String]) extends ServerDefinitionExtensionPoint {
+case class ArtifactLanguageServerDefinition(ext: String, packge: String, mainClass: String, args: Array[String]) extends LanguageServerDefinition {
 
   override def start(): (InputStream, OutputStream) = {
     streamConnectionProvider.start()
@@ -32,4 +32,6 @@ case class ServerDefinitionExtensionPointArtifact(ext: String, packge: String, m
     }
     streamConnectionProvider
   }
+
+  override def toString: String = super.toString + " artifact : " + packge + " mainClass : " + mainClass + " args : " + args.mkString(" ")
 }

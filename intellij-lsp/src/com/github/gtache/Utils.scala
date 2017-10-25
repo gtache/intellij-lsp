@@ -45,6 +45,7 @@ object Utils {
     */
   def editorToURIString(editor: Editor): String = {
     val uri = new URL(FileDocumentManager.getInstance().getFile(editor.getDocument).getUrl).toURI.toString
+    LOG.info("From " + editor + " to " + uri)
     uri
   }
 
@@ -57,6 +58,7 @@ object Utils {
   def VFSToURIString(file: VirtualFile): String = {
     try {
       val uri = new URL(file.getUrl).toURI.toString
+      LOG.info("From " + file.getCanonicalPath + " to " + uri)
       uri
     } catch {
       case e: MalformedURLException =>
@@ -73,17 +75,32 @@ object Utils {
     */
   def URIToVFS(uri: String): VirtualFile = {
     val res = LocalFileSystem.getInstance().findFileByPath(new File(new URI(uri).getPath).getAbsolutePath)
+    LOG.info("From " + uri + " to " + res)
     res
   }
 
   /**
-    * Returns the project path given an editor
+    * Returns the project base dir uri given an editor
     *
     * @param editor The editor
     * @return The project whose the editor belongs
     */
+  def editorToProjectFolderUri(editor: Editor): String = {
+    pathToUri(editorToProjectFolderPath(editor))
+  }
+
   def editorToProjectFolderPath(editor: Editor): String = {
-    new File(editor.getProject.getBaseDir.getPath).getAbsolutePath
+    new File(editor.getProject.getBasePath).getAbsolutePath
+  }
+
+  /**
+    * Transforms a path into an URI string
+    *
+    * @param path The path
+    * @return The uri
+    */
+  def pathToUri(path: String): String = {
+    new File(path).toURI.toString
   }
 
   /**
@@ -145,7 +162,7 @@ object Utils {
     * @param map A java map
     * @return the transformed java map
     */
-  def serverDefinitionArtifactMapToArrayMap(map: java.util.Map[String, ServerDefinitionExtensionPointArtifact]): java.util.Map[String, Array[String]] = {
+  def serverDefinitionArtifactMapToArrayMap(map: java.util.Map[String, ArtifactLanguageServerDefinition]): java.util.Map[String, Array[String]] = {
     import scala.collection.JavaConverters._
     map.asScala.map(e => (e._1, serverDefinitionArtifactToArray(e._2))).asJava
   }
@@ -157,7 +174,7 @@ object Utils {
     * @param serverDefinitionExtensionPoint The ServerDefinition
     * @return The Array of string
     */
-  def serverDefinitionArtifactToArray(serverDefinitionExtensionPoint: ServerDefinitionExtensionPointArtifact): Array[String] = {
+  def serverDefinitionArtifactToArray(serverDefinitionExtensionPoint: ArtifactLanguageServerDefinition): Array[String] = {
     Array(serverDefinitionExtensionPoint.ext, serverDefinitionExtensionPoint.packge, serverDefinitionExtensionPoint.mainClass) ++ serverDefinitionExtensionPoint.args
   }
 
@@ -167,7 +184,7 @@ object Utils {
     * @param map A java map
     * @return the transformed java map
     */
-  def arrayMapToServerDefinitionArtifactMap(map: java.util.Map[String, Array[String]]): java.util.Map[String, ServerDefinitionExtensionPointArtifact] = {
+  def arrayMapToServerDefinitionArtifactMap(map: java.util.Map[String, Array[String]]): java.util.Map[String, ArtifactLanguageServerDefinition] = {
     import scala.collection.JavaConverters._
     map.asScala.map(e => (e._1, arrayToServerDefinitionArtifact(e._2))).asJava
   }
@@ -178,13 +195,14 @@ object Utils {
     * @param arr The array of string
     * @return The corresponding ServerDefinitionExtensionPoint
     */
-  def arrayToServerDefinitionArtifact(arr: Array[String]): ServerDefinitionExtensionPointArtifact = {
+  def arrayToServerDefinitionArtifact(arr: Array[String]): ArtifactLanguageServerDefinition = {
     if (arr.length < 3) {
       LOG.warn("Not enough elements to translate into a ServerDefinition : " + arr)
       null
     } else {
-      ServerDefinitionExtensionPointArtifact(arr.head, arr.tail.head, arr.tail.tail.head, if (arr.length > 3) arr.tail.tail.tail else Array())
+      ArtifactLanguageServerDefinition(arr.head, arr.tail.head, arr.tail.tail.head, if (arr.length > 3) arr.tail.tail.tail else Array())
     }
   }
+
 
 }
