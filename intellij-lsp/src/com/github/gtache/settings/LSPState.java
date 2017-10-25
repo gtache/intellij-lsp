@@ -1,7 +1,7 @@
 package com.github.gtache.settings;
 
 import com.github.gtache.PluginMain;
-import com.github.gtache.ServerDefinitionExtensionPointArtifact;
+import com.github.gtache.ArtifactLanguageServerDefinition;
 import com.github.gtache.Utils;
 import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.ServiceManager;
@@ -39,16 +39,16 @@ public class LSPState implements PersistentStateComponent<LSPState> {
         return entry == null ? "" : entry.getKey();
     }
 
-    public ServerDefinitionExtensionPointArtifact getFirstServerDefinition() {
+    public ArtifactLanguageServerDefinition getFirstServerDefinition() {
         final Map.Entry<String, String[]> entry = extToServ.isEmpty() ? null : extToServ.entrySet().iterator().next();
         return entry == null ? null : Utils.arrayToServerDefinitionArtifact(entry.getValue());
     }
 
-    public Map<String, ServerDefinitionExtensionPointArtifact> getExtToServ() {
+    public Map<String, ArtifactLanguageServerDefinition> getExtToServ() {
         return Utils.arrayMapToServerDefinitionArtifactMap(extToServ);
     }
 
-    public void setExtToServ(final Map<String, ServerDefinitionExtensionPointArtifact> extToServ) {
+    public void setExtToServ(final Map<String, ArtifactLanguageServerDefinition> extToServ) {
         this.extToServ = Utils.serverDefinitionArtifactMapToArrayMap(extToServ);
     }
 

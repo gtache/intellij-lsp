@@ -8,13 +8,13 @@ import com.intellij.openapi.diagnostic.Logger
 
 import scala.collection.mutable
 
-object ServerDefinitionExtensionPoint {
-  private val LOG: Logger = Logger.getInstance(ServerDefinitionExtensionPoint.getClass)
-  val allDefinitions: mutable.Set[ServerDefinitionExtensionPoint] = mutable.Set()
+object LanguageServerDefinition {
+  private val LOG: Logger = Logger.getInstance(LanguageServerDefinition.getClass)
+  val allDefinitions: mutable.Set[LanguageServerDefinition] = mutable.Set()
 
-  def getAllDefinitions: mutable.Set[ServerDefinitionExtensionPoint] = allDefinitions.clone()
+  def getAllDefinitions: mutable.Set[LanguageServerDefinition] = allDefinitions.clone()
 
-  def register(definition: ServerDefinitionExtensionPoint): Unit = {
+  def register(definition: LanguageServerDefinition): Unit = {
     allDefinitions.add(definition)
     LOG.info("Added definition for " + definition)
   }
@@ -23,7 +23,7 @@ object ServerDefinitionExtensionPoint {
 /**
   * A trait representing a ServerDefinition
   */
-trait ServerDefinitionExtensionPoint {
+trait LanguageServerDefinition {
   private val mappedExtensions: mutable.Set[String] = mutable.Set(ext)
   protected var streamConnectionProvider: StreamConnectionProvider = _
 

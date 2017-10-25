@@ -1,8 +1,8 @@
 package com.github.gtache.settings;
 
 import com.github.gtache.PluginMain;
-import com.github.gtache.ServerDefinitionExtensionPoint;
-import com.github.gtache.ServerDefinitionExtensionPointArtifact;
+import com.github.gtache.LanguageServerDefinition;
+import com.github.gtache.ArtifactLanguageServerDefinition;
 import com.github.gtache.Utils;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.options.Configurable;
@@ -51,11 +51,11 @@ public final class LSPSettings implements Configurable {
     }
 
     //TODO complete
-    public void setGUIFields(final Map<String, ServerDefinitionExtensionPoint> map) {
-        for (final Map.Entry<String, ServerDefinitionExtensionPoint> entry : map.entrySet()) {
-            final ServerDefinitionExtensionPoint def = entry.getValue();
-            if (def instanceof ServerDefinitionExtensionPointArtifact) {
-                final ServerDefinitionExtensionPointArtifact defImpl = (ServerDefinitionExtensionPointArtifact) def;
+    public void setGUIFields(final Map<String, LanguageServerDefinition> map) {
+        for (final Map.Entry<String, LanguageServerDefinition> entry : map.entrySet()) {
+            final LanguageServerDefinition def = entry.getValue();
+            if (def instanceof ArtifactLanguageServerDefinition) {
+                final ArtifactLanguageServerDefinition defImpl = (ArtifactLanguageServerDefinition) def;
                 lspGUI.getExtField().setText(defImpl.ext());
                 lspGUI.getServField().setText(defImpl.packge());
                 lspGUI.getMainClassField().setText(defImpl.mainClass());

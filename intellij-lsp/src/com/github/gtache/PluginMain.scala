@@ -33,7 +33,7 @@ object PluginMain {
   private val LOG: Logger = Logger.getInstance(classOf[PluginMain])
   private val extToLanguageWrapper: mutable.Map[(String, String), LanguageServerWrapper] = scala.collection.concurrent.TrieMap()
   private val projectToLanguageWrappers: mutable.Map[String, mutable.Set[LanguageServerWrapper]] = scala.collection.concurrent.TrieMap()
-  private var extToServerDefinition: Map[String, ServerDefinitionExtensionPoint] = HashMap()
+  private var extToServerDefinition: Map[String, LanguageServerDefinition] = HashMap()
   private var loadedExtensions: Boolean = false
 
   /**
@@ -41,7 +41,7 @@ object PluginMain {
     *
     * @param newExt a Java Map
     */
-  def setExtToServerDefinition(newExt: java.util.Map[String, ServerDefinitionExtensionPointArtifact]): Unit = {
+  def setExtToServerDefinition(newExt: java.util.Map[String, ArtifactLanguageServerDefinition]): Unit = {
     import scala.collection.JavaConverters._
     setExtToServerDefinition(newExt.asScala)
   }
@@ -51,21 +51,21 @@ object PluginMain {
     *
     * @param newExt a Scala map
     */
-  def setExtToServerDefinition(newExt: collection.Map[String, ServerDefinitionExtensionPointArtifact]): Unit = extToServerDefinition = newExt.toMap
+  def setExtToServerDefinition(newExt: collection.Map[String, ArtifactLanguageServerDefinition]): Unit = extToServerDefinition = newExt.toMap
 
   /**
     * Returns the extensions->languageServer mapping
     *
     * @return the Scala map
     */
-  def getExtToServerDefinition: Map[String, ServerDefinitionExtensionPoint] = extToServerDefinition
+  def getExtToServerDefinition: Map[String, LanguageServerDefinition] = extToServerDefinition
 
   /**
     * Returns the extensions->languageServer mapping
     *
     * @return The Java map
     */
-  def getExtToServerDefinitionJava: java.util.Map[String, ServerDefinitionExtensionPoint] = {
+  def getExtToServerDefinitionJava: java.util.Map[String, LanguageServerDefinition] = {
     import scala.collection.JavaConverters._
     extToServerDefinition.asJava
   }
@@ -78,7 +78,7 @@ object PluginMain {
     */
   def editorOpened(editor: Editor): Unit = {
     if (!loadedExtensions) {
-      val extensions = ServerDefinitionExtensionPoint.getAllDefinitions.filter(s => !extToServerDefinition.contains(s.ext))
+      val extensions = LanguageServerDefinition.getAllDefinitions.filter(s => !extToServerDefinition.contains(s.ext))
       LOG.info("Added serverDefinitions " + extensions + " from plugins")
       extToServerDefinition = extToServerDefinition ++ extensions.map(s => (s.ext, s))
       loadedExtensions = true
@@ -220,7 +220,7 @@ class PluginMain extends ApplicationComponent {
   override def initComponent(): Unit = {
     LSPState.getInstance.getState //Need that to trigger loadState
 
-    extToServerDefinition.foreach(serv => ServerDefinitionExtensionPoint.register(serv._2))
+    extToServerDefinition.foreach(serv => LanguageServerDefinition.register(serv._2))
 
     EditorFactory.getInstance.addEditorFactoryListener(new EditorListener, Disposer.newDisposable())
     VirtualFileManager.getInstance().addVirtualFileListener(VFSListener)

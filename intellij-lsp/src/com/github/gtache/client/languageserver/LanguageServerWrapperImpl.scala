@@ -10,7 +10,7 @@ import com.github.gtache.client.connection.StreamConnectionProvider
 import com.github.gtache.editor.EditorEventManager
 import com.github.gtache.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.requests.Timeout
-import com.github.gtache.{PluginMain, ServerDefinitionExtensionPoint, Utils}
+import com.github.gtache.{PluginMain, LanguageServerDefinition, Utils}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import org.eclipse.lsp4j._
@@ -41,7 +41,7 @@ object LanguageServerWrapperImpl {
   * @param serverDefinition The serverDefinition
   * @param rootPath       The root directory
   */
-class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionPoint, val rootPath: String) extends LanguageServerWrapper {
+class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, val rootPath: String) extends LanguageServerWrapper {
 
   private val lspStreamProvider: StreamConnectionProvider = serverDefinition.createConnectionProvider(rootPath)
   private val connectedEditors: mutable.Map[String, EditorEventManager] = mutable.HashMap()
@@ -56,7 +56,7 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
   private var initializeStartTime = 0L
   private var started: Boolean = false
 
-  import LanguageServerWrapperImpl._
+  import com.github.gtache.client.languageserver.LanguageServerWrapperImpl._
 
   /**
     * Returns the EditorEventManager for a given uri
