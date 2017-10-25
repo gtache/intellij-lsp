@@ -86,7 +86,11 @@ object Utils {
     * @return The project whose the editor belongs
     */
   def editorToProjectFolderUri(editor: Editor): String = {
-    new File(editor.getProject.getBaseDir.getPath).toURI.toString
+    pathToUri(editorToProjectFolderPath(editor))
+  }
+
+  def editorToProjectFolderPath(editor: Editor): String = {
+    new File(editor.getProject.getBasePath).getAbsolutePath
   }
 
   /**

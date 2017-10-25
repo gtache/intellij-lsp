@@ -39,11 +39,11 @@ object LanguageServerWrapperImpl {
   * The working implementation of a LanguageServerWrapper
   *
   * @param serverDefinition The serverDefinition
-  * @param workingDir       The root directory
+  * @param rootPath       The root directory
   */
-class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionPoint, val workingDir: String) extends LanguageServerWrapper {
+class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionPoint, val rootPath: String) extends LanguageServerWrapper {
 
-  private val lspStreamProvider: StreamConnectionProvider = serverDefinition.createConnectionProvider(workingDir)
+  private val lspStreamProvider: StreamConnectionProvider = serverDefinition.createConnectionProvider(rootPath)
   private val connectedEditors: mutable.Map[String, EditorEventManager] = mutable.HashMap()
   private val LOG: Logger = Logger.getInstance(classOf[LanguageServerWrapperImpl])
   private var languageServer: LanguageServer = _
@@ -85,7 +85,7 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
         this.lspStreamProvider.start()
         client = serverDefinition.createLanguageClient
         val initParams = new InitializeParams
-        initParams.setRootUri(new File(workingDir).toURI.toString)
+        initParams.setRootUri(Utils.pathToUri(rootPath))
         val launcher = LSPLauncher.createClientLauncher(client, this.lspStreamProvider.getInputStream, this.lspStreamProvider.getOutputStream)
 
         this.languageServer = launcher.getRemoteProxy
@@ -118,7 +118,7 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
         initParams.setInitializationOptions(this.lspStreamProvider.getInitializationOptions(URI.create(initParams.getRootUri)))
         initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
           initializeResult = res
-          LOG.info("Got initializeResult for " + workingDir)
+          LOG.info("Got initializeResult for " + rootPath)
           res
         })
         initializeStartTime = System.currentTimeMillis

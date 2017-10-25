@@ -88,26 +88,27 @@ object PluginMain {
       ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
         override def run(): Unit = {
           val ext: String = file.getExtension
-          val workingDir: String = Utils.editorToProjectFolderUri(editor)
+          val rootPath: String = Utils.editorToProjectFolderPath(editor)
+          val rootUri: String = Utils.pathToUri(rootPath)
           LOG.info("Opened a file with extension " + ext)
           extToServerDefinition.get(ext).foreach(s => {
-            var wrapper = extToLanguageWrapper.get((ext, workingDir)).orNull
+            var wrapper = extToLanguageWrapper.get((ext, rootUri)).orNull
             wrapper match {
               case null =>
-                extToLanguageWrapper.put((ext, workingDir), new DummyLanguageServerWrapper)
-                wrapper = new LanguageServerWrapperImpl(s, workingDir)
-                extToLanguageWrapper.update((ext, workingDir), wrapper)
-                projectToLanguageWrappers.get(workingDir) match {
+                extToLanguageWrapper.put((ext, rootUri), new DummyLanguageServerWrapper)
+                wrapper = new LanguageServerWrapperImpl(s, rootPath)
+                extToLanguageWrapper.update((ext, rootPath), wrapper)
+                projectToLanguageWrappers.get(rootUri) match {
                   case Some(set) =>
                     set.add(wrapper)
                   case None =>
-                    projectToLanguageWrappers.put(workingDir, mutable.Set(wrapper))
+                    projectToLanguageWrappers.put(rootUri, mutable.Set(wrapper))
                 }
               case d: DummyLanguageServerWrapper =>
-                while (extToLanguageWrapper((ext, workingDir)).isInstanceOf[DummyLanguageServerWrapper]) {
+                while (extToLanguageWrapper((ext, rootUri)).isInstanceOf[DummyLanguageServerWrapper]) {
                   Thread.sleep(500)
                 }
-                wrapper = extToLanguageWrapper((ext, workingDir))
+                wrapper = extToLanguageWrapper((ext, rootUri))
               case l: LanguageServerWrapperImpl =>
             }
             LOG.info("Adding file " + file.getName)
@@ -202,8 +203,8 @@ object PluginMain {
   }
 
   def languageServerStopped(wrapper: LanguageServerWrapper): Unit = {
-    projectToLanguageWrappers.remove(projectToLanguageWrappers.find(p => p._2.contains(wrapper)).head._1)
-    extToLanguageWrapper.remove(extToLanguageWrapper.find(p => p._2 == wrapper).head._1)
+    projectToLanguageWrappers.find(p => p._2.contains(wrapper)).foreach(found => projectToLanguageWrappers.remove(found._1))
+    extToLanguageWrapper.find(p => p._2 == wrapper).foreach(found => extToLanguageWrapper.remove(found._1))
   }
 }
 
