@@ -310,7 +310,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * Notifies the server that the corresponding document has been saved
     */
   def documentSaved(): Unit = {
-    val params: DidSaveTextDocumentParams = new DidSaveTextDocumentParams(Utils.editorToLSPIdentifier(editor), editor.getDocument.getText)
+    val params: DidSaveTextDocumentParams = new DidSaveTextDocumentParams(identifier, editor.getDocument.getText)
     requestManager.didSave(params)
   }
 
@@ -319,7 +319,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def documentClosed(): Unit = {
     if (isOpen) {
-      requestManager.didClose(new DidCloseTextDocumentParams(Utils.editorToLSPIdentifier(editor)))
+      requestManager.didClose(new DidCloseTextDocumentParams(identifier))
       isOpen = false
       editorToManager.remove(editor)
       uriToManager.remove(Utils.editorToURIString(editor))
