@@ -1,6 +1,6 @@
 package com.github.gtache
 
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{TimeUnit, TimeoutException}
 
 import com.github.gtache.client.languageserver._
 import com.github.gtache.contributors.LSPNavigationItem
@@ -14,7 +14,7 @@ import com.intellij.navigation.NavigationItem
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.ApplicationComponent
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.editor.{Document, Editor, EditorFactory, LogicalPosition}
+import com.intellij.openapi.editor.{Editor, EditorFactory, LogicalPosition}
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
@@ -24,7 +24,6 @@ import org.eclipse.lsp4j._
 
 import scala.collection.immutable.HashMap
 import scala.collection.mutable
-import scala.concurrent.TimeoutException
 
 /**
   * The main class of the plugin
@@ -33,7 +32,7 @@ object PluginMain {
 
   private val LOG: Logger = Logger.getInstance(classOf[PluginMain])
   private val extToLanguageWrapper: mutable.Map[(String, String), LanguageServerWrapper] = scala.collection.concurrent.TrieMap()
-  private val projectToLanguageWrappers: mutable.Map[Project, mutable.Set[LanguageServerWrapper]] = scala.collection.concurrent.TrieMap()
+  private val projectToLanguageWrappers: mutable.Map[String, mutable.Set[LanguageServerWrapper]] = scala.collection.concurrent.TrieMap()
   private var extToServerDefinition: Map[String, ServerDefinitionExtensionPoint] = HashMap()
   private var loadedExtensions: Boolean = false
 
@@ -89,7 +88,7 @@ object PluginMain {
       ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
         override def run(): Unit = {
           val ext: String = file.getExtension
-          val workingDir: String = Utils.editorToProjectFolderPath(editor)
+          val workingDir: String = Utils.editorToProjectFolderUri(editor)
           LOG.info("Opened a file with extension " + ext)
           extToServerDefinition.get(ext).foreach(s => {
             var wrapper = extToLanguageWrapper.get((ext, workingDir)).orNull
@@ -98,11 +97,11 @@ object PluginMain {
                 extToLanguageWrapper.put((ext, workingDir), new DummyLanguageServerWrapper)
                 wrapper = new LanguageServerWrapperImpl(s, workingDir)
                 extToLanguageWrapper.update((ext, workingDir), wrapper)
-                projectToLanguageWrappers.get(editor.getProject) match {
+                projectToLanguageWrappers.get(workingDir) match {
                   case Some(set) =>
                     set.add(wrapper)
                   case None =>
-                    projectToLanguageWrappers.put(editor.getProject, mutable.Set(wrapper))
+                    projectToLanguageWrappers.put(workingDir, mutable.Set(wrapper))
                 }
               case d: DummyLanguageServerWrapper =>
                 while (extToLanguageWrapper((ext, workingDir)).isInstanceOf[DummyLanguageServerWrapper]) {
@@ -122,60 +121,6 @@ object PluginMain {
     }
   }
 
-  /**
-    * Called when a file is changed. Notifies the server if this file was watched.
-    *
-    * @param file The file
-    */
-  def fileChanged(file: VirtualFile): Unit = {
-    val uri: String = Utils.VFSToURIString(file)
-    if (uri != null) {
-      EditorEventManager.forUri(uri).foreach(e => e.documentSaved())
-    }
-  }
-
-  /**
-    * Called when a file is moved. Notifies the server if this file was watched.
-    *
-    * @param file The file
-    */
-  def fileMoved(file: VirtualFile): Unit = {
-
-  }
-
-  /**
-    * Called when a file is deleted. Notifies the server if this file was watched.
-    *
-    * @param file The file
-    */
-  def fileDeleted(file: VirtualFile): Unit = {
-
-
-  }
-
-  /**
-    * Called when a file is renamed. Notifies the server if this file was watched.
-    *
-    * @param oldV The old file name
-    * @param newV the new file name
-    */
-  def fileRenamed(oldV: String, newV: String): Unit = {
-
-  }
-
-  /**
-    * Called when a file is created. Notifies the server if needed.
-    *
-    * @param file The file
-    */
-  def fileCreated(file: VirtualFile): Unit = {
-    val ext = file.getExtension
-    val uri = Utils.VFSToURIString(file)
-    extToServerDefinition.get(ext) match {
-      case Some(s) => // extToLanguageWrapper.get(ext).foreach(f => f.)
-      case None =>
-    }
-  }
 
   /**
     * Called when an editor is closed. Notifies the LanguageServerWrapper if needed
@@ -224,15 +169,17 @@ object PluginMain {
     * @return An array of NavigationItem
     */
   def workspaceSymbols(name: String, pattern: String, project: Project, includeNonProjectItems: Boolean = false, onlyKind: Set[SymbolKind] = Set()): Array[NavigationItem] = {
-    projectToLanguageWrappers.get(project) match {
+    projectToLanguageWrappers.get(Utils.pathToUri(project.getBasePath)) match {
       case Some(set) =>
         val params: WorkspaceSymbolParams = new WorkspaceSymbolParams(name)
-        val res = set.map(f => f.getRequestManager.symbol(params))
+        val res = set.map(f => f.getRequestManager.symbol(params)).toSet
         import scala.collection.JavaConverters._
         try {
-          val arr = res.flatMap(r => r.get(Timeout.SYMBOLS_TIMEOUT, TimeUnit.MILLISECONDS).asScala)
+          val arr = res.flatMap(r => r.get(Timeout.SYMBOLS_TIMEOUT, TimeUnit.MILLISECONDS).asInstanceOf[java.util.List[SymbolInformation]].asScala.toSet)
           arr.filter(s => if (onlyKind.isEmpty) true else onlyKind.contains(s.getKind)).map(f => {
-            LSPNavigationItem(f.getName, f.getContainerName, project, Utils.URIToVFS(f.getLocation.getUri), f.getLocation.getRange.getStart.getLine, f.getLocation.getRange.getStart.getCharacter)
+            val start = f.getLocation.getRange.getStart
+            val uri = Utils.URIToVFS(f.getLocation.getUri)
+            LSPNavigationItem(f.getName, f.getContainerName, project, uri, start.getLine, start.getCharacter)
           }).asInstanceOf[Array[NavigationItem]]
         } catch {
           case e: TimeoutException => LOG.warn(e)
@@ -244,23 +191,6 @@ object PluginMain {
   }
 
   /**
-    * Indicates that a document will be saved
-    *
-    * @param doc The document
-    */
-  def willSave(doc: Document): Unit = {
-    val uri = Utils.VFSToURIString(FileDocumentManager.getInstance().getFile(doc))
-    EditorEventManager.forUri(uri).foreach(e => e.willSave())
-  }
-
-  /**
-    * Indicates that all documents will be saved
-    */
-  def willSaveAllDocuments(): Unit = {
-    EditorEventManager.willSaveAll()
-  }
-
-  /**
     * Asks for references given an editor and a position
     *
     * @param e   The editor
@@ -269,6 +199,11 @@ object PluginMain {
     */
   def references(e: Editor, pos: LogicalPosition): Array[PsiReference] = {
     EditorEventManager.forEditor(e).map(e => e.references(pos)).getOrElse(Array())
+  }
+
+  def languageServerStopped(wrapper: LanguageServerWrapper): Unit = {
+    projectToLanguageWrappers.remove(projectToLanguageWrappers.find(p => p._2.contains(wrapper)).head._1)
+    extToLanguageWrapper.remove(extToLanguageWrapper.find(p => p._2 == wrapper).head._1)
   }
 }
 

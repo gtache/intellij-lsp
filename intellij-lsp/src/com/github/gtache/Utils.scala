@@ -45,6 +45,7 @@ object Utils {
     */
   def editorToURIString(editor: Editor): String = {
     val uri = new URL(FileDocumentManager.getInstance().getFile(editor.getDocument).getUrl).toURI.toString
+    LOG.info("From " + editor + " to " + uri)
     uri
   }
 
@@ -57,6 +58,7 @@ object Utils {
   def VFSToURIString(file: VirtualFile): String = {
     try {
       val uri = new URL(file.getUrl).toURI.toString
+      LOG.info("From " + file.getCanonicalPath + " to " + uri)
       uri
     } catch {
       case e: MalformedURLException =>
@@ -73,17 +75,28 @@ object Utils {
     */
   def URIToVFS(uri: String): VirtualFile = {
     val res = LocalFileSystem.getInstance().findFileByPath(new File(new URI(uri).getPath).getAbsolutePath)
+    LOG.info("From " + uri + " to " + res)
     res
   }
 
   /**
-    * Returns the project path given an editor
+    * Returns the project base dir uri given an editor
     *
     * @param editor The editor
     * @return The project whose the editor belongs
     */
-  def editorToProjectFolderPath(editor: Editor): String = {
-    new File(editor.getProject.getBaseDir.getPath).getAbsolutePath
+  def editorToProjectFolderUri(editor: Editor): String = {
+    new File(editor.getProject.getBaseDir.getPath).toURI.toString
+  }
+
+  /**
+    * Transforms a path into an URI string
+    *
+    * @param path The path
+    * @return The uri
+    */
+  def pathToUri(path: String): String = {
+    new File(path).toURI.toString
   }
 
   /**
@@ -186,5 +199,6 @@ object Utils {
       ServerDefinitionExtensionPointArtifact(arr.head, arr.tail.head, arr.tail.tail.head, if (arr.length > 3) arr.tail.tail.tail else Array())
     }
   }
+
 
 }

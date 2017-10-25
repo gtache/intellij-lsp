@@ -1,6 +1,6 @@
 package com.github.gtache.editor.listeners
 
-import com.github.gtache.PluginMain
+import com.github.gtache.requests.FileEventManager
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManagerListener
 import com.intellij.openapi.vfs.VirtualFile
@@ -9,11 +9,11 @@ import com.intellij.openapi.vfs.VirtualFile
   * A FileDocumentManagerListener implementation which listens to beforeDocumentSaving / beforeAllDocumentsSaving
   */
 object FileDocumentManagerListenerImpl extends FileDocumentManagerListener {
-  override def beforeDocumentSaving(document: Document): Unit = PluginMain.willSave(document)
+  override def beforeDocumentSaving(document: Document): Unit = FileEventManager.willSave(document)
 
   override def unsavedDocumentsDropped(): Unit = {}
 
-  override def beforeAllDocumentsSaving(): Unit = PluginMain.willSaveAllDocuments()
+  override def beforeAllDocumentsSaving(): Unit = FileEventManager.willSaveAllDocuments()
 
   override def beforeFileContentReload(virtualFile: VirtualFile, document: Document): Unit = {}
 

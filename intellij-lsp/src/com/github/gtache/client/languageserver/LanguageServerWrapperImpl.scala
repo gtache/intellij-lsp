@@ -10,7 +10,7 @@ import com.github.gtache.client.connection.StreamConnectionProvider
 import com.github.gtache.editor.EditorEventManager
 import com.github.gtache.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.requests.Timeout
-import com.github.gtache.{ServerDefinitionExtensionPoint, Utils}
+import com.github.gtache.{PluginMain, ServerDefinitionExtensionPoint, Utils}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import org.eclipse.lsp4j._
@@ -273,6 +273,7 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
     connectedEditors.foreach(e => disconnect(e._1))
     this.languageServer = null
     started = false
+    PluginMain.languageServerStopped(this)
   }
 
 
