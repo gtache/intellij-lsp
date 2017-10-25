@@ -26,7 +26,18 @@ import scala.collection.mutable
 object EditorEventManager {
   private val HOVER_TIME_THRES: Long = 2000000000L //2 sec
   private val SCHEDULE_THRES = 10000000 //Time before the Timer is scheduled
-  private val POPUP_THRES = HOVER_TIME_THRES / 1000000 + 50
+  private val POPUP_THRES = HOVER_TIME_THRES / 1000000 + 20
+
+  private val uriToManager: mutable.Map[String, EditorEventManager] = mutable.HashMap()
+  private val editorToManager: mutable.Map[Editor, EditorEventManager] = mutable.HashMap()
+
+  def forUri(uri: String): Option[EditorEventManager] = {
+    uriToManager.get(uri)
+  }
+
+  def forEditor(editor: Editor): Option[EditorEventManager] = {
+    editorToManager.get(editor)
+  }
 }
 
 /**
@@ -59,6 +70,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private var mouseInEditor: Boolean = true
   @volatile private var currentPopup: Balloon = _
 
+  uriToManager.put(Utils.editorToURIString(editor), this)
+  editorToManager.put(editor, this)
   changesParams.getTextDocument.setUri(Utils.editorToURIString(editor))
   editor.addEditorMouseListener(mouseListener)
   editor.addEditorMouseMotionListener(mouseMotionListener)
@@ -147,32 +160,34 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   private def getPos(e: EditorMouseEvent): LogicalPosition = {
     val mousePos = e.getMouseEvent.getPoint
-    var editorPos = editor.xyToLogicalPosition(mousePos)
+    val editorPos = editor.xyToLogicalPosition(mousePos)
     val doc = e.getEditor.getDocument
     val maxLines = doc.getLineCount
     if (editorPos.line >= maxLines) {
-      editorPos = new LogicalPosition(maxLines - 1, editorPos.column)
+      null
+    } else {
+      val minY = doc.getLineStartOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
+      val maxY = doc.getLineEndOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
+      if (editorPos.column < minY || editorPos.column > maxY) {
+        null
+      } else {
+        editorPos
+      }
     }
-    val minY = doc.getLineStartOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
-    val maxY = doc.getLineEndOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
-    if (editorPos.column < minY) {
-      editorPos = new LogicalPosition(editorPos.line, minY)
-    } else if (editorPos.column > maxY) {
-      editorPos = new LogicalPosition(editorPos.line, maxY)
-    }
-    editorPos
   }
 
   private def scheduleDocumentation(time: Long, editorPos: LogicalPosition, point: Point): Unit = {
-    if (time - predTime > SCHEDULE_THRES) {
-      hoverThread.schedule(new TimerTask {
-        override def run(): Unit = {
-          val curTime = System.nanoTime()
-          if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && !isPopupOpen) {
-            requestAndShowDoc(curTime, editorPos, point)
+    if (editorPos != null) {
+      if (time - predTime > SCHEDULE_THRES) {
+        hoverThread.schedule(new TimerTask {
+          override def run(): Unit = {
+            val curTime = System.nanoTime()
+            if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && !isPopupOpen) {
+              requestAndShowDoc(curTime, editorPos, point)
+            }
           }
-        }
-      }, POPUP_THRES)
+        }, POPUP_THRES)
+      }
     }
   }
 

@@ -25,6 +25,9 @@
         <applicationService id="LSPState"
                             serviceInterface="com.github.gtache.settings.LSPState"
                             serviceImplementation="com.github.gtache.settings.LSPState"/>
+        <completion.contributor id="LSPCompletionContributor"
+                                implementationClass="com.github.gtache.contributors.LSPCompletionContributor"
+                                language="any" />
         <gotoSymbolContributor implementation="com.github.gtache.contributors.gotoo.LSPGotoSymbolContributor"
                                id="LSPGotoSymbolContributor"/>
         <gotoClassContributor implementation="com.github.gtache.contributors.gotoo.LSPGotoClassContributor"

@@ -66,7 +66,7 @@ class LanguageClientImpl extends LanguageClient {
   }
 
   override def publishDiagnostics(publishDiagnosticsParams: PublishDiagnosticsParams): Unit = {
-    val URI = publishDiagnosticsParams.getUri
+    val uri = publishDiagnosticsParams.getUri
     val diagnostics = publishDiagnosticsParams.getDiagnostics
     for (diagnostic <- diagnostics.asScala) {
       val code = diagnostic.getCode

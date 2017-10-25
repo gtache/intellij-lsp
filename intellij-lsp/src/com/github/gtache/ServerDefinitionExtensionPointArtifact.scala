@@ -32,4 +32,6 @@ case class ServerDefinitionExtensionPointArtifact(ext: String, packge: String, m
     }
     streamConnectionProvider
   }
+
+  override def toString: String = super.toString + " artifact : " + packge + " mainClass : " + mainClass + " args : " + args.mkString(" ")
 }

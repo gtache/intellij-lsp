@@ -9,16 +9,21 @@ import com.intellij.openapi.diagnostic.Logger
 import scala.collection.mutable
 
 object ServerDefinitionExtensionPoint {
+  private val LOG: Logger = Logger.getInstance(ServerDefinitionExtensionPoint.getClass)
   val allDefinitions: mutable.Set[ServerDefinitionExtensionPoint] = mutable.Set()
 
   def getAllDefinitions: mutable.Set[ServerDefinitionExtensionPoint] = allDefinitions.clone()
+
+  def register(definition: ServerDefinitionExtensionPoint): Unit = {
+    allDefinitions.add(definition)
+    LOG.info("Added definition for " + definition)
+  }
 }
 
 /**
   * A trait representing a ServerDefinition
   */
 trait ServerDefinitionExtensionPoint {
-  private val LOG: Logger = Logger.getInstance(classOf[ServerDefinitionExtensionPoint])
   private val mappedExtensions: mutable.Set[String] = mutable.Set(ext)
   protected var streamConnectionProvider: StreamConnectionProvider = _
 
@@ -32,10 +37,6 @@ trait ServerDefinitionExtensionPoint {
     */
   def id: String = ext
 
-  import com.github.gtache.ServerDefinitionExtensionPoint._
-
-  allDefinitions.add(this)
-  LOG.info("Added definition for " + this)
 
   /**
     * Starts the Language server and returns a tuple (InputStream, OutputStream)
@@ -51,7 +52,6 @@ trait ServerDefinitionExtensionPoint {
 
   /**
     * Instantiates a StreamConnectionProvider for this ServerDefinition
-    * Warning: Long running, run asynchronously
     *
     * @param workingDir The current working directory
     * @return The StreamConnectionProvider
@@ -86,5 +86,7 @@ trait ServerDefinitionExtensionPoint {
     * @return the LanguageClient for this LanguageServer
     */
   def createLanguageClient: LanguageClientImpl = new LanguageClientImpl
+
+  override def toString: String = "ServerDefinition for " + ext
 
 }

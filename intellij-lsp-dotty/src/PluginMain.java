@@ -5,7 +5,8 @@ import com.intellij.openapi.project.Project;
 public class PluginMain implements ProjectComponent {
 
     public PluginMain(Project project) {
-        Logger.getInstance(PluginMain.class).info("Instantiating Dotty");
+        DottyLanguageExtension$.MODULE$.register();
+        Logger.getInstance(PluginMain.class).info("Instantiated Dotty");
     }
 
     @Override

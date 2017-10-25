@@ -336,6 +336,8 @@ class PluginMain extends ApplicationComponent {
   override def initComponent(): Unit = {
     LSPState.getInstance.getState //Need that to trigger loadState
 
+    extToServerDefinition.foreach(serv => ServerDefinitionExtensionPoint.register(serv._2))
+
     EditorFactory.getInstance.addEditorFactoryListener(new EditorListener, Disposer.newDisposable())
     VirtualFileManager.getInstance().addVirtualFileListener(VFSListener)
     ApplicationManager.getApplication.getMessageBus.connect().subscribe(AppTopics.FILE_DOCUMENT_SYNC, FileDocumentManagerListenerImpl)

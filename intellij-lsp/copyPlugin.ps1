@@ -1,0 +1,1 @@
+unzip -o LSP.zip -d "C:\Users\guill\AppData\Local\JetBrains\Toolbox\apps\IDEA-U\ch-0\172.4343.14\plugins"

@@ -22,6 +22,19 @@ import org.jetbrains.annotations.Nullable
 
 import scala.collection.mutable
 
+object LanguageServerWrapperImpl {
+  private val uriToLanguageServerWrapper: mutable.Map[String, LanguageServerWrapper] = mutable.HashMap()
+  private val editorToLanguageServerWrapper: mutable.Map[Editor, LanguageServerWrapper] = mutable.HashMap()
+
+  def forUri(uri: String): Option[LanguageServerWrapper] = {
+    uriToLanguageServerWrapper.get(uri)
+  }
+
+  def forEditor(editor: Editor): Option[LanguageServerWrapper] = {
+    editorToLanguageServerWrapper.get(editor)
+  }
+}
+
 /**
   * The working implementation of a LanguageServerWrapper
   *
@@ -43,6 +56,7 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
   private var initializeStartTime = 0L
   private var started: Boolean = false
 
+  import LanguageServerWrapperImpl._
 
   /**
     * Returns the EditorEventManager for a given uri
@@ -130,12 +144,14 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
     */
   @throws[IOException]
   def connect(editor: Editor): Unit = {
-    val path = Utils.editorToURIString(editor)
-    if (!this.connectedEditors.contains(path)) {
+    val uri = Utils.editorToURIString(editor)
+    uriToLanguageServerWrapper.put(uri, this)
+    editorToLanguageServerWrapper.put(editor, this)
+    if (!this.connectedEditors.contains(uri)) {
       start()
       if (this.initializeFuture != null && editor != null) {
         initializeFuture.thenRun(() => {
-          if (!this.connectedEditors.contains(path)) {
+          if (!this.connectedEditors.contains(uri)) {
             val syncOptions: Either[TextDocumentSyncKind, TextDocumentSyncOptions] = if (initializeFuture == null) null else initializeResult.getCapabilities.getTextDocumentSync
             var syncKind: TextDocumentSyncKind = null
             if (syncOptions != null) {
@@ -150,8 +166,8 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
               mouseMotionListener.setManager(manager)
               documentListener.setManager(manager)
               selectionListener.setManager(manager)
-              this.connectedEditors.put(path, manager)
-              LOG.info("Created a manager for " + path)
+              this.connectedEditors.put(uri, manager)
+              LOG.info("Created a manager for " + uri)
             }
           }
 
@@ -165,10 +181,12 @@ class LanguageServerWrapperImpl(val serverDefinition: ServerDefinitionExtensionP
   /**
     * Disconnects an editor from the LanguageServer
     *
-    * @param path The uri of the editor
+    * @param uri The uri of the editor
     */
-  def disconnect(path: String): Unit = {
-    this.connectedEditors.remove(path).foreach({ e =>
+  def disconnect(uri: String): Unit = {
+    this.connectedEditors.remove(uri).foreach({ e =>
+      uriToLanguageServerWrapper.remove(uri)
+      editorToLanguageServerWrapper.remove(e.editor)
       e.editor.removeEditorMouseMotionListener(e.mouseMotionListener)
       e.editor.getDocument.removeDocumentListener(e.documentListener)
       e.documentClosed()
