@@ -1,7 +1,7 @@
 package com.github.gtache.settings;
 
 import com.github.gtache.PluginMain;
-import com.github.gtache.ArtifactLanguageServerDefinition;
+import com.github.gtache.client.languageserver.ArtifactLanguageServerDefinition;
 import com.github.gtache.Utils;
 import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.ServiceManager;

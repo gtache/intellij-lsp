@@ -28,6 +28,9 @@
         <!-- Add your extensions here -->
         <fileTypeFactory implementation="DottyFileTypeFactory" id="DottyFileTypeFactory"/>
         <lang.parserDefinition implementationClass="DottyParserDefinition" language="Dotty" id="DottyParserDefinition"/>
+        <lang.ast.factory implementationClass="DottyASTFactory" language="Dotty" id="DottyASTFactory"/>
+        <lang.findUsagesProvider implementationClass="com.github.gtache.contributors.LSPFindUsagesProvider" id = "LSPFindUsagesProvider" language="Dotty" />
+        <lang.documentationProvider implementationClass="com.github.gtache.contributors.LSPDocumentationProvider" language="Dotty" id="LSPDocumentationProvider" />
 
     </extensions>
 

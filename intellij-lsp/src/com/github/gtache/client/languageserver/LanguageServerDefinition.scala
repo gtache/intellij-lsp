@@ -1,4 +1,4 @@
-package com.github.gtache
+package com.github.gtache.client.languageserver
 
 import java.io.{InputStream, OutputStream}
 

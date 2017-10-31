@@ -12,7 +12,7 @@ public class DottyFileImpl extends PsiFileImpl {
     private final FileType myFileType;
 
     protected DottyFileImpl(@NotNull FileViewProvider provider) {
-        super(DottyParserDefinition.DOTTY_TOKEN_TYPE, DottyParserDefinition.DOTTY_TOKEN_TYPE, provider);
+        super(DottyParserDefinition.DOTTY_FILE_ELEMENT_TYPE, DottyParserDefinition.DOTTY_FILE_ELEMENT_TYPE, provider);
         myFileType = Objects.equals(provider.getBaseLanguage(), DottyLanguage.INSTANCE) ? provider.getFileType() : DottyFileType.INSTANCE;
     }
 

@@ -3,6 +3,7 @@ package com.github.gtache
 import java.io.File
 import java.net.{MalformedURLException, URI, URL}
 
+import com.github.gtache.client.languageserver.ArtifactLanguageServerDefinition
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.fileEditor.FileDocumentManager

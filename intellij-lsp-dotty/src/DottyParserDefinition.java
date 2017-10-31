@@ -8,6 +8,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.FileViewProvider;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.TokenType;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.IFileElementType;
 import com.intellij.psi.tree.ILazyParseableElementType;
@@ -16,9 +17,9 @@ import com.intellij.psi.util.PsiUtilCore;
 import org.jetbrains.annotations.NotNull;
 
 public class DottyParserDefinition implements ParserDefinition {
-    public static final IElementType DOTTY_TOKEN_TYPE = new ILazyParseableElementType("Dotty", DottyLanguage.INSTANCE);
+    public static final IElementType DOTTY_TOKEN_TYPE = new IElementType("Dotty", DottyLanguage.INSTANCE);
 
-    private static final IFileElementType DOTTY_FILE_ELEMENT_TYPE = new IFileElementType(DottyLanguage.INSTANCE) {
+    public static final IFileElementType DOTTY_FILE_ELEMENT_TYPE = new IFileElementType(DottyLanguage.INSTANCE) {
         @Override
         public ASTNode parseContents(ASTNode chameleon) {
             CharSequence chars = chameleon.getChars();
@@ -45,7 +46,7 @@ public class DottyParserDefinition implements ParserDefinition {
     @NotNull
     @Override
     public TokenSet getWhitespaceTokens() {
-        return TokenSet.EMPTY;
+        return TokenSet.create(TokenType.WHITE_SPACE);
     }
 
     @NotNull

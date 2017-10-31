@@ -1,7 +1,8 @@
-package com.github.gtache
+package com.github.gtache.client.languageserver
 
 import java.io.{InputStream, OutputStream}
 
+import com.github.gtache.CoursierImpl
 import com.github.gtache.client.connection.{ProcessStreamConnectionProvider, StreamConnectionProvider}
 
 /**
