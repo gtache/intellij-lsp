@@ -183,19 +183,19 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
   //Q: get rid of these methods?
 
   /**
+    * Returns the text of the PSI element.
+    *
+    * @return the element text.
+    */
+  override def getText: String = name
+
+  /**
     * Checks if the text of this PSI element is equal to the text of the specified PSI element.
     *
     * @param element the element to compare the text with.
     * @return true if the text is equal, false otherwise.
     */
   override def textMatches(element: PsiElement): Boolean = getText == element.getText
-
-  /**
-    * Returns the text of the PSI element.
-    *
-    * @return the element text.
-    */
-  override def getText: String = name
 
   /**
     * Checks if the text of this element contains the specified character.

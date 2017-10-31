@@ -9,8 +9,8 @@ import com.intellij.openapi.diagnostic.Logger
 import scala.collection.mutable
 
 object LanguageServerDefinition {
-  private val LOG: Logger = Logger.getInstance(LanguageServerDefinition.getClass)
   val allDefinitions: mutable.Set[LanguageServerDefinition] = mutable.Set()
+  private val LOG: Logger = Logger.getInstance(LanguageServerDefinition.getClass)
 
   def getAllDefinitions: mutable.Set[LanguageServerDefinition] = allDefinitions.clone()
 

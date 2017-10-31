@@ -1,6 +1,5 @@
 package com.github.gtache.editor.listeners
 
-import com.github.gtache.PluginMain
 import com.github.gtache.requests.FileEventManager
 import com.intellij.openapi.vfs._
 

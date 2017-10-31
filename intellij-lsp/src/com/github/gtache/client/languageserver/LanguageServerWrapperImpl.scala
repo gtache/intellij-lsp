@@ -1,7 +1,7 @@
 /* Adapted from lsp4e */
 package com.github.gtache.client.languageserver
 
-import java.io.{File, IOException}
+import java.io.IOException
 import java.net.URI
 import java.util.concurrent._
 
@@ -39,7 +39,7 @@ object LanguageServerWrapperImpl {
   * The working implementation of a LanguageServerWrapper
   *
   * @param serverDefinition The serverDefinition
-  * @param rootPath       The root directory
+  * @param rootPath         The root directory
   */
 class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, val rootPath: String) extends LanguageServerWrapper {
 

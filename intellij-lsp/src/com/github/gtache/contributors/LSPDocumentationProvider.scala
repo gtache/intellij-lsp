@@ -21,7 +21,7 @@ class LSPDocumentationProvider extends DocumentationProvider {
     new util.ArrayList[String]()
   }
 
-  override def getDocumentationElementForLookupItem(psiManager: PsiManager, obj : scala.Any, element: PsiElement): PsiElement = {
+  override def getDocumentationElementForLookupItem(psiManager: PsiManager, obj: scala.Any, element: PsiElement): PsiElement = {
     null
   }
 

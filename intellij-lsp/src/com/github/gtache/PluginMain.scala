@@ -90,29 +90,27 @@ object PluginMain {
           val ext: String = file.getExtension
           val rootPath: String = Utils.editorToProjectFolderPath(editor)
           val rootUri: String = Utils.pathToUri(rootPath)
-          LOG.info("Opened a file with extension " + ext)
+          LOG.info("Opened " + file.getName)
           extToServerDefinition.get(ext).foreach(s => {
-            var wrapper = extToLanguageWrapper.get((ext, rootUri)).orNull
-            wrapper match {
-              case null =>
-                extToLanguageWrapper.put((ext, rootUri), new DummyLanguageServerWrapper)
-                wrapper = new LanguageServerWrapperImpl(s, rootPath)
-                extToLanguageWrapper.update((ext, rootPath), wrapper)
-                projectToLanguageWrappers.get(rootUri) match {
-                  case Some(set) =>
-                    set.add(wrapper)
-                  case None =>
-                    projectToLanguageWrappers.put(rootUri, mutable.Set(wrapper))
-                }
-              case d: DummyLanguageServerWrapper =>
-                while (extToLanguageWrapper((ext, rootUri)).isInstanceOf[DummyLanguageServerWrapper]) {
-                  Thread.sleep(500)
-                }
-                wrapper = extToLanguageWrapper((ext, rootUri))
-              case l: LanguageServerWrapperImpl =>
+            extToLanguageWrapper.synchronized {
+              var wrapper = extToLanguageWrapper.get((ext, rootUri)).orNull
+              wrapper match {
+                case null =>
+                  LOG.info("Instantiating wrapper for " + ext + " : " + rootUri)
+                  wrapper = new LanguageServerWrapperImpl(s, rootPath)
+                  extToLanguageWrapper.put((ext, rootUri), wrapper)
+                  projectToLanguageWrappers.get(rootUri) match {
+                    case Some(set) =>
+                      set.add(wrapper)
+                    case None =>
+                      projectToLanguageWrappers.put(rootUri, mutable.Set(wrapper))
+                  }
+                case l: LanguageServerWrapperImpl =>
+                  LOG.info("Wrapper already existing for " + ext + " : " + rootUri)
+              }
+              LOG.info("Adding file " + file.getName)
+              wrapper.connect(editor)
             }
-            LOG.info("Adding file " + file.getName)
-            wrapper.connect(editor)
           })
         }
       })
@@ -181,7 +179,7 @@ object PluginMain {
             val start = f.getLocation.getRange.getStart
             val uri = Utils.URIToVFS(f.getLocation.getUri)
             LSPNavigationItem(f.getName, f.getContainerName, project, uri, start.getLine, start.getCharacter)
-          }).asInstanceOf[Array[NavigationItem]]
+          }).toArray.asInstanceOf[Array[NavigationItem]]
         } catch {
           case e: TimeoutException => LOG.warn(e)
             Array()

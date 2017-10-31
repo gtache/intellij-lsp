@@ -1,6 +1,5 @@
 package com.github.gtache.editor
 
-import com.github.gtache.PluginMain
 import com.intellij.codeInsight.documentation.actions.ShowQuickDocInfoAction
 import com.intellij.openapi.actionSystem.{AnActionEvent, CommonDataKeys}
 import com.intellij.openapi.diagnostic.Logger

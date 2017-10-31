@@ -3,6 +3,7 @@ package com.github.gtache
 import java.io.File
 import java.net.{MalformedURLException, URI, URL}
 
+import com.github.gtache.Utils.OS.OS
 import com.github.gtache.client.languageserver.ArtifactLanguageServerDefinition
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
@@ -16,6 +17,7 @@ import org.eclipse.lsp4j.{Position, TextDocumentIdentifier}
   */
 object Utils {
 
+  val os: OS = if (System.getProperty("os.name").contains("win")) OS.WINDOWS else OS.UNIX
   private val LOG: Logger = Logger.getInstance(Utils.getClass)
 
   /**
@@ -45,9 +47,7 @@ object Utils {
     * @return The URI
     */
   def editorToURIString(editor: Editor): String = {
-    val uri = new URL(FileDocumentManager.getInstance().getFile(editor.getDocument).getUrl).toURI.toString
-    LOG.info("From " + editor + " to " + uri)
-    uri
+    VFSToURIString(FileDocumentManager.getInstance().getFile(editor.getDocument))
   }
 
   /**
@@ -58,8 +58,7 @@ object Utils {
     */
   def VFSToURIString(file: VirtualFile): String = {
     try {
-      val uri = new URL(file.getUrl).toURI.toString
-      LOG.info("From " + file.getCanonicalPath + " to " + uri)
+      val uri = sanitizeURI(new URL(file.getUrl).toURI.toString)
       uri
     } catch {
       case e: MalformedURLException =>
@@ -75,8 +74,7 @@ object Utils {
     * @return The virtual file
     */
   def URIToVFS(uri: String): VirtualFile = {
-    val res = LocalFileSystem.getInstance().findFileByPath(new File(new URI(uri).getPath).getAbsolutePath)
-    LOG.info("From " + uri + " to " + res)
+    val res = LocalFileSystem.getInstance().findFileByPath(new File(new URI(sanitizeURI(uri)).getPath).getAbsolutePath)
     res
   }
 
@@ -101,7 +99,28 @@ object Utils {
     * @return The uri
     */
   def pathToUri(path: String): String = {
-    new File(path).toURI.toString
+    sanitizeURI(new File(path).toURI.toString)
+  }
+
+  private def sanitizeURI(uri: String): String = {
+    val reconstructed: StringBuilder = StringBuilder.newBuilder
+    var uriCp = new String(uri)
+    if (!uri.startsWith("file:")) {
+      uri //Probably not an uri
+    } else {
+      uriCp = uriCp.drop(5).dropWhile(c => c == '/')
+      reconstructed.append("file:///")
+      if (os == OS.UNIX) {
+        reconstructed.append(uriCp).toString()
+      } else {
+        reconstructed.append(uriCp.takeWhile(c => c != '/'))
+        if (!reconstructed.endsWith(":")) {
+          reconstructed.append(":")
+        }
+        reconstructed.append(uriCp.dropWhile(c => c != '/')).toString()
+      }
+
+    }
   }
 
   /**
@@ -168,7 +187,6 @@ object Utils {
     map.asScala.map(e => (e._1, serverDefinitionArtifactToArray(e._2))).asJava
   }
 
-
   /**
     * Transforms a ServerDefinitionExtensionPointArtifact into an array of String
     *
@@ -203,6 +221,11 @@ object Utils {
     } else {
       ArtifactLanguageServerDefinition(arr.head, arr.tail.head, arr.tail.tail.head, if (arr.length > 3) arr.tail.tail.tail else Array())
     }
+  }
+
+  object OS extends Enumeration {
+    type OS = Value
+    val WINDOWS, UNIX = Value
   }
 
 

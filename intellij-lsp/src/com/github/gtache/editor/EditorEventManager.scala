@@ -12,6 +12,7 @@ import com.github.gtache.requests.HoverHandler
 import com.intellij.codeInsight.lookup.{AutoCompletionPolicy, LookupElement, LookupElementBuilder}
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.editor.colors.EditorColors
 import com.intellij.openapi.editor.event._
 import com.intellij.openapi.editor.markup._
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
@@ -125,8 +126,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 val startOffset = Utils.LSPPosToOffset(editor, range.getStart)
                 val endOffset = Utils.LSPPosToOffset(editor, range.getEnd)
                 val colorScheme = editor.getColorsScheme
-                //TODO hardcoded
-                val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION, new TextAttributes(colorScheme.getDefaultForeground, new Color(54, 64, 55), null, null, Font.PLAIN), HighlighterTargetArea.EXACT_RANGE)
+                val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION, new TextAttributes(colorScheme.getColor(EditorColors.SELECTION_FOREGROUND_COLOR), colorScheme.getColor(EditorColors.SELECTION_BACKGROUND_COLOR), null, null, Font.PLAIN), HighlighterTargetArea.EXACT_RANGE)
                 selectedSymbHighlights.add(highlight)
               }))
             } catch {
@@ -197,7 +197,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 val message = first.message
                 val code = first.code
                 val source = first.source
-                createAndShowBalloon(source + " : " + message, time, point)
+                createAndShowBalloon(if (source != "" && source != null) source + " : " + message else message, time, point)
               } else {
                 requestAndShowDoc(curTime, editorPos, point)
               }
@@ -205,25 +205,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           }
         }, POPUP_THRES)
       }
-    }
-  }
-
-  /**
-    * Immediately requests the server for documentation at the current editor position
-    *
-    * @param editor The editor
-    */
-  def quickDoc(editor: Editor): Unit = {
-    if (editor == this.editor) {
-      val caretPos = editor.getCaretModel.getLogicalPosition
-      val pointPos = editor.logicalPositionToXY(caretPos)
-      val currentTime = System.nanoTime()
-      ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
-        override def run(): Unit = requestAndShowDoc(currentTime, caretPos, pointPos)
-      })
-      predTime = currentTime
-    } else {
-      LOG.warn("Not same editor!")
     }
   }
 
@@ -265,6 +246,25 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       })
       currentPopup.show(new RelativePoint(editor.getContentComponent, point), Balloon.Position.above)
     })
+  }
+
+  /**
+    * Immediately requests the server for documentation at the current editor position
+    *
+    * @param editor The editor
+    */
+  def quickDoc(editor: Editor): Unit = {
+    if (editor == this.editor) {
+      val caretPos = editor.getCaretModel.getLogicalPosition
+      val pointPos = editor.logicalPositionToXY(caretPos)
+      val currentTime = System.nanoTime()
+      ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
+        override def run(): Unit = requestAndShowDoc(currentTime, caretPos, pointPos)
+      })
+      predTime = currentTime
+    } else {
+      LOG.warn("Not same editor!")
+    }
   }
 
   /**
