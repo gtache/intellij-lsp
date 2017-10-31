@@ -32,14 +32,8 @@
                                id="LSPGotoSymbolContributor"/>
         <gotoClassContributor implementation="com.github.gtache.contributors.gotoo.LSPGotoClassContributor"
                               id="LSPGotoClassContributor"/>
-        <psi.referenceContributor implementation="com.github.gtache.contributors.LSPReferenceContributor"
-                                  id="LSPReferenceContributor" language=""/>
         <documentationProvider implementation="com.github.gtache.contributors.LSPDocumentationProvider"
                                id="LSPDocumentationProvider"/>
-        <lang.findUsagesProvider implementationClass="com.github.gtache.contributors.LSPFindUsagesProvider"
-                                 id="LSPFindUsagesProvider" language=""/>
-        <lang.refactoringSupport implementationClass="com.github.gtache.contributors.LSPRefactoringSupportProvider"
-                                 id="LSPRefactoringSSupportProvider" language=""/>
     </extensions>
 
     <extensionPoints>

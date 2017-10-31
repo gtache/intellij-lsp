@@ -2,8 +2,12 @@ package com.github.gtache.contributors
 
 import java.util
 
+import com.github.gtache.editor.EditorEventManager
 import com.intellij.lang.documentation.DocumentationProvider
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.psi.{PsiElement, PsiManager}
 
 /**
@@ -17,7 +21,7 @@ class LSPDocumentationProvider extends DocumentationProvider {
     new util.ArrayList[String]()
   }
 
-  override def getDocumentationElementForLookupItem(psiManager: PsiManager, object_ : scala.Any, element: PsiElement): PsiElement = {
+  override def getDocumentationElementForLookupItem(psiManager: PsiManager, obj : scala.Any, element: PsiElement): PsiElement = {
     null
   }
 
@@ -25,16 +29,15 @@ class LSPDocumentationProvider extends DocumentationProvider {
     null
   }
 
-  //FIXME getSelectedTextEditor needs EventDispatchThread
-  override def getQuickNavigateInfo(element: PsiElement, originalElement: PsiElement): String = {
-    //val editor = FileEditorManager.getInstance(originalElement.getProject).getSelectedTextEditor
-    //EditorEventManager.forEditor(editor).fold("")(e => e.requestDoc(editor, originalElement.getTextOffset))
-    ""
+  override def generateDoc(element: PsiElement, originalElement: PsiElement): String = {
+    getQuickNavigateInfo(element, originalElement)
   }
 
-  override def generateDoc(element: PsiElement, originalElement: PsiElement): String = {
-    //val editor = FileEditorManager.getInstance(originalElement.getProject).getSelectedTextEditor
-    //EditorEventManager.forEditor(editor).fold("")(e => e.requestDoc(editor, originalElement.getTextOffset))
-    ""
+  override def getQuickNavigateInfo(element: PsiElement, originalElement: PsiElement): String = {
+    var editor: Editor = null
+    ApplicationManager.getApplication.invokeAndWait(() => {
+      editor = FileEditorManager.getInstance(originalElement.getProject).getSelectedTextEditor
+    })
+    EditorEventManager.forEditor(editor).fold("")(e => e.requestDoc(editor, originalElement.getTextOffset))
   }
 }

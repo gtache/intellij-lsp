@@ -62,13 +62,7 @@ class LanguageClientImpl extends LanguageClient {
   override def publishDiagnostics(publishDiagnosticsParams: PublishDiagnosticsParams): Unit = {
     val uri = publishDiagnosticsParams.getUri
     val diagnostics = publishDiagnosticsParams.getDiagnostics
-    for (diagnostic <- diagnostics.asScala) {
-      val code = diagnostic.getCode
-      val message = diagnostic.getMessage
-      val source = diagnostic.getSource
-      val range = diagnostic.getRange
-      val severity = diagnostic.getSeverity
-    }
+    EditorEventManager.forUri(uri).foreach(e => e.diagnostics(diagnostics.asScala))
   }
 
   override def showMessage(messageParams: MessageParams): Unit = {

@@ -13,10 +13,10 @@ import com.intellij.codeInsight.lookup.{AutoCompletionPolicy, LookupElement, Loo
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.event._
-import com.intellij.openapi.editor.markup.{HighlighterLayer, HighlighterTargetArea, RangeHighlighter, TextAttributes}
+import com.intellij.openapi.editor.markup._
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.ui.popup.{Balloon, JBPopupFactory, JBPopupListener, LightweightWindowEvent}
-import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.util.{Computable, TextRange}
 import com.intellij.psi.PsiReference
 import com.intellij.ui.awt.RelativePoint
 import org.eclipse.lsp4j._
@@ -66,7 +66,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private val LOG: Logger = Logger.getInstance(classOf[EditorEventManager])
   private val hoverThread = new Timer("Hover", true)
   private val changesParams = new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(), Collections.singletonList(new TextDocumentContentChangeEvent()))
-  private val currentHighlights: mutable.Set[RangeHighlighter] = mutable.HashSet()
+  private val selectedSymbHighlights: mutable.Set[RangeHighlighter] = mutable.HashSet()
+  private val diagnosticsHighlights: mutable.Set[DiagnosticRangeHighlighter] = mutable.HashSet()
   private var version: Int = -1
   private var predTime: Long = -1L
   private var isOpen: Boolean = true
@@ -107,8 +108,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def selectionChanged(e: SelectionEvent): Unit = {
     if (e.getEditor == editor) {
-      currentHighlights.foreach(h => editor.getMarkupModel.removeHighlighter(h))
-      currentHighlights.clear()
+      selectedSymbHighlights.foreach(h => editor.getMarkupModel.removeHighlighter(h))
+      selectedSymbHighlights.clear()
       if (editor.getSelectionModel.hasSelection) {
         val ideRange = e.getNewRange
         val LSPPos = Utils.offsetToLSPPos(editor, ideRange.getStartOffset)
@@ -126,7 +127,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 val colorScheme = editor.getColorsScheme
                 //TODO hardcoded
                 val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION, new TextAttributes(colorScheme.getDefaultForeground, new Color(54, 64, 55), null, null, Font.PLAIN), HighlighterTargetArea.EXACT_RANGE)
-                currentHighlights.add(highlight)
+                selectedSymbHighlights.add(highlight)
               }))
             } catch {
               case e: TimeoutException =>
@@ -187,7 +188,19 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           override def run(): Unit = {
             val curTime = System.nanoTime()
             if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && !isPopupOpen) {
-              requestAndShowDoc(curTime, editorPos, point)
+              val editorOffset = ApplicationManager.getApplication.runReadAction(new Computable[Int] {
+                override def compute(): Int = editor.logicalPositionToOffset(editorPos)
+              })
+              val inHighlights = diagnosticsHighlights.filter(diag => diag.rangeHighlighter.getStartOffset <= editorOffset && editorOffset <= diag.rangeHighlighter.getEndOffset).toList.sortBy(diag => diag.rangeHighlighter.getLayer)
+              if (inHighlights.nonEmpty) {
+                val first = inHighlights.head
+                val message = first.message
+                val code = first.code
+                val source = first.source
+                createAndShowBalloon(source + " : " + message, time, point)
+              } else {
+                requestAndShowDoc(curTime, editorPos, point)
+              }
             }
           }
         }, POPUP_THRES)
@@ -223,20 +236,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       val range = hover.getRange
       val string = HoverHandler.getHoverString(hover)
       if (string != null) {
-        ApplicationManager.getApplication.invokeLater(() => {
-          val popupBuilder = JBPopupFactory.getInstance().createHtmlTextBalloonBuilder(string, com.intellij.openapi.ui.MessageType.INFO, null)
-          popupBuilder.setHideOnKeyOutside(true).setHideOnAction(true).setHideOnClickOutside(true).setHideOnCloseClick(true).setHideOnLinkClick(true).setHideOnFrameResize(true)
-          currentPopup = popupBuilder.createBalloon()
-          currentPopup.addListener(new JBPopupListener {
-            override def onClosed(lightweightWindowEvent: LightweightWindowEvent): Unit = {
-              isPopupOpen = false
-              predTime = curTime
-            }
-
-            override def beforeShown(lightweightWindowEvent: LightweightWindowEvent): Unit = {}
-          })
-          currentPopup.show(new RelativePoint(editor.getContentComponent, point), Balloon.Position.above)
-        })
+        createAndShowBalloon(string, curTime, point)
       } else {
         isPopupOpen = false
         LOG.warn("Hover string returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
@@ -248,6 +248,23 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
 
 
+  }
+
+  private def createAndShowBalloon(string: String, curTime: Long, point: Point): Unit = {
+    ApplicationManager.getApplication.invokeLater(() => {
+      val popupBuilder = JBPopupFactory.getInstance().createHtmlTextBalloonBuilder(string, com.intellij.openapi.ui.MessageType.INFO, null)
+      popupBuilder.setHideOnKeyOutside(true).setHideOnAction(true).setHideOnClickOutside(true).setHideOnCloseClick(true).setHideOnLinkClick(true).setHideOnFrameResize(true)
+      currentPopup = popupBuilder.createBalloon()
+      currentPopup.addListener(new JBPopupListener {
+        override def onClosed(lightweightWindowEvent: LightweightWindowEvent): Unit = {
+          isPopupOpen = false
+          predTime = curTime
+        }
+
+        override def beforeShown(lightweightWindowEvent: LightweightWindowEvent): Unit = {}
+      })
+      currentPopup.show(new RelativePoint(editor.getContentComponent, point), Balloon.Position.above)
+    })
   }
 
   /**
@@ -418,6 +435,45 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       true
     } else {
       false
+    }
+  }
+
+  /**
+    * Applies the diagnostics to the document
+    *
+    * @param diagnostics The diagnostics to apply from the server
+    */
+  def diagnostics(diagnostics: Iterable[Diagnostic]): Unit = {
+    ApplicationManager.getApplication.invokeLater(() => {
+      diagnosticsHighlights.foreach(highlight => editor.getMarkupModel.removeHighlighter(highlight.rangeHighlighter))
+      diagnosticsHighlights.clear()
+    })
+    for (diagnostic <- diagnostics) {
+      val code = diagnostic.getCode
+      val message = diagnostic.getMessage
+      val source = diagnostic.getSource
+      val range = diagnostic.getRange
+      val severity = diagnostic.getSeverity
+      val (start, end) = ApplicationManager.getApplication.runReadAction(new Computable[(Int, Int)] {
+        override def compute(): (Int, Int) = (Utils.LSPPosToOffset(editor, range.getStart), Utils.LSPPosToOffset(editor, range.getEnd))
+      })
+
+      val markupModel = editor.getMarkupModel
+      val colorScheme = editor.getColorsScheme
+
+      val (effectType, effectColor, layer) = severity match {
+        case null => null
+        case DiagnosticSeverity.Error => (EffectType.WAVE_UNDERSCORE, Color.RED, HighlighterLayer.ERROR)
+        case DiagnosticSeverity.Warning => (EffectType.WAVE_UNDERSCORE, Color.YELLOW, HighlighterLayer.WARNING)
+        case DiagnosticSeverity.Information => (EffectType.WAVE_UNDERSCORE, Color.GRAY, HighlighterLayer.WARNING)
+        case DiagnosticSeverity.Hint => (EffectType.BOLD_DOTTED_LINE, Color.GRAY, HighlighterLayer.WARNING)
+      }
+      ApplicationManager.getApplication.invokeLater(() => {
+        diagnosticsHighlights
+          .add(DiagnosticRangeHighlighter(markupModel.addRangeHighlighter(start, end, layer,
+            new TextAttributes(colorScheme.getDefaultForeground, colorScheme.getDefaultBackground, effectColor, effectType, Font.PLAIN), HighlighterTargetArea.EXACT_RANGE),
+            message, source, code))
+      })
     }
   }
 
