@@ -1,18 +1,18 @@
+import com.intellij.extapi.psi.PsiFileBase;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.psi.FileViewProvider;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiReference;
-import com.intellij.psi.impl.source.PsiFileImpl;
 import com.intellij.psi.impl.source.resolve.reference.ReferenceProvidersRegistry;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
 
-public class DottyFileImpl extends PsiFileImpl {
+public class DottyFileImpl extends PsiFileBase {
     private final FileType myFileType;
 
     protected DottyFileImpl(@NotNull FileViewProvider provider) {
-        super(DottyParserDefinition.DOTTY_FILE_ELEMENT_TYPE, DottyParserDefinition.DOTTY_FILE_ELEMENT_TYPE, provider);
+        super(provider, DottyLanguage.INSTANCE);
         myFileType = Objects.equals(provider.getBaseLanguage(), DottyLanguage.INSTANCE) ? provider.getFileType() : DottyFileType.INSTANCE;
     }
 

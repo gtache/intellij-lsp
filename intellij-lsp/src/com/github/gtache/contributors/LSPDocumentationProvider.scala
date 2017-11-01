@@ -8,6 +8,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.vcs.annotate.AnnotationProvider
 import com.intellij.psi.{PsiElement, PsiManager}
 
 /**
@@ -40,4 +41,5 @@ class LSPDocumentationProvider extends DocumentationProvider {
     })
     EditorEventManager.forEditor(editor).fold("")(e => e.requestDoc(editor, originalElement.getTextOffset))
   }
+  AnnotationProvider
 }
