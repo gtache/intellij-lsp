@@ -9,7 +9,6 @@ import com.intellij.psi.tree.{IElementType, TokenSet}
 import org.jetbrains.plugins.scala.lang.lexer.ScalaTokenTypes._
 import org.jetbrains.plugins.scala.lang.parser.ScalaElementTypes._
 import org.jetbrains.plugins.scala.lang.scaladoc.parser.ScalaDocElementTypes._
-import org.jetbrains.plugins.scala.util.MemberElementTypesExtension
 
 object TokenSets {
 
