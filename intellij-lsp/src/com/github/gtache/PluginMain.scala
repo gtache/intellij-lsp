@@ -16,7 +16,7 @@ import com.intellij.openapi.components.ApplicationComponent
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, EditorFactory, LogicalPosition}
 import com.intellij.openapi.fileEditor.FileDocumentManager
-import com.intellij.openapi.project.{Project, ProjectManager}
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.{VirtualFile, VirtualFileManager}
 import com.intellij.psi.PsiReference
@@ -35,6 +35,11 @@ object PluginMain {
   private val projectToLanguageWrappers: mutable.Map[String, mutable.Set[LanguageServerWrapper]] = scala.collection.concurrent.TrieMap()
   private var extToServerDefinition: Map[String, LanguageServerDefinition] = HashMap()
   private var loadedExtensions: Boolean = false
+
+
+  def isExtensionSupported(ext: String): Boolean = {
+    extToServerDefinition.contains(ext)
+  }
 
   /**
     * Sets the extensions->languageServer mapping

@@ -3,6 +3,7 @@ package com.github.gtache.requests
 import java.io.File
 import java.net.URI
 
+import com.github.gtache.PluginMain
 import com.github.gtache.editor.EditorEventManager
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
@@ -30,16 +31,20 @@ object WorkspaceEditHandler {
           case None =>
             val project = ProjectManager.getInstance().getOpenProjects()(0)
             val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(uri)))
-            val fileEditorManager = FileEditorManager.getInstance(project)
-            val descriptor = new OpenFileDescriptor(project, file)
-            ApplicationManager.getApplication.invokeLater(() => ApplicationManager.getApplication.runWriteAction(new Runnable {
-              override def run(): Unit = fileEditorManager.openTextEditor(descriptor, false)
-            }))
-            while (EditorEventManager.forUri(uri).isEmpty) {}
-            if (!EditorEventManager.forUri(uri).get.applyEdit(version, edit.getEdits.asScala.toList)) didApply = false
-            ApplicationManager.getApplication.invokeLater(() => ApplicationManager.getApplication.runWriteAction(new Runnable {
-              override def run(): Unit = fileEditorManager.closeFile(file)
-            }))
+            if (PluginMain.isExtensionSupported(file.getExtension)) {
+              val fileEditorManager = FileEditorManager.getInstance(project)
+              val descriptor = new OpenFileDescriptor(project, file)
+              ApplicationManager.getApplication.invokeLater(() => ApplicationManager.getApplication.runWriteAction(new Runnable {
+                override def run(): Unit = fileEditorManager.openTextEditor(descriptor, false)
+              }))
+              while (EditorEventManager.forUri(uri).isEmpty) {}
+              if (!EditorEventManager.forUri(uri).get.applyEdit(version, edit.getEdits.asScala.toList)) didApply = false
+              ApplicationManager.getApplication.invokeLater(() => ApplicationManager.getApplication.runWriteAction(new Runnable {
+                override def run(): Unit = fileEditorManager.closeFile(file)
+              }))
+            }
+        } else {
+          LOG.warn("Unsupported file ext sent by server : "+uri)
         }
       })
     } else {
@@ -51,16 +56,20 @@ object WorkspaceEditHandler {
           case None =>
             val project = ProjectManager.getInstance().getOpenProjects()(0)
             val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(uri)))
-            val fileEditorManager = FileEditorManager.getInstance(project)
-            val descriptor = new OpenFileDescriptor(project, file)
-            ApplicationManager.getApplication.invokeLater(() => ApplicationManager.getApplication.runWriteAction(new Runnable {
-              override def run(): Unit = fileEditorManager.openTextEditor(descriptor, false)
-            }))
-            while (EditorEventManager.forUri(uri).isEmpty) {}
-            if (!EditorEventManager.forUri(uri).get.applyEdit(edits = changes.toList)) didApply = false
-            ApplicationManager.getApplication.invokeLater(() => ApplicationManager.getApplication.runWriteAction(new Runnable {
-              override def run(): Unit = fileEditorManager.closeFile(file)
-            }))
+            if (PluginMain.isExtensionSupported(file.getExtension)) { //Should always be true
+              val fileEditorManager = FileEditorManager.getInstance(project)
+              val descriptor = new OpenFileDescriptor(project, file)
+              ApplicationManager.getApplication.invokeLater(() => ApplicationManager.getApplication.runWriteAction(new Runnable {
+                override def run(): Unit = fileEditorManager.openTextEditor(descriptor, false)
+              }))
+              while (EditorEventManager.forUri(uri).isEmpty) {}
+              if (!EditorEventManager.forUri(uri).get.applyEdit(edits = changes.toList)) didApply = false
+              ApplicationManager.getApplication.invokeLater(() => ApplicationManager.getApplication.runWriteAction(new Runnable {
+                override def run(): Unit = fileEditorManager.closeFile(file)
+              }))
+            } else {
+              LOG.warn("Unsupported file ext sent by server : "+uri)
+            }
         }
       })
     }
