@@ -1,0 +1,67 @@
+package org.jetbrains.plugins.scala.lang.parser.parsing.expressions
+
+import org.jetbrains.plugins.scala.ScalaBundle
+import org.jetbrains.plugins.scala.lang.lexer.ScalaTokenTypes
+import org.jetbrains.plugins.scala.lang.parser.ScalaElementTypes
+import org.jetbrains.plugins.scala.lang.parser.parsing.base.Constructor
+import org.jetbrains.plugins.scala.lang.parser.parsing.builder.ScalaPsiBuilder
+import org.jetbrains.plugins.scala.lang.parser.util.ParserUtils
+
+/**
+* @author Alexander Podkhalyuzin
+* Date: 06.03.2008
+*/
+
+/*
+ * AnnotationExpr ::= Constr [[nl] '{' {NameValuePair} '}']
+ */
+object AnnotationExpr extends AnnotationExpr {
+  override protected def constructor = Constructor
+  override protected def nameValuePair = NameValuePair
+}
+
+trait AnnotationExpr {
+  protected def constructor: Constructor
+  protected def nameValuePair: NameValuePair
+
+  def parse(builder: ScalaPsiBuilder): Boolean = {
+    val annotExprMarker = builder.mark
+    if (!constructor.parse(builder, isAnnotation = true)) {
+      annotExprMarker.drop()
+      return false
+    }
+    
+    builder.getTokenType match {
+      case ScalaTokenTypes.tLBRACE =>
+        if (builder.twoNewlinesBeforeCurrentToken) {
+          annotExprMarker.done(ScalaElementTypes.ANNOTATION_EXPR)
+          return true
+        }
+        
+        builder.advanceLexer() //Ate }
+        builder.enableNewlines()
+        
+        def foo() {
+          while (nameValuePair.parse(builder)) {
+            builder.getTokenType match {
+              case ScalaTokenTypes.tCOMMA => builder.advanceLexer()
+              case _ =>
+            }
+            while (builder.getTokenType == ScalaTokenTypes.tCOMMA) {
+              builder.error(ScalaBundle.message("wrong.annotation.expression"))
+              builder.advanceLexer()
+            }
+          }
+        }
+        
+        ParserUtils.parseLoopUntilRBrace(builder, foo _)
+        builder.restoreNewlinesState()
+        annotExprMarker.done(ScalaElementTypes.ANNOTATION_EXPR)
+        
+        true
+      case _ =>
+        annotExprMarker.done(ScalaElementTypes.ANNOTATION_EXPR)
+        true
+    }
+  }
+}

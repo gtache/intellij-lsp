@@ -26,11 +26,13 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Add your extensions here -->
-        <fileTypeFactory implementation="org.jetbrains.plugins.scala.ScalaFileTypeFactory" id="DottyFileTypeFactory"/>
-        <lang.parserDefinition implementationClass="org.jetbrains.plugins.dotty.lang.parser.DottyParserDefinition" language="Dotty" id="DottyParserDefinition"/>
-        <lang.findUsagesProvider implementationClass="com.github.gtache.contributors.LSPFindUsagesProvider" id = "LSPFindUsagesProvider" language="Dotty" />
-        <lang.documentationProvider implementationClass="com.github.gtache.contributors.LSPDocumentationProvider" language="Dotty" id="LSPDocumentationProvider" />
-
+        <fileTypeFactory implementation="org.jetbrains.plugins.dotty.DottyFileTypeFactory" id="org.jetbrains.plugins.dotty.DottyFileTypeFactory"/>
+        <lang.findUsagesProvider implementationClass="com.github.gtache.contributors.LSPFindUsagesProvider"
+                                 id="DottyLSPFindUsagesProvider" language="Dotty"/>
+        <lang.documentationProvider implementationClass="com.github.gtache.contributors.LSPDocumentationProvider"
+                                    language="Dotty" id="DottyLSPDocumentationProvider"/>
+        <completion.contributor implementationClass="com.github.gtache.contributors.LSPCompletionContributor"
+                                language="Dotty" id="DottyLSPCompletionContributor"/>
     </extensions>
 
     <project-components>
@@ -39,11 +41,100 @@
         </component>
     </project-components>
 
-
     <actions>
         <!-- Add your actions here -->
     </actions>
 
     <depends>com.github.gtache.LSP</depends>
+
+    <resource-bundle xmlns="">org.jetbrains.plugins.scala.ScalaBundle</resource-bundle>
+
+    <extensionPoints>
+        <extensionPoint name="scalaParserPatcher"
+                        interface="org.jetbrains.plugins.scala.lang.parser.util.ParserPatcher"/>
+        <extensionPoint name="scalaFileFactory" interface="org.jetbrains.plugins.scala.lang.parser.ScalaFileFactory"/>
+        <extensionPoint name="memberElementTypesExtension"
+                        interface="org.jetbrains.plugins.scala.util.MemberElementTypesExtension"/>
+        <extensionPoint name="scalaSyntheticClassProducer"
+                        interface="org.jetbrains.plugins.scala.lang.resolve.SyntheticClassProducer"/>
+        <extensionPoint name="syntheticMemberInjector"
+                        interface="org.jetbrains.plugins.scala.lang.psi.impl.toplevel.typedef.SyntheticMembersInjector"/>
+        <extensionPoint name="scalaDynamicTypeResolver"
+                        interface="org.jetbrains.plugins.scala.lang.resolve.DynamicTypeReferenceResolver"/>
+    </extensionPoints>
+
+    <extensions defaultExtensionNs="com.github.gtache.intellij.dotty" >
+        <scalaFileFactory implementation="org.jetbrains.plugins.dotty.DottyFileFactory" id="org.jetbrains.plugins.dotty.DottyFileFactory" />
+    </extensions>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <generation.topLevelFactory language="Scala"
+                                    implementationClass="org.jetbrains.plugins.scala.lang.psi.impl.ScalaFactoryProvider"/>
+        <fileTypeFactory implementation="org.jetbrains.plugins.scala.ScalaFileTypeFactory"/>
+        <syntaxHighlighter key="Scala"
+                           implementationClass="org.jetbrains.plugins.scala.highlighter.ScalaSyntaxHighlighter"/>
+        <lang.syntaxHighlighterFactory language="Scala"
+                                       implementationClass="org.jetbrains.plugins.scala.highlighter.ScalaSyntaxHighlighterFactory"/>
+        <lang.parserDefinition language="Scala"
+                               implementationClass="org.jetbrains.plugins.scala.lang.parser.ScalaParserDefinition"/>
+        <lang.parserDefinition language="Dotty"
+                               implementationClass="org.jetbrains.plugins.dotty.lang.parser.DottyParserDefinition"/>
+        <internalFileTemplate name="Scala Class"/>
+        <internalFileTemplate name="Scala Trait"/>
+        <internalFileTemplate name="Scala Object"/>
+        <internalFileTemplate name="Scala Script"/>
+        <internalFileTemplate name="Package Object"/>
+        <internalFileTemplate name="Scala Worksheet"/>
+        <stubElementTypeHolder class="org.jetbrains.plugins.scala.lang.parser.ScalaElementTypes"/>
+        <!--Stub indices -->
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScAllClassNamesIndex"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScShortClassNameIndex"/>
+        <stubIndex
+                implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScNotVisibleInJavaShortClassNameIndex"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScFullClassNameIndex"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScClassNameInPackageIndex"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScJavaClassNameInPackageIndex"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScImplicitObjectKey"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScImplicitsKey"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScPackageObjectIndex"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScShortNamePackageObjectIndex"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScFullPackagingNameIndex"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScFunctionNameIndex"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScValueNameIndex"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScVariableNameIndex"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScClassParameterNameIndex"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScTypeAliasNameIndex"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScStableTypeAliasNameIndex"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScDirectInheritorsIndex"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScSelfTypeInheritorsIndex"/>
+        <stubIndex implementation="org.jetbrains.plugins.scala.lang.psi.stubs.index.ScAnnotatedMemberIndex"/>
+
+
+    </extensions>
+    <application-components>
+        <component>
+            <implementation-class>org.jetbrains.plugins.scala.util.UIFreezingGuard</implementation-class>
+        </component>
+    </application-components>
+
+    <project-components>
+        <component>
+            <implementation-class>org.jetbrains.plugins.scala.lang.psi.impl.ScalaPsiManagerComponent
+            </implementation-class>
+            <loadForDefaultProject/>
+        </component>
+        <component>
+            <implementation-class>org.jetbrains.plugins.scala.caches.ScalaShortNamesCacheManager</implementation-class>
+            <loadForDefaultProject/>
+        </component>
+
+        <component>
+            <implementation-class>scala.meta.intellij.MetaExpansionsManager</implementation-class>
+        </component>
+        <component>
+            <implementation-class>org.jetbrains.plugins.scala.lang.psi.types.api.StdTypes</implementation-class>
+        </component>
+    </project-components>
+
 
 </idea-plugin>

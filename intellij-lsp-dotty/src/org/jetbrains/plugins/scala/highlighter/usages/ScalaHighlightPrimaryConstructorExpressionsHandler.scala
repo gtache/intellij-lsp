@@ -1,0 +1,35 @@
+package org.jetbrains.plugins.scala.highlighter.usages
+
+import java.util
+import java.util.Collections
+
+import com.intellij.codeInsight.highlighting.HighlightUsagesHandlerBase
+import com.intellij.openapi.editor.Editor
+import com.intellij.psi.{PsiElement, PsiFile}
+import com.intellij.util.Consumer
+import org.jetbrains.plugins.scala.lang.psi.api.statements.{ScPatternDefinition, ScVariableDefinition}
+import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef.ScTemplateDefinition
+
+/**
+  * Highlights the expressions that will be evaluated during construction.
+  */
+class ScalaHighlightPrimaryConstructorExpressionsHandler(templateDef: ScTemplateDefinition, editor: Editor,
+                                                         file: PsiFile, keyword: PsiElement)
+  extends HighlightUsagesHandlerBase[PsiElement](editor, file) {
+  def computeUsages(targets: util.List[PsiElement]) {
+    val eb = templateDef.extendsBlock
+    val varAndValDefsExprs = eb.members.flatMap {
+      case p: ScPatternDefinition => p.expr.toList // we include lazy vals, perhaps they could be excluded.
+      case v: ScVariableDefinition => v.expr.toList
+      case _ => Seq.empty
+    }
+    val usages = varAndValDefsExprs ++ eb.templateBody.toList.flatMap(_.exprs) :+ keyword
+    usages.map(_.getTextRange).foreach(myReadUsages.add)
+  }
+
+  def selectTargets(targets: util.List[PsiElement], selectionConsumer: Consumer[util.List[PsiElement]]) {
+    selectionConsumer.consume(targets)
+  }
+
+  def getTargets: util.List[PsiElement] = Collections.singletonList(keyword)
+}

@@ -1,7 +1,5 @@
 package com.github.gtache.contributors
 
-import java.util
-
 import com.github.gtache.editor.EditorEventManager
 import com.intellij.lang.documentation.DocumentationProvider
 import com.intellij.openapi.application.ApplicationManager
@@ -19,7 +17,7 @@ class LSPDocumentationProvider extends DocumentationProvider {
 
 
   override def getUrlFor(element: PsiElement, originalElement: PsiElement): java.util.List[String] = {
-    new util.ArrayList[String]()
+    null
   }
 
   override def getDocumentationElementForLookupItem(psiManager: PsiManager, obj: scala.Any, element: PsiElement): PsiElement = {
@@ -41,5 +39,4 @@ class LSPDocumentationProvider extends DocumentationProvider {
     })
     EditorEventManager.forEditor(editor).fold("")(e => e.requestDoc(editor, originalElement.getTextOffset))
   }
-  AnnotationProvider
 }
