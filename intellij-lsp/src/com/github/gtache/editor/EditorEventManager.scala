@@ -39,6 +39,7 @@ object EditorEventManager {
     e.getID match {
       case KeyEvent.KEY_PRESSED => isKeyPressed = true
       case KeyEvent.KEY_RELEASED => isKeyPressed = false
+      case _ =>
     }
     false
   })
@@ -171,7 +172,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       if (predTime == (-1L)) {
         predTime = curTime
       } else {
-        if (!isPopupOpen) {
+        if (!isPopupOpen && !isKeyPressed) {
           scheduleDocumentation(curTime, getPos(e), e.getMouseEvent.getPoint)
         } else if (currentPopup != null) {
           currentPopup.hide()

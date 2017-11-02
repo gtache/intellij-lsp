@@ -32,6 +32,7 @@
                                     language="Dotty" id="DottyLSPDocumentationProvider"/>
         <completion.contributor implementationClass="com.github.gtache.contributors.LSPCompletionContributor"
                                 language="Dotty" id="DottyLSPCompletionContributor"/>
+        <lang.refactoringSupport language="Dotty" implementationClass="com.github.gtache.contributors.LSPRefactoringSupportProvider" id="DottyRefactoringSupport" />
         <psi.referenceContributor implementation="com.github.gtache.contributors.LSPReferenceContributor" language="Dotty" id="DottyReferenceContributor" />
     </extensions>
 
