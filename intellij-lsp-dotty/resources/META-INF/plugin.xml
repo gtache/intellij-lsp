@@ -26,13 +26,13 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Add your extensions here -->
-        <fileTypeFactory implementation="org.jetbrains.plugins.dotty.DottyFileTypeFactory" id="org.jetbrains.plugins.dotty.DottyFileTypeFactory"/>
         <lang.findUsagesProvider implementationClass="com.github.gtache.contributors.LSPFindUsagesProvider"
                                  id="DottyLSPFindUsagesProvider" language="Dotty"/>
         <lang.documentationProvider implementationClass="com.github.gtache.contributors.LSPDocumentationProvider"
                                     language="Dotty" id="DottyLSPDocumentationProvider"/>
         <completion.contributor implementationClass="com.github.gtache.contributors.LSPCompletionContributor"
                                 language="Dotty" id="DottyLSPCompletionContributor"/>
+        <psi.referenceContributor implementation="com.github.gtache.contributors.LSPReferenceContributor" language="Dotty" id="DottyReferenceContributor" />
     </extensions>
 
     <project-components>
@@ -70,6 +70,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <generation.topLevelFactory language="Scala"
                                     implementationClass="org.jetbrains.plugins.scala.lang.psi.impl.ScalaFactoryProvider"/>
+        <fileTypeFactory implementation="org.jetbrains.plugins.dotty.DottyFileTypeFactory" id="org.jetbrains.plugins.dotty.DottyFileTypeFactory"/>
         <fileTypeFactory implementation="org.jetbrains.plugins.scala.ScalaFileTypeFactory"/>
         <syntaxHighlighter key="Scala"
                            implementationClass="org.jetbrains.plugins.scala.highlighter.ScalaSyntaxHighlighter"/>

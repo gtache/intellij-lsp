@@ -166,6 +166,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
               mouseMotionListener.setManager(manager)
               documentListener.setManager(manager)
               selectionListener.setManager(manager)
+              manager.addListeners()
               this.connectedEditors.put(uri, manager)
               LOG.info("Created a manager for " + uri)
             }
@@ -187,8 +188,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     this.connectedEditors.remove(uri).foreach({ e =>
       uriToLanguageServerWrapper.remove(uri)
       editorToLanguageServerWrapper.remove(e.editor)
-      e.editor.removeEditorMouseMotionListener(e.mouseMotionListener)
-      e.editor.getDocument.removeDocumentListener(e.documentListener)
+      e.removeListeners()
       e.documentClosed()
     })
 

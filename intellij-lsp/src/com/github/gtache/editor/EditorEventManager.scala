@@ -79,14 +79,24 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   uriToManager.put(Utils.editorToURIString(editor), this)
   editorToManager.put(editor, this)
   changesParams.getTextDocument.setUri(Utils.editorToURIString(editor))
-  editor.addEditorMouseListener(mouseListener)
-  editor.addEditorMouseMotionListener(mouseMotionListener)
-  editor.getDocument.addDocumentListener(documentListener)
-  editor.getSelectionModel.addSelectionListener(selectionListener)
   requestManager.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(Utils.editorToURIString(editor), wrapper.serverDefinition.id, {
     version += 1
     version
   }, editor.getDocument.getText)))
+
+  def addListeners(): Unit = {
+    editor.addEditorMouseListener(mouseListener)
+    editor.addEditorMouseMotionListener(mouseMotionListener)
+    editor.getDocument.addDocumentListener(documentListener)
+    editor.getSelectionModel.addSelectionListener(selectionListener)
+  }
+
+  def removeListeners(): Unit = {
+    editor.removeEditorMouseMotionListener(mouseMotionListener)
+    editor.getDocument.removeDocumentListener(documentListener)
+    editor.removeEditorMouseListener(mouseListener)
+    editor.getSelectionModel.removeSelectionListener(selectionListener)
+  }
 
   /**
     * Tells the manager that the mouse is in the editor

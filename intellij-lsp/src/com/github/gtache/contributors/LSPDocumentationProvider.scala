@@ -1,12 +1,9 @@
 package com.github.gtache.contributors
 
+import com.github.gtache.Utils
 import com.github.gtache.editor.EditorEventManager
 import com.intellij.lang.documentation.DocumentationProvider
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.fileEditor.FileEditorManager
-import com.intellij.openapi.vcs.annotate.AnnotationProvider
 import com.intellij.psi.{PsiElement, PsiManager}
 
 /**
@@ -33,10 +30,7 @@ class LSPDocumentationProvider extends DocumentationProvider {
   }
 
   override def getQuickNavigateInfo(element: PsiElement, originalElement: PsiElement): String = {
-    var editor: Editor = null
-    ApplicationManager.getApplication.invokeAndWait(() => {
-      editor = FileEditorManager.getInstance(originalElement.getProject).getSelectedTextEditor
-    })
-    EditorEventManager.forEditor(editor).fold("")(e => e.requestDoc(editor, originalElement.getTextOffset))
+    val uri = Utils.VFSToURIString(originalElement.getContainingFile.getVirtualFile)
+    EditorEventManager.forUri(uri).fold("")(e => e.requestDoc(e.editor, originalElement.getTextOffset))
   }
 }

@@ -14,5 +14,4 @@ class DottyParserDefinition extends ScalaParserDefinition {
 
   override def createParser(project: Project): DottyParser = new DottyParser
 
-  override def getFileNodeType: IStubFileElementType[_ <: PsiFileStub[_ <: PsiFile]] = ScalaElementTypes.DOTTY_FILE
 }

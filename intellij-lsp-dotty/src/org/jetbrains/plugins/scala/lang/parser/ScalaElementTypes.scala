@@ -82,7 +82,7 @@ object ScalaElementTypes {
   val FILE: IStubFileElementType[_ <: PsiFileStub[_ <: PsiFile]] =
     new ScStubFileElementType
 
-  val DOTTY_FILE: IStubFileElementType[_ <: PsiFileStub[_ <: PsiFile]] = new ScStubFileElementType(language = DottyLanguage.INSTANCE)
+  //val DOTTY_FILE: IStubFileElementType[_ <: PsiFileStub[_ <: PsiFile]] = new ScStubFileElementType(language = DottyLanguage.INSTANCE)
 
   val CLASS_DEFINITION = new ScClassDefinitionElementType
   val OBJECT_DEFINITION = new ScObjectDefinitionElementType
