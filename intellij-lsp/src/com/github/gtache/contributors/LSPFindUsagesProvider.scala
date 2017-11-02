@@ -25,7 +25,6 @@ class LSPFindUsagesProvider extends FindUsagesProvider {
   }
 
   override def getType(element: PsiElement): String = element match {
-    case LSPPsiElement(_, _, _, _) => "LSP element"
     case _ => ""
   }
 

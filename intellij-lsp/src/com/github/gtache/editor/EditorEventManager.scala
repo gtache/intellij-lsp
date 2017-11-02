@@ -1,6 +1,7 @@
 package com.github.gtache.editor
 
-import java.awt.{Color, Font, Point}
+import java.awt.event.KeyEvent
+import java.awt.{Color, Font, KeyEventDispatcher, KeyboardFocusManager, Point}
 import java.util.concurrent.{TimeUnit, TimeoutException}
 import java.util.{Collections, Timer, TimerTask}
 
@@ -25,12 +26,22 @@ import org.eclipse.lsp4j._
 import scala.collection.mutable
 
 object EditorEventManager {
-  private val HOVER_TIME_THRES: Long = 2000000000L //2 sec
+  private val HOVER_TIME_THRES: Long = 1500000000L //1.5 sec
   private val SCHEDULE_THRES = 10000000 //Time before the Timer is scheduled
   private val POPUP_THRES = HOVER_TIME_THRES / 1000000 + 20
 
   private val uriToManager: mutable.Map[String, EditorEventManager] = mutable.HashMap()
   private val editorToManager: mutable.Map[Editor, EditorEventManager] = mutable.HashMap()
+
+  @volatile private var isKeyPressed = false
+
+  KeyboardFocusManager.getCurrentKeyboardFocusManager.addKeyEventDispatcher((e: KeyEvent) => this.synchronized {
+    e.getID match {
+      case KeyEvent.KEY_PRESSED => isKeyPressed = true
+      case KeyEvent.KEY_RELEASED => isKeyPressed = false
+    }
+    false
+  })
 
   def forUri(uri: String): Option[EditorEventManager] = {
     uriToManager.get(uri)
@@ -197,7 +208,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         hoverThread.schedule(new TimerTask {
           override def run(): Unit = {
             val curTime = System.nanoTime()
-            if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && !isPopupOpen) {
+            if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && !isPopupOpen && !isKeyPressed) {
               val editorOffset = ApplicationManager.getApplication.runReadAction(new Computable[Int] {
                 override def compute(): Int = editor.logicalPositionToOffset(editorPos)
               })
