@@ -4,7 +4,7 @@ import com.intellij.lang.refactoring.RefactoringSupportProvider
 import com.intellij.psi.{PsiElement, PsiNamedElement}
 
 /**
-  * The refactoringSupportProvider for LSP
+  * The refactoringSupportProvider for LSP => perhaps delete
   */
 class LSPRefactoringSupportProvider extends RefactoringSupportProvider {
 

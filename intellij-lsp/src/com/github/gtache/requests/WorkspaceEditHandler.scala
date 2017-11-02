@@ -12,10 +12,20 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import org.eclipse.lsp4j.WorkspaceEdit
 
+/**
+  * An Object handling WorkspaceEdits
+  */
 object WorkspaceEditHandler {
 
   private val LOG: Logger = Logger.getInstance(WorkspaceEditHandler.getClass)
 
+  //TODO clean code
+  /**
+    * Applies a WorkspaceEdit
+    *
+    * @param edit The edit
+    * @return True if everything was applied, false otherwise
+    */
   def applyEdit(edit: WorkspaceEdit): Boolean = {
     import scala.collection.JavaConverters._
     val changes = edit.getChanges.asScala
@@ -43,8 +53,10 @@ object WorkspaceEditHandler {
                 override def run(): Unit = fileEditorManager.closeFile(file)
               }))
             }
-        } else {
-          LOG.warn("Unsupported file ext sent by server : "+uri)
+        }
+        else
+        {
+          LOG.warn("Unsupported file ext sent by server : " + uri)
         }
       })
     } else {
@@ -68,7 +80,7 @@ object WorkspaceEditHandler {
                 override def run(): Unit = fileEditorManager.closeFile(file)
               }))
             } else {
-              LOG.warn("Unsupported file ext sent by server : "+uri)
+              LOG.warn("Unsupported file ext sent by server : " + uri)
             }
         }
       })

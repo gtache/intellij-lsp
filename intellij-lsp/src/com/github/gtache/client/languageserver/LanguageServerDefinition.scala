@@ -12,8 +12,16 @@ object LanguageServerDefinition {
   val allDefinitions: mutable.Set[LanguageServerDefinition] = mutable.Set()
   private val LOG: Logger = Logger.getInstance(LanguageServerDefinition.getClass)
 
+  /**
+    * @return All registered server definitions
+    */
   def getAllDefinitions: mutable.Set[LanguageServerDefinition] = allDefinitions.clone()
 
+  /**
+    * Register a server definition
+    *
+    * @param definition The server definition
+    */
   def register(definition: LanguageServerDefinition): Unit = {
     allDefinitions.add(definition)
     LOG.info("Added definition for " + definition)

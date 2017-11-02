@@ -1,7 +1,5 @@
 package com.github.gtache.requests
 
-import java.util.concurrent.{CompletableFuture, TimeUnit}
-
 /**
   * An object containing the Timeout for the various requests
   */

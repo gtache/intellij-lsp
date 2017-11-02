@@ -7,6 +7,9 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.ui.Messages
 
+/**
+  * Action called when the user presses SHIFT+ALT+F6 to rename a symbol
+  */
 class LSPRefactoringAction extends DumbAwareAction {
   override def actionPerformed(e: AnActionEvent): Unit = {
     val editor = e.getData(CommonDataKeys.EDITOR)

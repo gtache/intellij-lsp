@@ -37,6 +37,10 @@ object PluginMain {
   private var loadedExtensions: Boolean = false
 
 
+  /**
+    * @param ext An extension
+    * @return True if there is a LanguageServer supporting this extension, false otherwise
+    */
   def isExtensionSupported(ext: String): Boolean = {
     extToServerDefinition.contains(ext)
   }
@@ -205,6 +209,11 @@ object PluginMain {
     EditorEventManager.forEditor(e).map(e => e.references(pos)).getOrElse(Array())
   }
 
+  /**
+    * Notifies that a LanguageServer was stopped
+    *
+    * @param wrapper The wrapper of the languageServer
+    */
   def languageServerStopped(wrapper: LanguageServerWrapper): Unit = {
     projectToLanguageWrappers.find(p => p._2.contains(wrapper)).foreach(found => projectToLanguageWrappers.remove(found._1))
     extToLanguageWrapper.find(p => p._2 == wrapper).foreach(found => extToLanguageWrapper.remove(found._1))
