@@ -79,8 +79,8 @@ object TokenSets {
   val VARIABLES: TokenSet = TokenSet.create(VARIABLE_DECLARATION, VARIABLE_DEFINITION)
 
   val MEMBERS: TokenSet =
-    FUNCTIONS ++ ALIASES_SET ++ TYPE_DEFINITIONS ++ VALUES ++ VARIABLES + PRIMARY_CONSTRUCTOR ++
-      MemberElementTypesExtension.getAllElementTypes
+    FUNCTIONS ++ ALIASES_SET ++ TYPE_DEFINITIONS ++ VALUES ++ VARIABLES + PRIMARY_CONSTRUCTOR
+      //MemberElementTypesExtension.getAllElementTypes
 
   val TEMPLATE_PARENTS: TokenSet = TokenSet.create(CLASS_PARENTS, TRAIT_PARENTS)
 

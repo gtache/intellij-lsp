@@ -5,3 +5,5 @@ LSP.iml
 LSP.zip
 LSP/
 copyPlugin.ps1
+target/
+project/
