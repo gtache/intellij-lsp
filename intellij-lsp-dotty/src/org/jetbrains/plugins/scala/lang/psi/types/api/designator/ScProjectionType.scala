@@ -12,7 +12,6 @@ import org.jetbrains.plugins.scala.lang.psi.api.statements.{ScTypeAlias, ScTypeA
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.ScTypedDefinition
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef._
 import org.jetbrains.plugins.scala.lang.psi.impl.ScalaPsiManager
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.ScSyntheticClass
 import org.jetbrains.plugins.scala.lang.psi.types._
 import org.jetbrains.plugins.scala.lang.psi.types.api._
 import org.jetbrains.plugins.scala.lang.psi.types.recursiveUpdate.Update
@@ -228,7 +227,6 @@ class ScProjectionType private(val projected: ScType,
     r match {
       case t: StdType =>
         element match {
-          case synth: ScSyntheticClass => synth.stdType.equiv(t, uSubst, falseUndef)
           case _ => (false, uSubst)
         }
       case ParameterizedType(ScProjectionType(_, _, _), _) =>

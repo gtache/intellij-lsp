@@ -2,6 +2,7 @@ package org.jetbrains.plugins.scala.lang.psi.impl.statements.params
 
 import com.intellij.lang.ASTNode
 import com.intellij.psi._
+import com.intellij.psi.impl.light.JavaIdentifier
 import org.jetbrains.plugins.scala.extensions.{ObjectExt, ifReadAllowed}
 import org.jetbrains.plugins.scala.lang.lexer.ScalaTokenTypes
 import org.jetbrains.plugins.scala.lang.parser.ScalaElementTypes
@@ -11,7 +12,6 @@ import org.jetbrains.plugins.scala.lang.psi.api.base.ScLiteral
 import org.jetbrains.plugins.scala.lang.psi.api.base.types.ScTypeElement
 import org.jetbrains.plugins.scala.lang.psi.api.expr._
 import org.jetbrains.plugins.scala.lang.psi.api.statements.params._
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.JavaIdentifier
 import org.jetbrains.plugins.scala.lang.psi.stubs._
 import org.jetbrains.plugins.scala.lang.psi.stubs.elements.signatures.ScParamElementType
 import org.jetbrains.plugins.scala.lang.psi.types._
@@ -35,7 +35,7 @@ class ScParameterImpl protected (stub: ScParameterStub, nodeType: ScParamElement
 
   def isCallByNameParameter: Boolean = byStubOrPsi(_.isCallByNameParameter)(paramType.exists(_.isCallByNameParameter))
 
-  override def getNameIdentifier: PsiIdentifier = new JavaIdentifier(nameId)
+  override def getNameIdentifier: PsiIdentifier = new JavaIdentifier(getManager,nameId)
 
   def deprecatedName: Option[String] = byStubOrPsi(_.deprecatedName) {
     annotations.find(_.typeElement.getText.contains("deprecatedName")) match {

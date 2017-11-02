@@ -13,6 +13,7 @@ import com.intellij.openapi.editor.colors._
 import com.intellij.openapi.util.Iconable
 import com.intellij.psi._
 import com.intellij.psi.impl._
+import com.intellij.psi.impl.light.JavaIdentifier
 import com.intellij.psi.javadoc.PsiDocComment
 import com.intellij.psi.util.{PsiTreeUtil, PsiUtil}
 import com.intellij.util.VisibilityIcons
@@ -29,7 +30,6 @@ import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef._
 import org.jetbrains.plugins.scala.lang.psi.impl.{ScalaFileImpl, ScalaPsiElementFactory}
 import org.jetbrains.plugins.scala.lang.psi.impl.ScalaPsiElementFactory.createMethodFromText
 import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.PsiClassFake
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.JavaIdentifier
 import org.jetbrains.plugins.scala.lang.psi.stubs.ScTemplateDefinitionStub
 import org.jetbrains.plugins.scala.lang.psi.stubs.elements.ScTemplateDefinitionElementType
 import org.jetbrains.plugins.scala.lang.psi.types._
@@ -334,7 +334,7 @@ abstract class ScTypeDefinitionImpl protected (stub: ScTemplateDefinitionStub,
 
   override def getNameIdentifier: PsiIdentifier = {
     Predef.assert(nameId != null, "Class hase null nameId. Class text: " + getText) //diagnostic for EA-20122
-    new JavaIdentifier(nameId)
+    new JavaIdentifier(getManager,nameId)
   }
 
   override def getIcon(flags: Int): Icon = {

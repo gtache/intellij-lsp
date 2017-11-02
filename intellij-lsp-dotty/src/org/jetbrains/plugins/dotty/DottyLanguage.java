@@ -11,6 +11,6 @@ public class DottyLanguage extends Language {
     public static final DottyLanguage INSTANCE = new DottyLanguage();
 
     private DottyLanguage() {
-        super(ScalaLanguage.INSTANCE, "Dotty");
+        super(INSTANCE, "Dotty");
     }
 }

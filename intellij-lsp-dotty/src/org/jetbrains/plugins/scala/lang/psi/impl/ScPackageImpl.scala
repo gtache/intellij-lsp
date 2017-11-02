@@ -6,6 +6,7 @@ import com.intellij.psi.impl.PsiManagerEx
 import com.intellij.psi.impl.file.PsiPackageImpl
 import com.intellij.psi.scope.PsiScopeProcessor
 import com.intellij.psi.search.GlobalSearchScope
+import com.sun.swing.internal.plaf.synth.resources.synth
 import org.jetbrains.plugins.scala.ScalaLanguage
 import org.jetbrains.plugins.scala.caches.{CachesUtil, ScalaShortNamesCacheManager}
 import org.jetbrains.plugins.scala.extensions._
@@ -48,10 +49,10 @@ class ScPackageImpl private (val pack: PsiPackage) extends PsiPackageImpl(pack.g
          */
         def alreadyContains(className: String) = namesSet.contains(className)
 
-        for (synth <- SyntheticClasses.get(getProject).getAll) {
+        for (synth <- Array[PsiSyntheticClass]()) {
           if (!alreadyContains(synth.name)) processor.execute(synth, ResolveState.initial)
         }
-        for (synthObj <- SyntheticClasses.get(getProject).syntheticObjects) {
+        for (synthObj <- Array[ScObject]()) {
 
           // Assume that is the scala package contained a class with the same names as the synthetic object,
           // then it must also contain the object.

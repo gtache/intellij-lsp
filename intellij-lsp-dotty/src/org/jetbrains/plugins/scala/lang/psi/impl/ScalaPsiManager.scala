@@ -28,7 +28,6 @@ import org.jetbrains.plugins.scala.finder.ScalaSourceFilterScope
 import org.jetbrains.plugins.scala.lang.psi.ElementScope
 import org.jetbrains.plugins.scala.lang.psi.api.statements.ScTypeAlias
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef.{ScObject, ScTemplateDefinition}
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.{ScSyntheticPackage, SyntheticPackageCreator}
 import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.typedef.TypeDefinitionMembers.ParameterlessNodes.{Map => PMap}
 import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.typedef.TypeDefinitionMembers.SignatureNodes.{Map => SMap}
 import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.typedef.TypeDefinitionMembers.TypeNodes.{Map => TMap}
@@ -284,30 +283,9 @@ class ScalaPsiManager(val project: Project) {
     PsiManager.getInstance(project).addPsiTreeChangeListener(CacheInvalidator, project)
   }
 
-  private val syntheticPackagesCreator = new SyntheticPackageCreator(project)
   private val syntheticPackages = ContainerUtil.createConcurrentWeakValueMap[String, AnyRef]()
   private val emptyMarker: AnyRef = new Object
 
-  def syntheticPackage(fqn: String): ScSyntheticPackage = {
-    var p = syntheticPackages.get(fqn)
-    if (p == null) {
-      p = syntheticPackagesCreator.getPackage(fqn)
-      if (p == null) p = emptyMarker
-      synchronized {
-        val pp = syntheticPackages.get(fqn)
-        if (pp == null) {
-          syntheticPackages.put(fqn, p)
-        } else {
-          p = pp
-        }
-      }
-    }
-
-    p match {
-      case synth: ScSyntheticPackage => synth
-      case _ => null
-    }
-  }
 
   @CachedWithoutModificationCount(synchronized = false, ValueWrapper.SofterReference, clearCacheOnChange)
   def javaPsiTypeParameterUpperType(typeParameter: PsiTypeParameter): ScType = {

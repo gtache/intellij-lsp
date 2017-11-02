@@ -6,7 +6,6 @@ import com.intellij.openapi.components.AbstractProjectComponent
 import com.intellij.psi.CommonClassNames._
 import org.jetbrains.plugins.scala.extensions.PsiClassExt
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef.ScObject
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.{ScSyntheticClass, SyntheticClasses}
 import org.jetbrains.plugins.scala.lang.psi.types.{NamedType, ScType, ScTypeExt, ScUndefinedSubstitutor}
 import org.jetbrains.plugins.scala.project.ProjectContext
 
@@ -17,17 +16,6 @@ sealed class StdType(val name: String, val tSuper: Option[StdType])
   val fullName = s"scala.$name"
 
   override def visitType(visitor: TypeVisitor): Unit = visitor.visitStdType(this)
-
-  /**
-    * Return wrapped to option appropriate synthetic class.
-    * In dumb mode returns None (or before it ends to register classes).
-    *
-    * @return If possible class to represent this type.
-    */
-  def syntheticClass: Option[ScSyntheticClass] = {
-    val classes = SyntheticClasses.get(projectContext)
-    if (classes.isClassesRegistered) classes.byName(name) else None
-  }
 
   override def equivInner(`type`: ScType, substitutor: ScUndefinedSubstitutor, falseUndef: Boolean): (Boolean, ScUndefinedSubstitutor) =
     (`type` match {

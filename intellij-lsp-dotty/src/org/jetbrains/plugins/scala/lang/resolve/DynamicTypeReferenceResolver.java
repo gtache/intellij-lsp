@@ -17,12 +17,12 @@ public abstract class DynamicTypeReferenceResolver {
     public static List<ResolveResult> getAllResolveResult(ScReferenceExpression expression) {
         List<ResolveResult> all = new ArrayList<ResolveResult>();
 
-        for (DynamicTypeReferenceResolver resolver : EP_NAME.getExtensions()) {
+        /*for (DynamicTypeReferenceResolver resolver : EP_NAME.getExtensions()) {
             ResolveResult[] result = resolver.resolve(expression);
             if (result != null && result.length != 0) {
                 all.addAll(Arrays.asList(result));
             }
-        }
+        }*/
         return all;
     }
 }

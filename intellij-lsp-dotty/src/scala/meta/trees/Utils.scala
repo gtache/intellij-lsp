@@ -7,7 +7,6 @@ import org.jetbrains.plugins.scala.lang.psi.api.statements.ScFunctionDefinition
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.ScTypedDefinition
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef.ScObject
 import org.jetbrains.plugins.scala.lang.psi.impl.ScalaPsiElementFactory.createTypeFromText
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.ScSyntheticFunction
 import org.jetbrains.plugins.scala.lang.psi.types.result._
 import org.jetbrains.plugins.scala.lang.psi.types.{ScSubstitutor, ScType}
 import org.jetbrains.plugins.scala.lang.psi.{api => p, types => ptype}
@@ -84,14 +83,6 @@ trait Utils {
       case other: m.Type => other
       case _ => unreachable
     }
-  }
-
-  def mkSyntheticMethodName(owner: m.Type, elem: ScSyntheticFunction, context: ScSugarCallExpr): m.Term.Name = {
-    m.Term.Name(elem.name)
-//      .withAttrs(
-//        denot = h.Denotation.Single(h.Prefix.Type(owner), fqnameToSymbol(owner.toString()+s".${elem.name}")),
-//        typingLike = h.Typing.Nonrecursive(toType(context.getTypeWithCachedSubst(TypingContext.empty))))
-//      .setTypechecked
   }
 
   implicit class RichPSI(psi: PsiElement) {

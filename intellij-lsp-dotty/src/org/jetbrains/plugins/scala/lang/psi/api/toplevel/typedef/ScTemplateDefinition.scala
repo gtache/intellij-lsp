@@ -26,7 +26,6 @@ import org.jetbrains.plugins.scala.lang.psi.api.toplevel.{ScNamedElement, ScType
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.templates.ScExtendsBlock
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef.ScTemplateDefinition._
 import org.jetbrains.plugins.scala.lang.psi.impl.ScalaPsiElementFactory._
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.ScSyntheticClass
 import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.typedef.TypeDefinitionMembers
 import org.jetbrains.plugins.scala.lang.psi.light.ScFunctionWrapper
 import org.jetbrains.plugins.scala.lang.psi.types._
@@ -462,7 +461,6 @@ trait ScTemplateDefinition extends ScNamedElement with PsiClassAdapter with Type
       case _: ScClass => Kind.ScClass
       case _: ScObject => Kind.ScObject
       case _: ScNewTemplateDefinition => Kind.ScNewTd
-      case s: ScSyntheticClass if s.className != "AnyRef" && s.className != "AnyVal" => Kind.SyntheticFinal
       case _ => Kind.NonScala
     }
     Path(name, Option(qualifiedName), kind)
@@ -534,10 +532,6 @@ object ScTemplateDefinition {
       c match {
         case td: ScTemplateDefinition =>
           td.cachedPath
-        case s: ScSyntheticClass if s.className != "AnyRef" && s.className != "AnyVal" =>
-          Path(c.name, Option(c.qualifiedName), Kind.SyntheticFinal)
-        case s: ScSyntheticClass =>
-          Path(c.name, Option(c.qualifiedName), Kind.ScClass)
         case _ =>
           Path(c.name, Option(c.qualifiedName), Kind.NonScala)
       }

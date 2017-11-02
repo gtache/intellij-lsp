@@ -13,7 +13,6 @@ import org.jetbrains.plugins.scala.lang.psi.api.statements.params.{PsiTypeParame
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef.{ScClass, ScMember, ScObject, ScTemplateDefinition}
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.{ScTypeParametersOwner, ScTypedDefinition}
 import org.jetbrains.plugins.scala.lang.psi.impl.ScPackageImpl
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.ScSyntheticFunction
 import org.jetbrains.plugins.scala.lang.psi.types.Compatibility.{ConformanceExtResult, Expression}
 import org.jetbrains.plugins.scala.lang.psi.types._
 import org.jetbrains.plugins.scala.lang.psi.types.api._
@@ -113,10 +112,6 @@ class MethodResolveProcessor(override val ref: PsiElement,
             implicitConversion = implFunction, implicitType = implType, isNamedParameter = isNamedParameter,
             fromType = fromType, isAccessible = accessible, isForwardReference = forwardReference,
             unresolvedTypeParameters = unresolvedTypeParameters))
-        case synthetic: ScSyntheticFunction =>
-          addResult(new ScalaResolveResult(synthetic, s, getImports(state), nameShadow, implicitConversionClass,
-            implicitConversion = implFunction, implicitType = implType, fromType = fromType, isAccessible = accessible,
-            isForwardReference = forwardReference, unresolvedTypeParameters = unresolvedTypeParameters))
         case pack: PsiPackage =>
           addResult(new ScalaResolveResult(ScPackageImpl(pack), s, getImports(state), nameShadow, implicitConversionClass,
             implicitConversion = implFunction, implicitType = implType, fromType = fromType, isAccessible = accessible,

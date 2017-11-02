@@ -6,6 +6,7 @@ import com.intellij.extapi.psi.StubBasedPsiElementBase
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.psi._
+import com.intellij.psi.impl.light.JavaIdentifier
 import com.intellij.psi.search.{LocalSearchScope, SearchScope}
 import com.intellij.psi.stubs.NamedStub
 import com.intellij.psi.util.PsiTreeUtil
@@ -18,7 +19,6 @@ import org.jetbrains.plugins.scala.lang.psi.api.statements.params.ScClassParamet
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.templates.ScTemplateBody
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef._
 import org.jetbrains.plugins.scala.lang.psi.impl.ScalaPsiElementFactory.createIdentifier
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.JavaIdentifier
 import org.jetbrains.plugins.scala.lang.refactoring.util.ScalaNamesUtil
 import org.jetbrains.plugins.scala.macroAnnotations.{Cached, ModCount}
 
@@ -53,7 +53,7 @@ trait ScNamedElement extends ScalaPsiElement with PsiNameIdentifierOwner with Na
 
   def nameId: PsiElement
 
-  override def getNameIdentifier: PsiIdentifier = if (nameId != null) new JavaIdentifier(nameId) else null
+  override def getNameIdentifier: PsiIdentifier = if (nameId != null) new JavaIdentifier(getManager,nameId) else null
 
   override def setName(name: String): PsiElement = {
     val id = nameId.getNode

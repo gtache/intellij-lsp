@@ -9,7 +9,6 @@ import org.jetbrains.plugins.scala.lang.psi.api.statements._
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel._
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef.{ScObject, ScTemplateDefinition}
 import org.jetbrains.plugins.scala.lang.psi.impl.ScalaPsiManager
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.ScSyntheticFunction
 import org.jetbrains.plugins.scala.lang.psi.types.api.StdType
 import org.jetbrains.plugins.scala.lang.psi.types.nonvalue.Parameter
 import org.jetbrains.plugins.scala.lang.psi.types.{ScType, ScalaTypeVisitor}
@@ -45,17 +44,11 @@ trait Namer {
           } catch {
             case _: SyntheticException =>
               elem.getContext match {
-                case mc: ScSugarCallExpr => mkSyntheticMethodName(toType(mc.getBaseExpr.`type`()), x.getElement.asInstanceOf[ScSyntheticFunction], mc)
                 case other => other ???
               }
           }
           case None => throw new ScalaMetaResolveError(cr)
         }
-      case se: impl.toplevel.synthetic.SyntheticNamedElement =>
-        throw new SyntheticException
-      //    case cs: ScConstructor =>
-      //      toTermName(cs.reference.get)
-      // Java stuff starts here
       case pp: PsiPackage =>
         m.Term.Name(pp.getName)
       case pc: PsiClass =>
@@ -73,10 +66,6 @@ trait Namer {
       m.Type.Name(re.refName)
     case re: ScReferenceElement =>
       toTypeName(re.resolve())
-    case sc: impl.toplevel.synthetic.ScSyntheticClass =>
-      m.Type.Name(sc.className)
-    case se: impl.toplevel.synthetic.SyntheticNamedElement =>
-      die(s"Synthetic elements not implemented") // FIXME: find a way to resolve synthetic elements
     case _: PsiPackage | _: ScObject =>
       unreachable(s"Package and Object types shoud be Singleton, not Name: ${elem.getText}")
     // Java stuff starts here

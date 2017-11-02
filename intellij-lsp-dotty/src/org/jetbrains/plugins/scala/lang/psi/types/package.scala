@@ -241,10 +241,6 @@ package object types {
               val withFollower = if (needSubstitutor) substitutor.followed(parameterizedType.substitutor) else ScSubstitutor.empty
               (element, withFollower)
           }
-        case stdType: StdType =>
-          stdType.syntheticClass.flatMap {
-            filter(_, ScSubstitutor.empty)
-          }
         case ScExistentialType(quantified, _) =>
           extractFrom(quantified, visitedAliases)
         case TypeParameterType(_, _, _, psiTypeParameter) =>

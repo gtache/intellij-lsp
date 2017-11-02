@@ -16,6 +16,7 @@
 package org.jetbrains.plugins.scala;
 
 import com.intellij.lang.Language;
+import org.jetbrains.plugins.dotty.DottyLanguage;
 
 /**
  * @author ilyas
@@ -23,7 +24,7 @@ import com.intellij.lang.Language;
  *
  */
 public class ScalaLanguage extends Language {
-  public static final Language INSTANCE = new ScalaLanguage();
+  public static final Language INSTANCE = DottyLanguage.INSTANCE;
 
   private ScalaLanguage() {
     super("Scala");

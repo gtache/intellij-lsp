@@ -7,6 +7,7 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.Key
 import com.intellij.psi.PsiReferenceList.Role
 import com.intellij.psi._
+import com.intellij.psi.impl.light.JavaIdentifier
 import com.intellij.psi.impl.source.HierarchicalMethodSignatureImpl
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.MethodSignatureBackedByPsiMethod
@@ -25,7 +26,6 @@ import org.jetbrains.plugins.scala.lang.psi.api.toplevel._
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef._
 import org.jetbrains.plugins.scala.lang.psi.fake.{FakePsiReferenceList, FakePsiTypeParameterList}
 import org.jetbrains.plugins.scala.lang.psi.impl.ScalaPsiElementFactory.createClauseFromText
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.{JavaIdentifier, ScSyntheticFunction, ScSyntheticTypeParameter, SyntheticClasses}
 import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.typedef.TypeDefinitionMembers
 import org.jetbrains.plugins.scala.lang.psi.light.ScFunctionWrapper
 import org.jetbrains.plugins.scala.lang.psi.light.scala.{ScLightFunctionDeclaration, ScLightFunctionDefinition}
@@ -120,13 +120,6 @@ trait ScFunction extends ScalaPsiElement with ScMember with ScTypeParametersOwne
                 typeParamSubst = typeParamSubst.bindT(oldParam.nameAndId, TypeParameterType(newParam, Some(subst)))
             }
             fun.returnType.toOption.map(typeParamSubst.followed(subst).subst)
-          case Some((fun: ScSyntheticFunction, subst)) =>
-            var typeParamSubst = ScSubstitutor.empty
-            fun.typeParameters.zip(typeParameters).foreach {
-              case (oldParam: ScSyntheticTypeParameter, newParam: ScTypeParam) =>
-                typeParamSubst = typeParamSubst.bindT(oldParam.nameAndId, TypeParameterType(newParam, Some(subst)))
-            }
-            Some(subst.subst(fun.retType))
           case Some((fun: PsiMethod, subst)) =>
             var typeParamSubst = ScSubstitutor.empty
             fun.getTypeParameters.zip(typeParameters).foreach {
@@ -356,7 +349,7 @@ trait ScFunction extends ScalaPsiElement with ScMember with ScTypeParametersOwne
   override def getIcon(flags: Int) = Icons.FUNCTION
 
   def getReturnType: PsiType = {
-    if (DumbService.getInstance(getProject).isDumb || !SyntheticClasses.get(getProject).isClassesRegistered) {
+    if (DumbService.getInstance(getProject).isDumb) {
       return null //no resolve during dumb mode or while synthetic classes is not registered
     }
     getReturnTypeImpl
@@ -432,7 +425,7 @@ trait ScFunction extends ScalaPsiElement with ScMember with ScTypeParametersOwne
   }
 
 
-  override def getNameIdentifier: PsiIdentifier = new JavaIdentifier(nameId)
+  override def getNameIdentifier: PsiIdentifier = new JavaIdentifier(getManager,nameId)
 
   def findDeepestSuperMethod: PsiMethod = {
     val s = superMethods

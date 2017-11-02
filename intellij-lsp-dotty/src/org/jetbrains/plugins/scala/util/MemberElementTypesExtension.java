@@ -17,9 +17,9 @@ abstract public class MemberElementTypesExtension {
   public static TokenSet getAllElementTypes() {
     TokenSet types = TokenSet.EMPTY;
     
-    for (MemberElementTypesExtension extension : EP_NAME.getExtensions()) {
+/*    for (MemberElementTypesExtension extension : EP_NAME.getExtensions()) {
       types = TokenSet.orSet(types, extension.getMemberElementTypes());
-    }
+    }*/
     
     return types;
   }

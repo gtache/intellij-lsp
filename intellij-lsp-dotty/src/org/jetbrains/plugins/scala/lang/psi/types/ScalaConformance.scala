@@ -11,7 +11,6 @@ import org.jetbrains.plugins.scala.lang.psi.api.statements._
 import org.jetbrains.plugins.scala.lang.psi.api.statements.params._
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.ScTypeParametersOwner
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef.ScTypeDefinition
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.ScSyntheticClass
 import org.jetbrains.plugins.scala.lang.psi.light.scala.ScExistentialLightTypeParam
 import org.jetbrains.plugins.scala.lang.psi.types.api._
 import org.jetbrains.plugins.scala.lang.psi.types.api.designator.{ScDesignatorType, ScProjectionType, ScThisType}
@@ -455,9 +454,6 @@ trait ScalaConformance extends api.Conformance {
               findProjectionBase(proj2)
             case _ =>
               val res = proj2.actualElement match {
-                case syntheticClass: ScSyntheticClass =>
-                  result = conformsInner(l, syntheticClass.stdType, HashSet.empty, undefinedSubst)
-                  return
                 case v: ScBindingPattern => v.`type`()
                 case v: ScParameter => v.`type`()
                 case v: ScFieldId => v.`type`()

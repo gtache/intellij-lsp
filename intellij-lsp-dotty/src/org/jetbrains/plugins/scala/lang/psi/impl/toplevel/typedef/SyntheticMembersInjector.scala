@@ -87,8 +87,8 @@ object SyntheticMembersInjector {
 
   def inject(source: ScTypeDefinition, withOverride: Boolean): Seq[ScFunction] = {
     val buffer = new ArrayBuffer[ScFunction]()
-    for {
-      injector <- EP_NAME.getExtensions.toSet ++ injectedExtensions(source.getProject).toSet
+    /*for {
+      injector <- injectedExtensions(source.getProject).toSet
       template <- injector.injectFunctions(source)
     } try {
       val context = source match {
@@ -103,7 +103,7 @@ object SyntheticMembersInjector {
       case p: ProcessCanceledException => throw p
       case e: Throwable =>
         logError(s"Error during parsing template from injector: ${injector.getClass.getName}", e)
-    }
+    }*/
     buffer
   }
 
@@ -119,8 +119,8 @@ object SyntheticMembersInjector {
 
   def injectInners(source: ScTypeDefinition): Seq[ScTypeDefinition] = {
     val buffer = new ArrayBuffer[ScTypeDefinition]()
-    for {
-      injector <- EP_NAME.getExtensions.toSet ++ injectedExtensions(source.getProject).toSet
+    /*for {
+      injector <- injectedExtensions(source.getProject).toSet
       template <- injector.injectInners(source)
     } try {
       val context = (source match {
@@ -135,18 +135,18 @@ object SyntheticMembersInjector {
       case p: ProcessCanceledException => throw p
       case e: Throwable =>
         logError(s"Error during parsing template from injector: ${injector.getClass.getName}", e)
-    }
+    }*/
     buffer
   }
 
   def needsCompanion(source: ScTypeDefinition): Boolean = {
     if (DumbService.getInstance(source.getProject).isDumb) return false
-    EP_NAME.getExtensions.exists(_.needsCompanionObject(source))
+    false//EP_NAME.getExtensions.exists(_.needsCompanionObject(source))
   }
 
   def injectSupers(source: ScTypeDefinition): Seq[ScTypeElement] = {
     val buffer = new ArrayBuffer[ScTypeElement]()
-    for {
+    /*for {
       injector <- EP_NAME.getExtensions
       supers <- injector.injectSupers(source)
     } try {
@@ -159,7 +159,7 @@ object SyntheticMembersInjector {
       case p: ProcessCanceledException => throw p
       case e: Throwable =>
         logError(s"Error during parsing type element from injector: ${injector.getClass.getName}", e)
-    }
+    }*/
     buffer
   }
 
@@ -172,8 +172,8 @@ object SyntheticMembersInjector {
 
   def injectMembers(source: ScTypeDefinition): Seq[ScMember] = {
     val buffer = new ArrayBuffer[ScMember]()
-    for {
-      injector <- EP_NAME.getExtensions.toSet ++ injectedExtensions(source.getProject).toSet
+    /*for {
+      injector <- injectedExtensions(source.getProject).toSet
       template <- injector.injectMembers(source)
     } try {
       val context = source match {
@@ -194,7 +194,7 @@ object SyntheticMembersInjector {
       case p: ProcessCanceledException => throw p
       case e: Throwable =>
         logError(s"Error during parsing template from injector: ${injector.getClass.getName}", e)
-    }
+    }*/
     buffer
   }
 

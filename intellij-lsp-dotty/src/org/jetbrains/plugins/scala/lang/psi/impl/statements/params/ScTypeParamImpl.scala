@@ -4,6 +4,7 @@ import javax.swing.Icon
 
 import com.intellij.lang.ASTNode
 import com.intellij.psi._
+import com.intellij.psi.impl.light.JavaIdentifier
 import com.intellij.psi.search.{LocalSearchScope, SearchScope}
 import org.jetbrains.plugins.scala.extensions._
 import org.jetbrains.plugins.scala.icons.Icons
@@ -18,7 +19,6 @@ import org.jetbrains.plugins.scala.lang.psi.api.toplevel.ScTypeParametersOwner
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef.ScTemplateDefinition
 import org.jetbrains.plugins.scala.lang.psi.impl.base.ScTypeBoundsOwnerImpl
 import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.PsiClassFake
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.JavaIdentifier
 import org.jetbrains.plugins.scala.lang.psi.stubs.ScTypeParamStub
 import org.jetbrains.plugins.scala.lang.psi.types.api.{ParameterizedType, TypeParameterType}
 import org.jetbrains.plugins.scala.lang.psi.types.{ScType, ScTypeExt}
@@ -102,7 +102,7 @@ class ScTypeParamImpl private (stub: ScTypeParamStub, node: ASTNode)
 
   def nameId: PsiElement = findLastChildByType(TokenSets.ID_SET)
 
-  override def getNameIdentifier: PsiIdentifier = new JavaIdentifier(nameId)
+  override def getNameIdentifier: PsiIdentifier = new JavaIdentifier(getManager,nameId)
 
   override def viewTypeElement: Seq[ScTypeElement] =
     byPsiOrStub(super.viewTypeElement)(_.viewBoundsTypeElements)

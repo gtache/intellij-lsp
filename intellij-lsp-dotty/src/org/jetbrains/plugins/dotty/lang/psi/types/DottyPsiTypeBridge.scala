@@ -3,7 +3,6 @@ package org.jetbrains.plugins.dotty.lang.psi.types
 import com.intellij.psi._
 import org.jetbrains.plugins.scala.extensions.PsiClassExt
 import org.jetbrains.plugins.scala.lang.psi.api.statements.ScTypeAliasDefinition
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.ScSyntheticClass
 import org.jetbrains.plugins.scala.lang.psi.types._
 import org.jetbrains.plugins.scala.lang.psi.types.api.designator.{ScDesignatorType, ScProjectionType}
 import org.jetbrains.plugins.scala.lang.psi.types.api.{Any, StdType, arrayType}
@@ -38,7 +37,6 @@ trait DottyPsiTypeBridge extends api.PsiTypeBridge {
       case ScDesignatorType(clazz: PsiClass) => createType(clazz)
       case projectionType: ScProjectionType =>
         projectionType.actualElement match {
-          case syntheticClass: ScSyntheticClass => toPsiType(syntheticClass.stdType)
           case clazz: PsiClass => createType(clazz, raw = true)
           case definition: ScTypeAliasDefinition => definition.aliasedType match {
             case Right(result) => createComponent(result)

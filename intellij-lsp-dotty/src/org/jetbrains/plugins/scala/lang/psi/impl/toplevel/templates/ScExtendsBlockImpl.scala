@@ -15,7 +15,6 @@ import org.jetbrains.plugins.scala.lang.psi.api.toplevel.ScEarlyDefinitions
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.templates._
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef._
 import org.jetbrains.plugins.scala.lang.psi.impl.{ScalaPsiElementFactory, ScalaPsiManager}
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.ScSyntheticClass
 import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.typedef.SyntheticMembersInjector
 import org.jetbrains.plugins.scala.lang.psi.stubs.ScExtendsBlockStub
 import org.jetbrains.plugins.scala.lang.psi.types._
@@ -199,18 +198,12 @@ class ScExtendsBlockImpl private(stub: ScExtendsBlockStub, node: ASTNode)
       if (obj != null && !obj.isDeprecated) buffer += obj
     }
     buffer.find {
-      case _: ScSyntheticClass => true
       case _: ScObject => true
       case _: ScTrait => false
       case _: ScClass => true
       case c: PsiClass if !c.isInterface => true
       case _ => false
     } match {
-      case Some(s: ScSyntheticClass) if s.stdType.isAnyVal => //do nothing
-      case Some(s: ScSyntheticClass) if s.stdType.isAnyRef || s.stdType.isAny =>
-        buffer -= s
-        if (javaObjectClass != null)
-          buffer += javaObjectClass
       case Some(_: PsiClass) => //do nothing
       case _ =>
         if (javaObjectClass != null)

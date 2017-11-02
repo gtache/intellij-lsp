@@ -13,7 +13,6 @@ import org.jetbrains.plugins.scala.lang.psi.api.expr._
 import org.jetbrains.plugins.scala.lang.psi.api.statements.ScFunction
 import org.jetbrains.plugins.scala.lang.psi.api.statements.params.ScParameter
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.imports.usages.ImportUsed
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.ScSyntheticFunction
 import org.jetbrains.plugins.scala.lang.psi.implicits.ImplicitCollector
 import org.jetbrains.plugins.scala.lang.psi.types.api.{FunctionType, UndefinedType}
 import org.jetbrains.plugins.scala.lang.psi.types.nonvalue.Parameter
@@ -405,13 +404,6 @@ object Compatibility {
                 (implicit project: ProjectContext): ConformanceExtResult = {
     val exprs: Seq[Expression] = argClauses.headOption match {case Some(seq) => seq case _ => Seq.empty}
     named match {
-      case synthetic: ScSyntheticFunction =>
-        if (synthetic.paramClauses.isEmpty)
-          return ConformanceExtResult(Seq(new DoesNotTakeParameters))
-
-        checkConformanceExt(checkNames = false, parameters = synthetic.paramClauses.head.map { p =>
-          p.copy(paramType = substitutor.subst(p.paramType))
-        }, exprs = exprs, checkWithImplicits = checkWithImplicits, isShapesResolve = isShapesResolve)
       case fun: ScFunction =>
         if(!fun.hasParameterClause && argClauses.nonEmpty)
           return ConformanceExtResult(Seq(new DoesNotTakeParameters))

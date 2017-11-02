@@ -11,7 +11,6 @@ import org.jetbrains.plugins.scala.extensions._
 import org.jetbrains.plugins.scala.lang.psi.api.statements.ScTypeAliasDefinition
 import org.jetbrains.plugins.scala.lang.psi.api.statements.params.PsiTypeParameterExt
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef.{ScObject, ScTemplateDefinition, ScTrait, ScTypeDefinition}
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.ScSyntheticClass
 import org.jetbrains.plugins.scala.lang.psi.types._
 import org.jetbrains.plugins.scala.lang.psi.types.api.designator.{ScDesignatorType, ScProjectionType, ScThisType}
 import org.jetbrains.plugins.scala.lang.psi.types.api.{ParameterizedType, TypeParameterType}
@@ -357,9 +356,6 @@ abstract class MixinNodes {
                 placer = placer.getContext
               }
               (MixinNodes.linearization(template), ScSubstitutor.empty, zSubst)
-            case syn: ScSyntheticClass =>
-              (syn.getSuperTypes.map { psiType => psiType.toScType() }: Seq[ScType],
-                ScSubstitutor.empty, ScSubstitutor.empty)
             case clazz: PsiClass =>
               place = Option(clazz.getLastChild)
               processJava(clazz, ScSubstitutor.empty, map, place)
@@ -386,14 +382,6 @@ abstract class MixinNodes {
             val newMap = new Map
             superClass match {
               case template: ScTemplateDefinition => processScala(template, newSubst, newMap, place, base = false)
-              case syn: ScSyntheticClass =>
-                //it's required to do like this to have possibility mix Synthetic types
-                syn.elementScope.getCachedClass(syn.getQualifiedName)
-                  .collect {
-                    case template: ScTemplateDefinition => template
-                  }.foreach {
-                  processScala(_, newSubst, newMap, place, base = false)
-                }
               case _ => processJava(superClass, newSubst, newMap, place)
             }
             superTypesBuff += newMap

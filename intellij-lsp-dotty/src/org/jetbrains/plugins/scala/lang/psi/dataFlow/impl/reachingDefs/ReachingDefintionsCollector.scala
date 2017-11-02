@@ -14,7 +14,6 @@ import org.jetbrains.plugins.scala.lang.psi.controlFlow.Instruction
 import org.jetbrains.plugins.scala.lang.psi.controlFlow.impl.{DefinitionInstruction, ExtractMethodControlFlowPolicy, ReadWriteVariableInstruction}
 import org.jetbrains.plugins.scala.lang.psi.dataFlow.DfaEngine
 import org.jetbrains.plugins.scala.lang.psi.dataFlow.impl.reachingDefs.ReachingDefinitions._
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.SyntheticNamedElement
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -60,7 +59,6 @@ object ReachingDefintionsCollector {
       case _ => false
     }
     val isSynthetic = element match {
-      case _: SyntheticNamedElement => true
       case fun: ScFunction => fun.isSynthetic
       case _ => false
     }

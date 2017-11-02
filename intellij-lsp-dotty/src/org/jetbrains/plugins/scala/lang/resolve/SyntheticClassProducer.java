@@ -29,9 +29,9 @@ public abstract class SyntheticClassProducer {
   public static PsiClass[] getAllClasses(String fqn, GlobalSearchScope scope) {
     List<PsiClass> all = new ArrayList<PsiClass>();
 
-    for (SyntheticClassProducer ex : EP_NAME.getExtensions()) {
+    /*for (SyntheticClassProducer ex : EP_NAME.getExtensions()) {
       all.addAll(Arrays.asList(ex.findClasses(fqn, scope)));
-    }
+    }*/
 
     return all.toArray(new PsiClass[all.size()]);
   }

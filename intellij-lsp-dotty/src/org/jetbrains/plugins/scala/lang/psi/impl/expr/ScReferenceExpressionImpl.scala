@@ -21,7 +21,6 @@ import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef._
 import org.jetbrains.plugins.scala.lang.psi.api.{ScPackage, ScalaElementVisitor, ScalaRecursiveElementVisitor}
 import org.jetbrains.plugins.scala.lang.psi.impl.ScalaPsiElementFactory
 import org.jetbrains.plugins.scala.lang.psi.impl.ScalaPsiElementFactory.{createExpressionFromText, createExpressionWithContextFromText}
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.ScSyntheticValue
 import org.jetbrains.plugins.scala.lang.psi.types._
 import org.jetbrains.plugins.scala.lang.psi.types.api._
 import org.jetbrains.plugins.scala.lang.psi.types.api.designator.{DesignatorOwner, ScDesignatorType, ScProjectionType, ScThisType}
@@ -378,7 +377,6 @@ class ScReferenceExpressionImpl(node: ASTNode) extends ScReferenceElementImpl(no
                 })
             }
         }
-      case ScalaResolveResult(value: ScSyntheticValue, _) => value.tp
       case ScalaResolveResult(fun: ScFunction, s) if fun.isProbablyRecursive =>
         val maybeResult = fun.definedReturnType.toOption
         s.subst(fun.polymorphicType(maybeResult))

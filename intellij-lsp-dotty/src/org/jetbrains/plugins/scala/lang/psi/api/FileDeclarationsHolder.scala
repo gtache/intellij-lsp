@@ -10,10 +10,9 @@ import org.jetbrains.plugins.scala.caches.ScalaShortNamesCacheManager
 import org.jetbrains.plugins.scala.extensions._
 import org.jetbrains.plugins.scala.lang.psi.api.base.ScStableCodeReferenceElement
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.ScPackaging
-import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef.ScTypeDefinition
+import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef.{ScObject, ScTypeDefinition}
 import org.jetbrains.plugins.scala.lang.psi.impl._
 import org.jetbrains.plugins.scala.lang.psi.impl.expr.ScReferenceExpressionImpl
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.{ScSyntheticClass, SyntheticClasses}
 import org.jetbrains.plugins.scala.lang.psi.types.ScType
 import org.jetbrains.plugins.scala.lang.psi.types.api.Any
 import org.jetbrains.plugins.scala.lang.psi.{ScDeclarationSequenceHolder, ScImportsHolder, ScalaPsiUtil}
@@ -44,14 +43,6 @@ trait FileDeclarationsHolder extends PsiElement with ScDeclarationSequenceHolder
 
     if (context != null) {
       return true
-    }
-
-    if (ScalaPsiUtil.kindProjectorPluginEnabled(place)) {
-      processor.execute(new ScSyntheticClass("Lambda", Any), state)
-      processor.execute(new ScSyntheticClass("λ", Any), state)
-      processor.execute(new ScSyntheticClass("?", Any), state)
-      processor.execute(new ScSyntheticClass("+?", Any), state)
-      processor.execute(new ScSyntheticClass("-?", Any), state)
     }
 
     val scope = place.resolveScope
@@ -100,15 +91,6 @@ trait FileDeclarationsHolder extends PsiElement with ScDeclarationSequenceHolder
             if (aPackage != null && !processor.execute(aPackage, state)) return false
           }
         }
-    }
-
-    if (isScriptProcessed) {
-      val syntheticValueIterator = SyntheticClasses.get(getProject).getScriptSyntheticValues.iterator
-      while (syntheticValueIterator.hasNext) {
-        val syntheticValue = syntheticValueIterator.next()
-        ProgressManager.checkCanceled()
-        if (!processor.execute(syntheticValue, state)) return false
-      }
     }
 
 //    if (isWorksheetFile && WorksheetCompiler.isWorksheetReplModeLight(this)) {
@@ -179,15 +161,14 @@ trait FileDeclarationsHolder extends PsiElement with ScDeclarationSequenceHolder
         else Set.empty[String]
 
       def alreadyContains(className: String) = namesSet.contains(className)
-      val classes = SyntheticClasses.get(getProject)
-      val synthIterator = classes.getAll.iterator
+      val synthIterator = Array[PsiSyntheticClass]().iterator
       while (synthIterator.hasNext) {
         val synth = synthIterator.next()
         ProgressManager.checkCanceled()
         if (!alreadyContains(synth.getName) && !processor.execute(synth, state)) return false
       }
 
-      val synthObjectsIterator = classes.syntheticObjects.iterator
+      val synthObjectsIterator = Array[ScObject]().iterator
       while (synthObjectsIterator.hasNext) {
         val synth = synthObjectsIterator.next()
         ProgressManager.checkCanceled()

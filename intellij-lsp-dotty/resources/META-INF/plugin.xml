@@ -75,10 +75,12 @@
                            implementationClass="org.jetbrains.plugins.scala.highlighter.ScalaSyntaxHighlighter"/>
         <lang.syntaxHighlighterFactory language="Scala"
                                        implementationClass="org.jetbrains.plugins.scala.highlighter.ScalaSyntaxHighlighterFactory"/>
-<!--        <lang.parserDefinition language="Scala"
+        <syntaxHighlighter key="Dotty" implementationClass="org.jetbrains.plugins.scala.highlighter.ScalaSyntaxHighlighter" id="DottySyntaxHighlighter" />
+        <lang.syntaxHighlighterFactory language="Dotty" implementationClass="org.jetbrains.plugins.scala.highlighter.ScalaSyntaxHighlighterFactory" id="DottySyntaxHighlighterFactory" />
+        <lang.parserDefinition language="Scala"
                                implementationClass="org.jetbrains.plugins.scala.lang.parser.ScalaParserDefinition"/>
         <lang.parserDefinition language="Dotty"
-                               implementationClass="org.jetbrains.plugins.dotty.lang.parser.DottyParserDefinition"/>-->
+                               implementationClass="org.jetbrains.plugins.dotty.lang.parser.DottyParserDefinition"/>
         <internalFileTemplate name="Scala Class"/>
         <internalFileTemplate name="Scala Trait"/>
         <internalFileTemplate name="Scala Object"/>

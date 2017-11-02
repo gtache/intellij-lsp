@@ -5,7 +5,6 @@ import org.jetbrains.plugins.scala.lang.psi.ScalaPsiUtil
 import org.jetbrains.plugins.scala.lang.psi.api.statements.params.ScClassParameter
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef.ScMember
 import org.jetbrains.plugins.scala.lang.psi.controlFlow.ScControlFlowPolicy
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.SyntheticNamedElement
 
 /**
  * Nikolay.Tropin
@@ -13,7 +12,6 @@ import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.SyntheticNam
  */
 object ExtractMethodControlFlowPolicy extends ScControlFlowPolicy {
   override def isElementAccepted(named: PsiNamedElement): Boolean = {
-    if (named.isInstanceOf[SyntheticNamedElement]) return false
 
     ScalaPsiUtil.nameContext(named) match {
       case _: ScClassParameter => false

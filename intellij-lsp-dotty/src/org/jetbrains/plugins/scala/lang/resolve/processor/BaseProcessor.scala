@@ -14,7 +14,6 @@ import org.jetbrains.plugins.scala.lang.psi.api.toplevel.ScTypedDefinition
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.imports.usages.ImportUsed
 import org.jetbrains.plugins.scala.lang.psi.api.toplevel.typedef.{ScObject, ScTemplateDefinition}
 import org.jetbrains.plugins.scala.lang.psi.impl.ScalaPsiManager
-import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.synthetic.{ScSyntheticFunction, SyntheticClasses}
 import org.jetbrains.plugins.scala.lang.psi.impl.toplevel.typedef.TypeDefinitionMembers
 import org.jetbrains.plugins.scala.lang.psi.types._
 import org.jetbrains.plugins.scala.lang.psi.types.api._
@@ -142,8 +141,6 @@ abstract class BaseProcessor(val kinds: Set[ResolveTargets.Value])
 
     t match {
       case ScDesignatorType(clazz: PsiClass) if clazz.qualifiedName == "java.lang.String" =>
-        val plusMethod: ScType => ScSyntheticFunction = SyntheticClasses.get(place.getProject).stringPlusMethod
-        if (plusMethod != null) execute(plusMethod(t), state) //add + method
       case _ =>
     }
 
@@ -226,15 +223,6 @@ abstract class BaseProcessor(val kinds: Set[ResolveTargets.Value])
         val actualElement = proj.actualElement
         processElement(actualElement, s, place, state, visitedProjections = visitedProjections + actualElement, visitedTypeParameter = visitedTypeParameter)
       case StdType(name, tSuper) =>
-        SyntheticClasses.get(place.getProject).byName(name) match {
-          case Some(c) =>
-            if (!c.processDeclarations(this, state, null, place) ||
-                    !(tSuper match {
-                      case Some(ts) => processType(ts, place, visitedProjections = visitedProjections, visitedTypeParameter = visitedTypeParameter)
-                      case _ => true
-                    })) return false
-          case None => //nothing to do
-        }
 
         val scope = place.resolveScope
         val obj: PsiClass = ScalaPsiManager.instance(place.getProject).getCachedClass(scope, "java.lang.Object").orNull
