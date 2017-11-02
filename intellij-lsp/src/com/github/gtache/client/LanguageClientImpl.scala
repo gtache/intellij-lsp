@@ -3,6 +3,7 @@ package com.github.gtache.client
 import java.util.concurrent.CompletableFuture
 
 import com.github.gtache.editor.EditorEventManager
+import com.github.gtache.requests.WorkspaceEditHandler
 import com.intellij.openapi.diagnostic.Logger
 import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.services.{LanguageClient, LanguageServer}
@@ -28,26 +29,7 @@ class LanguageClientImpl extends LanguageClient {
 
   override def applyEdit(params: ApplyWorkspaceEditParams): CompletableFuture[ApplyWorkspaceEditResponse] = {
     CompletableFuture.supplyAsync(() => {
-      val edit = params.getEdit
-      import scala.collection.JavaConverters._
-      val changes = edit.getChanges.asScala
-      val dChanges = edit.getDocumentChanges.asScala
-      var didApply: Boolean = true
-      if (dChanges != null) {
-        dChanges.foreach(edit => {
-          val doc = edit.getTextDocument
-          val version = doc.getVersion
-          val uri = doc.getUri
-          EditorEventManager.forUri(uri).foreach(m => if (!m.applyEdit(version, edit.getEdits.asScala.toList)) didApply = false)
-        })
-      } else {
-        changes.foreach(edit => {
-          val uri = edit._1
-          val changes = edit._2.asScala
-          EditorEventManager.forUri(uri).foreach(m => if (!m.applyEdit(edits = changes.toList)) didApply = false)
-        })
-      }
-      new ApplyWorkspaceEditResponse(didApply)
+      new ApplyWorkspaceEditResponse(WorkspaceEditHandler.applyEdit(params.getEdit))
     })
   }
 

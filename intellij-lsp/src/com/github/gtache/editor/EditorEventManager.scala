@@ -1,7 +1,7 @@
 package com.github.gtache.editor
 
 import java.awt.event.KeyEvent
-import java.awt.{Color, Font, KeyEventDispatcher, KeyboardFocusManager, Point}
+import java.awt.{Color, Font, KeyboardFocusManager, Point}
 import java.util.concurrent.{TimeUnit, TimeoutException}
 import java.util.{Collections, Timer, TimerTask}
 
@@ -9,14 +9,16 @@ import com.github.gtache.Utils
 import com.github.gtache.client.RequestManager
 import com.github.gtache.client.languageserver.LanguageServerWrapperImpl
 import com.github.gtache.contributors.psi.LSPPsiElement
-import com.github.gtache.requests.HoverHandler
+import com.github.gtache.requests.{HoverHandler, WorkspaceEditHandler}
 import com.intellij.codeInsight.lookup.{AutoCompletionPolicy, LookupElement, LookupElementBuilder}
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.colors.EditorColors
 import com.intellij.openapi.editor.event._
 import com.intellij.openapi.editor.markup._
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.ui.popup.{Balloon, JBPopupFactory, JBPopupListener, LightweightWindowEvent}
 import com.intellij.openapi.util.{Computable, TextRange}
 import com.intellij.psi.PsiReference
@@ -438,21 +440,52 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param edits   The edits
     * @return True if the edits have been applied, false otherwise
     */
-  def applyEdit(version: Int = -1, edits: List[TextEdit]): Boolean = {
+  def applyEdit(version: Int = Int.MaxValue, edits: List[TextEdit]): Boolean = {
     if (version >= this.version) {
       edits.foreach(edit => {
         val text = edit.getNewText
         val range = edit.getRange
-        val start = Utils.LSPPosToOffset(editor, range.getStart)
-        val end = Utils.LSPPosToOffset(editor, range.getEnd)
-        val document = editor.getDocument
-        if (text == "") {
-          document.deleteString(start, end)
-        } else if (end - start <= 0) {
-          document.insertString(start, text)
-        } else {
-          document.replaceString(start, end, text)
-        }
+        ApplicationManager.getApplication.invokeLater(() => {
+          val start = Utils.LSPPosToOffset(editor, range.getStart)
+          val end = Utils.LSPPosToOffset(editor, range.getEnd)
+          val document = editor.getDocument
+          if (document.isWritable) {
+            if (text == "") {
+              val runnable = new Runnable {
+                override def run(): Unit = ApplicationManager.getApplication.runWriteAction(new Runnable {
+                  override def run(): Unit = {
+                    document.deleteString(start, end)
+                    FileDocumentManager.getInstance().saveDocument(document)
+                  }
+                })
+              }
+              CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, "Delete string", "LSPPlugin", document)
+            } else if (end - start <= 0) {
+              val runnable = new Runnable {
+                override def run(): Unit = ApplicationManager.getApplication.runWriteAction(new Runnable {
+                  override def run(): Unit = {
+                    document.insertString(start, text)
+                    FileDocumentManager.getInstance().saveDocument(document)
+                  }
+                })
+              }
+              CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, "Insert " + text, "LSPPlugin", document)
+
+            } else {
+              val runnable = new Runnable {
+                override def run(): Unit = ApplicationManager.getApplication.runWriteAction(new Runnable {
+                  override def run(): Unit = {
+                    document.replaceString(start, end, text)
+                    FileDocumentManager.getInstance().saveDocument(document)
+                  }
+                })
+              }
+              CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, "Replace " + text, "LSPPlugin", document)
+            }
+          } else {
+            LOG.warn("Document " + Utils.editorToURIString(editor) + " is read-only")
+          }
+        })
       })
       true
     } else {
@@ -499,4 +532,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
+  def rename(renameTo: String): Unit = {
+    val servPos = Utils.logicalToLSPPos(editor.offsetToLogicalPosition(editor.getCaretModel.getCurrentCaret.getOffset))
+    val params = new RenameParams(identifier, servPos, renameTo)
+    val future = requestManager.rename(params)
+    future.thenAccept(res => WorkspaceEditHandler.applyEdit(res))
+  }
 }
