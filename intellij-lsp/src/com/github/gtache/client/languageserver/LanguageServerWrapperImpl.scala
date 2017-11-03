@@ -10,7 +10,8 @@ import com.github.gtache.client.connection.StreamConnectionProvider
 import com.github.gtache.editor.EditorEventManager
 import com.github.gtache.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.requests.Timeout
-import com.github.gtache.{PluginMain, Utils}
+import com.github.gtache.PluginMain
+import com.github.gtache.utils.Utils
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import org.eclipse.lsp4j._

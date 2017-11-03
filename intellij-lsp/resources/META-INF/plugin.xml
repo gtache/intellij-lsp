@@ -37,8 +37,12 @@
     </extensionPoints>
 
     <actions>
-        <action class="com.github.gtache.editor.LSPQuickDocAction" id="QuickJavaDoc" text="Quick Doc"
+        <action class="com.github.gtache.actions.LSPQuickDocAction" id="QuickJavaDoc" text="Quick Doc"
                 overrides="true"/> <!-- Overrides quickdoc if possible, otherwise delegates to it -->
+        <action class="com.github.gtache.actions.LSPReformatAction" id="ReformatCode" use-shortcut-of="ReformatCode"
+                overrides="true"/>
+        <action class="com.github.gtache.actions.LSPShowReformatDialogAction" id="ShowReformatFileDialog"
+                use-shortcut-of="ShowReformatFileDialog" overrides="true"/>
         <action class="com.github.gtache.actions.LSPRefactoringAction" id="LSPRefactoringAction">
             <keyboard-shortcut first-keystroke="shift alt F6" keymap="$default"/>
         </action>

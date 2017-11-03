@@ -1,7 +1,7 @@
 package com.github.gtache.requests
 
-import com.github.gtache.Utils
 import com.github.gtache.editor.EditorEventManager
+import com.github.gtache.utils.Utils
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.vfs.VirtualFile

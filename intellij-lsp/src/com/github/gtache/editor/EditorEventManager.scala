@@ -5,11 +5,11 @@ import java.awt.{Color, Font, KeyboardFocusManager, Point}
 import java.util.concurrent.{TimeUnit, TimeoutException}
 import java.util.{Collections, Timer, TimerTask}
 
-import com.github.gtache.Utils
 import com.github.gtache.client.RequestManager
 import com.github.gtache.client.languageserver.LanguageServerWrapperImpl
 import com.github.gtache.contributors.psi.LSPPsiElement
 import com.github.gtache.requests.{HoverHandler, WorkspaceEditHandler}
+import com.github.gtache.utils.Utils
 import com.intellij.codeInsight.lookup.{AutoCompletionPolicy, LookupElement, LookupElementBuilder}
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.CommandProcessor
@@ -25,6 +25,7 @@ import com.intellij.psi.PsiReference
 import com.intellij.ui.awt.RelativePoint
 import org.eclipse.lsp4j._
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 object EditorEventManager {
@@ -232,6 +233,25 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
+  /**
+    * Immediately requests the server for documentation at the current editor position
+    *
+    * @param editor The editor
+    */
+  def quickDoc(editor: Editor): Unit = {
+    if (editor == this.editor) {
+      val caretPos = editor.getCaretModel.getLogicalPosition
+      val pointPos = editor.logicalPositionToXY(caretPos)
+      val currentTime = System.nanoTime()
+      ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
+        override def run(): Unit = requestAndShowDoc(currentTime, caretPos, pointPos)
+      })
+      predTime = currentTime
+    } else {
+      LOG.warn("Not same editor!")
+    }
+  }
+
   private def requestAndShowDoc(curTime: Long, editorPos: LogicalPosition, point: Point): Unit = {
     isPopupOpen = true
     val serverPos = Utils.logicalToLSPPos(editorPos)
@@ -270,25 +290,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       })
       currentPopup.show(new RelativePoint(editor.getContentComponent, point), Balloon.Position.above)
     })
-  }
-
-  /**
-    * Immediately requests the server for documentation at the current editor position
-    *
-    * @param editor The editor
-    */
-  def quickDoc(editor: Editor): Unit = {
-    if (editor == this.editor) {
-      val caretPos = editor.getCaretModel.getLogicalPosition
-      val pointPos = editor.logicalPositionToXY(caretPos)
-      val currentTime = System.nanoTime()
-      ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
-        override def run(): Unit = requestAndShowDoc(currentTime, caretPos, pointPos)
-      })
-      predTime = currentTime
-    } else {
-      LOG.warn("Not same editor!")
-    }
   }
 
   /**
@@ -434,13 +435,81 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
+    * Applies the diagnostics to the document
+    *
+    * @param diagnostics The diagnostics to apply from the server
+    */
+  def diagnostics(diagnostics: Iterable[Diagnostic]): Unit = {
+    ApplicationManager.getApplication.invokeLater(() => {
+      diagnosticsHighlights.foreach(highlight => editor.getMarkupModel.removeHighlighter(highlight.rangeHighlighter))
+      diagnosticsHighlights.clear()
+    })
+    for (diagnostic <- diagnostics) {
+      val code = diagnostic.getCode
+      val message = diagnostic.getMessage
+      val source = diagnostic.getSource
+      val range = diagnostic.getRange
+      val severity = diagnostic.getSeverity
+      val (start, end) = ApplicationManager.getApplication.runReadAction(new Computable[(Int, Int)] {
+        override def compute(): (Int, Int) = (Utils.LSPPosToOffset(editor, range.getStart), Utils.LSPPosToOffset(editor, range.getEnd))
+      })
+
+      val markupModel = editor.getMarkupModel
+      val colorScheme = editor.getColorsScheme
+
+      val (effectType, effectColor, layer) = severity match {
+        case null => null
+        case DiagnosticSeverity.Error => (EffectType.WAVE_UNDERSCORE, Color.RED, HighlighterLayer.ERROR)
+        case DiagnosticSeverity.Warning => (EffectType.WAVE_UNDERSCORE, Color.YELLOW, HighlighterLayer.WARNING)
+        case DiagnosticSeverity.Information => (EffectType.WAVE_UNDERSCORE, Color.GRAY, HighlighterLayer.WARNING)
+        case DiagnosticSeverity.Hint => (EffectType.BOLD_DOTTED_LINE, Color.GRAY, HighlighterLayer.WARNING)
+      }
+      ApplicationManager.getApplication.invokeLater(() => {
+        diagnosticsHighlights
+          .add(DiagnosticRangeHighlighter(markupModel.addRangeHighlighter(start, end, layer,
+            new TextAttributes(colorScheme.getDefaultForeground, colorScheme.getDefaultBackground, effectColor, effectType, Font.PLAIN), HighlighterTargetArea.EXACT_RANGE),
+            message, source, code))
+      })
+    }
+  }
+
+  def rename(renameTo: String): Unit = {
+    val servPos = Utils.logicalToLSPPos(editor.offsetToLogicalPosition(editor.getCaretModel.getCurrentCaret.getOffset))
+    val params = new RenameParams(identifier, servPos, renameTo)
+    val future = requestManager.rename(params)
+    future.thenAccept(res => WorkspaceEditHandler.applyEdit(res))
+  }
+
+  def reformat(): Unit = {
+    val params = new DocumentFormattingParams()
+    params.setTextDocument(identifier)
+    val options = new FormattingOptions()
+    params.setOptions(options)
+    requestManager.formatting(params).thenAccept(formatting => applyEdit(edits = formatting.asScala))
+  }
+
+  def reformatSelection(): Unit = {
+    val params = new DocumentRangeFormattingParams()
+    params.setTextDocument(identifier)
+    val selectionModel = editor.getSelectionModel
+    val start = selectionModel.getSelectionStart
+    val end = selectionModel.getSelectionEnd
+    val startingPos = Utils.offsetToLSPPos(editor, start)
+    val endPos = Utils.offsetToLSPPos(editor, end)
+    params.setRange(new Range(startingPos, endPos))
+    val options = new FormattingOptions()
+    params.setOptions(options)
+    requestManager.rangeFormatting(params).thenAccept(formatting => applyEdit(edits = formatting.asScala))
+  }
+
+  /**
     * Applies the edits given a version
     *
     * @param version The version of the changes ; If it is lower than the current version, they are discarded
     * @param edits   The edits
     * @return True if the edits have been applied, false otherwise
     */
-  def applyEdit(version: Int = Int.MaxValue, edits: List[TextEdit]): Boolean = {
+  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit]): Boolean = {
     if (version >= this.version) {
       edits.foreach(edit => {
         val text = edit.getNewText
@@ -491,51 +560,5 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     } else {
       false
     }
-  }
-
-  /**
-    * Applies the diagnostics to the document
-    *
-    * @param diagnostics The diagnostics to apply from the server
-    */
-  def diagnostics(diagnostics: Iterable[Diagnostic]): Unit = {
-    ApplicationManager.getApplication.invokeLater(() => {
-      diagnosticsHighlights.foreach(highlight => editor.getMarkupModel.removeHighlighter(highlight.rangeHighlighter))
-      diagnosticsHighlights.clear()
-    })
-    for (diagnostic <- diagnostics) {
-      val code = diagnostic.getCode
-      val message = diagnostic.getMessage
-      val source = diagnostic.getSource
-      val range = diagnostic.getRange
-      val severity = diagnostic.getSeverity
-      val (start, end) = ApplicationManager.getApplication.runReadAction(new Computable[(Int, Int)] {
-        override def compute(): (Int, Int) = (Utils.LSPPosToOffset(editor, range.getStart), Utils.LSPPosToOffset(editor, range.getEnd))
-      })
-
-      val markupModel = editor.getMarkupModel
-      val colorScheme = editor.getColorsScheme
-
-      val (effectType, effectColor, layer) = severity match {
-        case null => null
-        case DiagnosticSeverity.Error => (EffectType.WAVE_UNDERSCORE, Color.RED, HighlighterLayer.ERROR)
-        case DiagnosticSeverity.Warning => (EffectType.WAVE_UNDERSCORE, Color.YELLOW, HighlighterLayer.WARNING)
-        case DiagnosticSeverity.Information => (EffectType.WAVE_UNDERSCORE, Color.GRAY, HighlighterLayer.WARNING)
-        case DiagnosticSeverity.Hint => (EffectType.BOLD_DOTTED_LINE, Color.GRAY, HighlighterLayer.WARNING)
-      }
-      ApplicationManager.getApplication.invokeLater(() => {
-        diagnosticsHighlights
-          .add(DiagnosticRangeHighlighter(markupModel.addRangeHighlighter(start, end, layer,
-            new TextAttributes(colorScheme.getDefaultForeground, colorScheme.getDefaultBackground, effectColor, effectType, Font.PLAIN), HighlighterTargetArea.EXACT_RANGE),
-            message, source, code))
-      })
-    }
-  }
-
-  def rename(renameTo: String): Unit = {
-    val servPos = Utils.logicalToLSPPos(editor.offsetToLogicalPosition(editor.getCaretModel.getCurrentCaret.getOffset))
-    val params = new RenameParams(identifier, servPos, renameTo)
-    val future = requestManager.rename(params)
-    future.thenAccept(res => WorkspaceEditHandler.applyEdit(res))
   }
 }

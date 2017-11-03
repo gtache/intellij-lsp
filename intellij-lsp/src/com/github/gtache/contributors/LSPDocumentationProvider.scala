@@ -1,7 +1,7 @@
 package com.github.gtache.contributors
 
-import com.github.gtache.Utils
 import com.github.gtache.editor.EditorEventManager
+import com.github.gtache.utils.Utils
 import com.intellij.lang.documentation.DocumentationProvider
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.psi.{PsiElement, PsiManager}

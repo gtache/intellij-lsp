@@ -8,6 +8,7 @@ import com.github.gtache.editor.EditorEventManager
 import com.github.gtache.editor.listeners.{EditorListener, FileDocumentManagerListenerImpl, VFSListener}
 import com.github.gtache.requests.Timeout
 import com.github.gtache.settings.LSPState
+import com.github.gtache.utils.Utils
 import com.intellij.AppTopics
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.navigation.NavigationItem
@@ -142,9 +143,11 @@ object PluginMain {
       extToServerDefinition.get(ext) match {
         case Some(_) =>
           val uri = Utils.editorToURIString(editor)
-          LanguageServerWrapperImpl.forUri(uri).foreach(l => {
-            LOG.info("Disconnecting " + uri)
-            l.disconnect(uri)
+          ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
+            override def run(): Unit = LanguageServerWrapperImpl.forUri(uri).foreach(l => {
+              LOG.info("Disconnecting " + uri)
+              l.disconnect(uri)
+            })
           })
         case None =>
           LOG.info("Closing LSP-unsupported file with extension " + ext)

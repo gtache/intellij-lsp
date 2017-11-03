@@ -1,7 +1,7 @@
 package com.github.gtache.settings;
 
 import com.github.gtache.PluginMain;
-import com.github.gtache.Utils;
+import com.github.gtache.utils.Utils;
 import com.github.gtache.client.languageserver.ArtifactLanguageServerDefinition;
 import com.github.gtache.client.languageserver.LanguageServerDefinition;
 import com.intellij.openapi.diagnostic.Logger;

@@ -1,6 +1,7 @@
 package com.github.gtache.contributors
 
-import com.github.gtache.{PluginMain, Utils}
+import com.github.gtache.PluginMain
+import com.github.gtache.utils.Utils
 import com.intellij.codeInsight.completion.{CompletionContributor, CompletionParameters, CompletionResultSet}
 import com.intellij.openapi.diagnostic.Logger
 

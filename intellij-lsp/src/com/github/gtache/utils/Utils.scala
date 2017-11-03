@@ -1,14 +1,18 @@
-package com.github.gtache
+package com.github.gtache.utils
 
 import java.io.File
 import java.net.{MalformedURLException, URI, URL}
 
-import com.github.gtache.Utils.OS.OS
+import com.github.gtache.PluginMain
 import com.github.gtache.client.languageserver.ArtifactLanguageServerDefinition
+import com.github.gtache.editor.EditorEventManager
+import com.github.gtache.requests.WorkspaceEditHandler.LOG
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
-import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, OpenFileDescriptor}
 import com.intellij.openapi.fileTypes.FileType
+import com.intellij.openapi.project.{Project, ProjectManager}
 import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
 import org.eclipse.lsp4j.{Position, TextDocumentIdentifier}
 
@@ -17,8 +21,61 @@ import org.eclipse.lsp4j.{Position, TextDocumentIdentifier}
   */
 object Utils {
 
-  val os: OS = if (System.getProperty("os.name").contains("win")) OS.WINDOWS else OS.UNIX
   private val LOG: Logger = Logger.getInstance(Utils.getClass)
+  private val os: OS.Value = if (System.getProperty("os.name").contains("win")) OS.WINDOWS else OS.UNIX
+
+  /**
+    * Calculates a Position given an editor and an offset
+    *
+    * @param editor The editor
+    * @param offset The offset
+    * @return an LSP position
+    */
+  def offsetToLSPPos(editor: Editor, offset: Int): Position = {
+    logicalToLSPPos(editor.offsetToLogicalPosition(offset))
+  }
+
+  /**
+    * Transforms a LogicalPosition (IntelliJ) to an LSP Position
+    *
+    * @param position the LogicalPosition
+    * @return the Position
+    */
+  def logicalToLSPPos(position: LogicalPosition): Position = {
+    new Position(position.line, position.column)
+  }
+
+  /**
+    * Transforms an LSP position to an editor offset
+    *
+    * @param editor The editor
+    * @param pos    The LSPPos
+    * @return The offset
+    */
+  def LSPPosToOffset(editor: Editor, pos: Position): Int = {
+    editor.logicalPositionToOffset(LSPToLogicalPos(pos))
+  }
+
+  /**
+    * Transforms an LSP position to a LogicalPosition
+    *
+    * @param position The LSPPos
+    * @return The LogicalPos
+    */
+  def LSPToLogicalPos(position: Position): LogicalPosition = {
+    new LogicalPosition(position.getLine, position.getCharacter)
+  }
+
+  /**
+    * Transforms an array into a string (using mkString, useful for Java)
+    *
+    * @param arr The array
+    * @param sep A separator
+    * @return The result of mkString
+    */
+  def arrayToString(arr: Array[Any], sep: String = ""): String = {
+    arr.mkString(sep)
+  }
 
   /**
     * Returns a file type given an editor
@@ -124,59 +181,6 @@ object Utils {
   }
 
   /**
-    * Calculates a Position given an editor and an offset
-    *
-    * @param editor The editor
-    * @param offset The offset
-    * @return an LSP position
-    */
-  def offsetToLSPPos(editor: Editor, offset: Int): Position = {
-    logicalToLSPPos(editor.offsetToLogicalPosition(offset))
-  }
-
-  /**
-    * Transforms a LogicalPosition (IntelliJ) to an LSP Position
-    *
-    * @param position the LogicalPosition
-    * @return the Position
-    */
-  def logicalToLSPPos(position: LogicalPosition): Position = {
-    new Position(position.line, position.column)
-  }
-
-  /**
-    * Transforms an LSP position to an editor offset
-    *
-    * @param editor The editor
-    * @param pos    The LSPPos
-    * @return The offset
-    */
-  def LSPPosToOffset(editor: Editor, pos: Position): Int = {
-    editor.logicalPositionToOffset(LSPToLogicalPos(pos))
-  }
-
-  /**
-    * Transforms an LSP position to a LogicalPosition
-    *
-    * @param position The LSPPos
-    * @return The LogicalPos
-    */
-  def LSPToLogicalPos(position: Position): LogicalPosition = {
-    new LogicalPosition(position.getLine, position.getCharacter)
-  }
-
-  /**
-    * Transforms an array into a string (using mkString, useful for Java)
-    *
-    * @param arr The array
-    * @param sep A separator
-    * @return The result of mkString
-    */
-  def arrayToString(arr: Array[Any], sep: String = ""): String = {
-    arr.mkString(sep)
-  }
-
-  /**
     * Transforms a (java) Map<String, ServerDefinitionExtensionPointArtifact> to a Map<String, String[]>
     *
     * @param map A java map
@@ -227,6 +231,5 @@ object Utils {
     type OS = Value
     val WINDOWS, UNIX = Value
   }
-
 
 }

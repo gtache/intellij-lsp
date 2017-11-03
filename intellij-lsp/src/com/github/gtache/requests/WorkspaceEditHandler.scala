@@ -53,10 +53,9 @@ object WorkspaceEditHandler {
                 override def run(): Unit = fileEditorManager.closeFile(file)
               }))
             }
-        }
-        else
-        {
-          LOG.warn("Unsupported file ext sent by server : " + uri)
+            else {
+              LOG.warn("Unsupported file ext sent by server : " + uri)
+            }
         }
       })
     } else {
