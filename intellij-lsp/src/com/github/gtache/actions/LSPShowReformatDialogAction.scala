@@ -9,6 +9,10 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.psi.PsiDocumentManager
 
+/**
+  * Class overriding the default action handling the Reformat dialog event (CTRL+ALT+SHIFT+L by default)
+  * Fallback to the default action if the language is already supported or not supported by any language server
+  */
 class LSPShowReformatDialogAction extends ShowReformatFileDialog {
   private val HELP_ID = "editing.codeReformatting"
 
@@ -20,6 +24,7 @@ class LSPShowReformatDialogAction extends ShowReformatFileDialog {
     if (editor != null) {
       val file = PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument)
       if (LanguageFormatting.INSTANCE.allForLanguage(file.getLanguage).isEmpty && PluginMain.isExtensionSupported(FileDocumentManager.getInstance().getFile(editor.getDocument).getExtension)) {
+
         val hasSelection = editor.getSelectionModel.hasSelection
         val dialog = new LayoutCodeDialog(project, file, hasSelection, HELP_ID)
         dialog.show()

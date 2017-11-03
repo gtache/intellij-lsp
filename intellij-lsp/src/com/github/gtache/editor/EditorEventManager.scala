@@ -473,6 +473,11 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
+  /**
+    * Rename a symbol in the document
+    *
+    * @param renameTo The new name
+    */
   def rename(renameTo: String): Unit = {
     val servPos = Utils.logicalToLSPPos(editor.offsetToLogicalPosition(editor.getCaretModel.getCurrentCaret.getOffset))
     val params = new RenameParams(identifier, servPos, renameTo)
@@ -480,26 +485,15 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     future.thenAccept(res => WorkspaceEditHandler.applyEdit(res))
   }
 
+  /**
+    * Reformat the whole document
+    */
   def reformat(): Unit = {
     val params = new DocumentFormattingParams()
     params.setTextDocument(identifier)
     val options = new FormattingOptions()
     params.setOptions(options)
     requestManager.formatting(params).thenAccept(formatting => applyEdit(edits = formatting.asScala))
-  }
-
-  def reformatSelection(): Unit = {
-    val params = new DocumentRangeFormattingParams()
-    params.setTextDocument(identifier)
-    val selectionModel = editor.getSelectionModel
-    val start = selectionModel.getSelectionStart
-    val end = selectionModel.getSelectionEnd
-    val startingPos = Utils.offsetToLSPPos(editor, start)
-    val endPos = Utils.offsetToLSPPos(editor, end)
-    params.setRange(new Range(startingPos, endPos))
-    val options = new FormattingOptions()
-    params.setOptions(options)
-    requestManager.rangeFormatting(params).thenAccept(formatting => applyEdit(edits = formatting.asScala))
   }
 
   /**
@@ -560,5 +554,22 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     } else {
       false
     }
+  }
+
+  /**
+    * Reformat the text currently selected in the editor
+    */
+  def reformatSelection(): Unit = {
+    val params = new DocumentRangeFormattingParams()
+    params.setTextDocument(identifier)
+    val selectionModel = editor.getSelectionModel
+    val start = selectionModel.getSelectionStart
+    val end = selectionModel.getSelectionEnd
+    val startingPos = Utils.offsetToLSPPos(editor, start)
+    val endPos = Utils.offsetToLSPPos(editor, end)
+    params.setRange(new Range(startingPos, endPos))
+    val options = new FormattingOptions()
+    params.setOptions(options)
+    requestManager.rangeFormatting(params).thenAccept(formatting => applyEdit(edits = formatting.asScala))
   }
 }

@@ -4,7 +4,6 @@ import java.util.concurrent.CompletableFuture
 
 import com.github.gtache.editor.EditorEventManager
 import com.github.gtache.requests.WorkspaceEditHandler
-import com.github.gtache.utils.Utils
 import com.intellij.openapi.diagnostic.Logger
 import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.services.{LanguageClient, LanguageServer}

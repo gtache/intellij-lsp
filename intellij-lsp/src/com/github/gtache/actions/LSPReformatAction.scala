@@ -8,6 +8,10 @@ import com.intellij.openapi.actionSystem.{AnActionEvent, CommonDataKeys}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.psi.PsiDocumentManager
 
+/**
+  * Action overriding the default reformat action
+  * Fallback to the default action if the language is already supported or not supported by any language server
+  */
 class LSPReformatAction extends ReformatCodeAction {
 
   private val LOG: Logger = Logger.getInstance(classOf[LSPReformatAction])

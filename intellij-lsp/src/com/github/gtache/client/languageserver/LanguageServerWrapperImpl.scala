@@ -5,12 +5,12 @@ import java.io.IOException
 import java.net.URI
 import java.util.concurrent._
 
+import com.github.gtache.PluginMain
 import com.github.gtache.client._
 import com.github.gtache.client.connection.StreamConnectionProvider
 import com.github.gtache.editor.EditorEventManager
 import com.github.gtache.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.requests.Timeout
-import com.github.gtache.PluginMain
 import com.github.gtache.utils.Utils
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor

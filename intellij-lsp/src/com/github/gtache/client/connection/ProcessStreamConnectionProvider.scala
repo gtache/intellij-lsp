@@ -35,18 +35,6 @@ class ProcessStreamConnectionProvider(private var commands: Seq[String], private
     builder
   }
 
-  protected def getCommands: Seq[String] = commands
-
-  def setCommands(commands: Seq[String]): Unit = {
-    this.commands = commands
-  }
-
-  protected def getWorkingDirectory: String = workingDir
-
-  def setWorkingDirectory(workingDir: String): Unit = {
-    this.workingDir = workingDir
-  }
-
   @Nullable override def getInputStream: InputStream = {
     if (process == null) null
     else process.getInputStream
@@ -72,5 +60,17 @@ class ProcessStreamConnectionProvider(private var commands: Seq[String], private
 
   override def hashCode: Int = {
     Objects.hashCode(this.getCommands) ^ Objects.hashCode(this.getWorkingDirectory)
+  }
+
+  protected def getCommands: Seq[String] = commands
+
+  def setCommands(commands: Seq[String]): Unit = {
+    this.commands = commands
+  }
+
+  protected def getWorkingDirectory: String = workingDir
+
+  def setWorkingDirectory(workingDir: String): Unit = {
+    this.workingDir = workingDir
   }
 }

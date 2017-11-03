@@ -1,8 +1,8 @@
 package com.github.gtache.settings;
 
-import com.github.gtache.utils.Utils;
 import com.github.gtache.client.MessageDialog;
 import com.github.gtache.client.languageserver.ArtifactLanguageServerDefinition;
+import com.github.gtache.utils.Utils;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
