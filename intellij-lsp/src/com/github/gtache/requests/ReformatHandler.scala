@@ -1,7 +1,7 @@
 package com.github.gtache.requests
 
-import com.github.gtache.editor.EditorEventManager
 import com.github.gtache.PluginMain
+import com.github.gtache.editor.EditorEventManager
 import com.github.gtache.utils.Utils
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
@@ -12,6 +12,12 @@ import com.intellij.openapi.vfs.VirtualFile
 
 object ReformatHandler {
 
+  /**
+    * Unused
+    *
+    * @param project
+    * @return
+    */
   def reformatAllFiles(project: Project): Boolean = {
     var allFilesSupported = true
     ProjectFileIndex.getInstance(project).iterateContent((fileOrDir: VirtualFile) => {

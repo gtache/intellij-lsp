@@ -1,8 +1,5 @@
 package com.github.gtache.actions
 
-import java.util.concurrent.CompletableFuture
-import java.util.function.Supplier
-
 import com.github.gtache.PluginMain
 import com.github.gtache.requests.ReformatHandler
 import com.intellij.codeInsight.actions.ReformatCodeAction
@@ -20,17 +17,11 @@ class LSPReformatAction extends ReformatCodeAction {
     val editor = e.getData(CommonDataKeys.EDITOR)
     if (editor != null) {
       val file = PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument)
-      if (!LanguageFormatting.INSTANCE.allForLanguage(file.getLanguage).isEmpty) {
-        super.actionPerformed(e)
-      } else if (PluginMain.isExtensionSupported(file.getVirtualFile.getExtension)) {
+      if (LanguageFormatting.INSTANCE.allForLanguage(file.getLanguage).isEmpty && PluginMain.isExtensionSupported(file.getVirtualFile.getExtension)) {
         ReformatHandler.reformatFile(editor)
+      } else {
+        super.actionPerformed(e)
       }
-    } else if (project != null) {
-      CompletableFuture.supplyAsync(new Supplier[Boolean] {
-        override def get(): Boolean = ReformatHandler.reformatAllFiles(project)
-      }).thenAccept(res => if (!res) super.actionPerformed(e))
-    } else {
-      super.actionPerformed(e)
     }
   }
 

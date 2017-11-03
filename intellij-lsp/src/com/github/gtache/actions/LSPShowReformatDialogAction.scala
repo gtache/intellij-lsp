@@ -1,28 +1,23 @@
 package com.github.gtache.actions
 
-import java.util.concurrent.CompletableFuture
-import java.util.function.Supplier
-
 import com.github.gtache.PluginMain
 import com.github.gtache.editor.EditorEventManager
-import com.github.gtache.requests.ReformatHandler
 import com.intellij.codeInsight.actions.{LayoutCodeDialog, ShowReformatFileDialog, TextRangeType}
 import com.intellij.lang.LanguageFormatting
 import com.intellij.openapi.actionSystem.{AnActionEvent, CommonDataKeys}
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.psi.PsiDocumentManager
 
 class LSPShowReformatDialogAction extends ShowReformatFileDialog {
   private val HELP_ID = "editing.codeReformatting"
 
+  private val LOG: Logger = Logger.getInstance(classOf[LSPShowReformatDialogAction])
+
   override def actionPerformed(e: AnActionEvent): Unit = {
     val editor = e.getData(CommonDataKeys.EDITOR)
     val project = e.getData(CommonDataKeys.PROJECT)
-    if (editor == null && project != null) {
-      CompletableFuture.supplyAsync(new Supplier[Boolean] {
-        override def get(): Boolean = ReformatHandler.reformatAllFiles(project)
-      }).thenAccept(res => if (!res) super.actionPerformed(e))
-    } else if (editor != null) {
+    if (editor != null) {
       val file = PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument)
       if (LanguageFormatting.INSTANCE.allForLanguage(file.getLanguage).isEmpty && PluginMain.isExtensionSupported(FileDocumentManager.getInstance().getFile(editor.getDocument).getExtension)) {
         val hasSelection = editor.getSelectionModel.hasSelection
