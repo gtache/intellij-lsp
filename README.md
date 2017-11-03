@@ -21,7 +21,7 @@ Concretely, what you can do with IntelliJ at the moment :
 -Use Goto file/class/symbol (CTRL(+SHIFT+ALT)+N by default)    
 -See which symbols are the same as the one selected    
 -Rename a symbol with SHIFT+ALT+F6    
--Format a document / a selection
+-Format a document / a selection (CTRL+ALT(+SHIFT)+L by default)
 
 
 There is a skeleton of an LSP plugin for Dotty in the intellij-lsp-dotty folder (mainly for testing purposes). Most of the code is taken and adapted from https://github.com/JetBrains/intellij-scala
