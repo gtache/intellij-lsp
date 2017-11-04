@@ -5,6 +5,7 @@ import java.io.{InputStream, OutputStream}
 import com.github.gtache.client.LanguageClientImpl
 import com.github.gtache.client.connection.StreamConnectionProvider
 import com.intellij.openapi.diagnostic.Logger
+import org.jetbrains.annotations.NotNull
 
 import scala.collection.mutable
 
@@ -23,8 +24,12 @@ object LanguageServerDefinition {
     * @param definition The server definition
     */
   def register(definition: LanguageServerDefinition): Unit = {
-    allDefinitions.add(definition)
-    LOG.info("Added definition for " + definition)
+    if (definition!=null) {
+      allDefinitions.add(definition)
+      LOG.info("Added definition for " + definition)
+    } else {
+      LOG.warn("Trying to add a null definition")
+    }
   }
 }
 
@@ -51,12 +56,17 @@ trait LanguageServerDefinition {
     *
     * @return The input and output streams of the server
     */
-  def start(): (InputStream, OutputStream)
+  def start(): (InputStream, OutputStream) = {
+    streamConnectionProvider.start()
+    (streamConnectionProvider.getInputStream, streamConnectionProvider.getOutputStream)
+  }
 
   /**
     * Stops the Language server
     */
-  def stop(): Unit
+  def stop(): Unit = {
+    streamConnectionProvider.stop()
+  }
 
   /**
     * Instantiates a StreamConnectionProvider for this ServerDefinition

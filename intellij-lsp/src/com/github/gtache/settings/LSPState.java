@@ -2,6 +2,8 @@ package com.github.gtache.settings;
 
 import com.github.gtache.PluginMain;
 import com.github.gtache.client.languageserver.ArtifactLanguageServerDefinition;
+import com.github.gtache.client.languageserver.UserConfigurableServerDefinition;
+import com.github.gtache.client.languageserver.UserConfigurableServerDefinition$;
 import com.github.gtache.utils.Utils;
 import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.ServiceManager;
@@ -39,17 +41,17 @@ public class LSPState implements PersistentStateComponent<LSPState> {
         return entry == null ? "" : entry.getKey();
     }
 
-    public ArtifactLanguageServerDefinition getFirstServerDefinition() {
+    public UserConfigurableServerDefinition getFirstServerDefinition() {
         final Map.Entry<String, String[]> entry = extToServ.isEmpty() ? null : extToServ.entrySet().iterator().next();
-        return entry == null ? null : Utils.arrayToServerDefinitionArtifact(entry.getValue());
+        return entry == null ? null : UserConfigurableServerDefinition$.MODULE$.fromArray(entry.getValue());
     }
 
-    public Map<String, ArtifactLanguageServerDefinition> getExtToServ() {
-        return Utils.arrayMapToServerDefinitionArtifactMap(extToServ);
+    public Map<String, UserConfigurableServerDefinition> getExtToServ() {
+        return UserConfigurableServerDefinition$.MODULE$.fromArrayMap(extToServ);
     }
 
-    public void setExtToServ(final Map<String, ArtifactLanguageServerDefinition> extToServ) {
-        this.extToServ = Utils.serverDefinitionArtifactMapToArrayMap(extToServ);
+    public void setExtToServ(final Map<String, UserConfigurableServerDefinition> extToServ) {
+        this.extToServ = UserConfigurableServerDefinition$.MODULE$.toArrayMap(extToServ);
     }
 
     @Nullable
@@ -60,9 +62,9 @@ public class LSPState implements PersistentStateComponent<LSPState> {
 
     @Override
     public void loadState(final LSPState lspState) {
-        LOG.info("LSP State loaded");
         XmlSerializerUtil.copyBean(lspState, this);
-        PluginMain.setExtToServerDefinition(Utils.arrayMapToServerDefinitionArtifactMap(extToServ));
+        LOG.info("LSP State loaded");
+        PluginMain.setExtToServerDefinition(UserConfigurableServerDefinition$.MODULE$.fromArrayMap(extToServ));
     }
 
 }

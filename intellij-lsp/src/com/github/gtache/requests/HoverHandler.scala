@@ -17,7 +17,7 @@ object HoverHandler {
   def getHoverString(@NonNull hover: Hover): String = {
     import scala.collection.JavaConverters._
     val contents = hover.getContents.asScala
-    if (contents == null || contents.isEmpty) null else {
+    if (contents == null || contents.isEmpty) "" else {
       contents.map(c => {
         if (c.isLeft) c.getLeft else if (c.isRight) {
           val markedString = c.getRight

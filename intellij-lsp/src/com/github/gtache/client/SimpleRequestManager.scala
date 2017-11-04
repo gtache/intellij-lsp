@@ -9,8 +9,9 @@ import org.eclipse.lsp4j.services.{LanguageClient, LanguageServer, TextDocumentS
 /**
   * Basic implementation of a RequestManager which just passes requests from client to server and vice-versa
   */
-class SimpleRequestManager(server: LanguageServer, client: LanguageClient) extends RequestManager {
+class SimpleRequestManager(server: LanguageServer, client: LanguageClient, serverCapabilities: ServerCapabilities) extends RequestManager {
 
+  private val textDocumentOptions = if (serverCapabilities.getTextDocumentSync.isRight) serverCapabilities.getTextDocumentSync.getRight else null
   private val workspaceService: WorkspaceService = server.getWorkspaceService
   private val textDocumentService: TextDocumentService = server.getTextDocumentService
 
@@ -49,54 +50,54 @@ class SimpleRequestManager(server: LanguageServer, client: LanguageClient) exten
 
   override def didChangeWatchedFiles(params: DidChangeWatchedFilesParams): Unit = workspaceService.didChangeWatchedFiles(params)
 
-  override def symbol(params: WorkspaceSymbolParams): CompletableFuture[java.util.List[_ <: SymbolInformation]] = workspaceService.symbol(params)
+  override def symbol(params: WorkspaceSymbolParams): CompletableFuture[java.util.List[_ <: SymbolInformation]] = if (serverCapabilities.getWorkspaceSymbolProvider) workspaceService.symbol(params) else null
 
-  override def executeCommand(params: ExecuteCommandParams): CompletableFuture[AnyRef] = workspaceService.executeCommand(params)
+  override def executeCommand(params: ExecuteCommandParams): CompletableFuture[AnyRef] = if (serverCapabilities.getExecuteCommandProvider != null) workspaceService.executeCommand(params) else null
 
   //TextDocument
-  override def didOpen(params: DidOpenTextDocumentParams): Unit = textDocumentService.didOpen(params)
+  override def didOpen(params: DidOpenTextDocumentParams): Unit = if (textDocumentOptions != null && textDocumentOptions.getOpenClose) textDocumentService.didOpen(params)
 
-  override def didChange(params: DidChangeTextDocumentParams): Unit = textDocumentService.didChange(params)
+  override def didChange(params: DidChangeTextDocumentParams): Unit = if (textDocumentOptions != null && textDocumentOptions.getChange != null) textDocumentService.didChange(params)
 
-  override def willSave(params: WillSaveTextDocumentParams): Unit = textDocumentService.willSave(params)
+  override def willSave(params: WillSaveTextDocumentParams): Unit = if (textDocumentOptions != null && textDocumentOptions.getWillSave) textDocumentService.willSave(params)
 
-  override def willSaveWaitUntil(params: WillSaveTextDocumentParams): CompletableFuture[java.util.List[TextEdit]] = textDocumentService.willSaveWaitUntil(params)
+  override def willSaveWaitUntil(params: WillSaveTextDocumentParams): CompletableFuture[java.util.List[TextEdit]] = if (textDocumentOptions != null && textDocumentOptions.getWillSaveWaitUntil) textDocumentService.willSaveWaitUntil(params) else null
 
-  override def didSave(params: DidSaveTextDocumentParams): Unit = textDocumentService.didSave(params)
+  override def didSave(params: DidSaveTextDocumentParams): Unit = if (textDocumentOptions != null && textDocumentOptions.getSave != null) textDocumentService.didSave(params)
 
-  override def didClose(params: DidCloseTextDocumentParams): Unit = textDocumentService.didClose(params)
+  override def didClose(params: DidCloseTextDocumentParams): Unit = if (textDocumentOptions != null && textDocumentOptions.getOpenClose) textDocumentService.didClose(params)
 
-  override def completion(params: TextDocumentPositionParams): CompletableFuture[jsonrpc.messages.Either[java.util.List[CompletionItem], CompletionList]] = textDocumentService.completion(params)
+  override def completion(params: TextDocumentPositionParams): CompletableFuture[jsonrpc.messages.Either[java.util.List[CompletionItem], CompletionList]] = if (serverCapabilities.getCompletionProvider != null) textDocumentService.completion(params) else null
 
-  override def completionItemResolve(unresolved: CompletionItem): CompletableFuture[CompletionItem] = textDocumentService.resolveCompletionItem(unresolved)
+  override def completionItemResolve(unresolved: CompletionItem): CompletableFuture[CompletionItem] = if (serverCapabilities.getCompletionProvider != null && serverCapabilities.getCompletionProvider.getResolveProvider) textDocumentService.resolveCompletionItem(unresolved) else null
 
-  override def hover(params: TextDocumentPositionParams): CompletableFuture[Hover] = textDocumentService.hover(params)
+  override def hover(params: TextDocumentPositionParams): CompletableFuture[Hover] = if (serverCapabilities.getHoverProvider) textDocumentService.hover(params) else null
 
-  override def signatureHelp(params: TextDocumentPositionParams): CompletableFuture[SignatureHelp] = textDocumentService.signatureHelp(params)
+  override def signatureHelp(params: TextDocumentPositionParams): CompletableFuture[SignatureHelp] = if (serverCapabilities.getSignatureHelpProvider != null) textDocumentService.signatureHelp(params) else null
 
-  override def references(params: ReferenceParams): CompletableFuture[java.util.List[_ <: Location]] = textDocumentService.references(params)
+  override def references(params: ReferenceParams): CompletableFuture[java.util.List[_ <: Location]] = if (serverCapabilities.getReferencesProvider) textDocumentService.references(params) else null
 
-  override def documentHighlight(params: TextDocumentPositionParams): CompletableFuture[java.util.List[_ <: DocumentHighlight]] = textDocumentService.documentHighlight(params)
+  override def documentHighlight(params: TextDocumentPositionParams): CompletableFuture[java.util.List[_ <: DocumentHighlight]] = if (serverCapabilities.getDocumentHighlightProvider) textDocumentService.documentHighlight(params) else null
 
-  override def documentSymbol(params: DocumentSymbolParams): CompletableFuture[java.util.List[_ <: SymbolInformation]] = textDocumentService.documentSymbol(params)
+  override def documentSymbol(params: DocumentSymbolParams): CompletableFuture[java.util.List[_ <: SymbolInformation]] = if (serverCapabilities.getDocumentSymbolProvider) textDocumentService.documentSymbol(params) else null
 
-  override def formatting(params: DocumentFormattingParams): CompletableFuture[java.util.List[_ <: TextEdit]] = textDocumentService.formatting(params)
+  override def formatting(params: DocumentFormattingParams): CompletableFuture[java.util.List[_ <: TextEdit]] = if (serverCapabilities.getDocumentFormattingProvider) textDocumentService.formatting(params) else null
 
-  override def rangeFormatting(params: DocumentRangeFormattingParams): CompletableFuture[java.util.List[_ <: TextEdit]] = textDocumentService.rangeFormatting(params)
+  override def rangeFormatting(params: DocumentRangeFormattingParams): CompletableFuture[java.util.List[_ <: TextEdit]] = if (serverCapabilities.getDocumentRangeFormattingProvider) textDocumentService.rangeFormatting(params) else null
 
-  override def onTypeFormatting(params: DocumentOnTypeFormattingParams): CompletableFuture[java.util.List[_ <: TextEdit]] = textDocumentService.onTypeFormatting(params)
+  override def onTypeFormatting(params: DocumentOnTypeFormattingParams): CompletableFuture[java.util.List[_ <: TextEdit]] = if (serverCapabilities.getDocumentOnTypeFormattingProvider != null) textDocumentService.onTypeFormatting(params) else null
 
-  override def definition(params: TextDocumentPositionParams): CompletableFuture[java.util.List[_ <: Location]] = textDocumentService.definition(params)
+  override def definition(params: TextDocumentPositionParams): CompletableFuture[java.util.List[_ <: Location]] = if (serverCapabilities.getDefinitionProvider) textDocumentService.definition(params) else null
 
-  override def codeAction(params: CodeActionParams): CompletableFuture[java.util.List[_ <: Command]] = textDocumentService.codeAction(params)
+  override def codeAction(params: CodeActionParams): CompletableFuture[java.util.List[_ <: Command]] = if (serverCapabilities.getCodeActionProvider) textDocumentService.codeAction(params) else null
 
-  override def codeLens(params: CodeLensParams): CompletableFuture[java.util.List[_ <: CodeLens]] = textDocumentService.codeLens(params)
+  override def codeLens(params: CodeLensParams): CompletableFuture[java.util.List[_ <: CodeLens]] = if (serverCapabilities.getCodeLensProvider != null) textDocumentService.codeLens(params) else null
 
-  override def resolveCodeLens(unresolved: CodeLens): CompletableFuture[CodeLens] = textDocumentService.resolveCodeLens(unresolved)
+  override def resolveCodeLens(unresolved: CodeLens): CompletableFuture[CodeLens] = if (serverCapabilities.getCodeLensProvider != null && serverCapabilities.getCodeLensProvider.isResolveProvider) textDocumentService.resolveCodeLens(unresolved) else null
 
-  override def documentLink(params: DocumentLinkParams): CompletableFuture[java.util.List[DocumentLink]] = textDocumentService.documentLink(params)
+  override def documentLink(params: DocumentLinkParams): CompletableFuture[java.util.List[DocumentLink]] = if (serverCapabilities.getDocumentLinkProvider != null) textDocumentService.documentLink(params) else null
 
-  override def documentLinkResolve(unresolved: DocumentLink): CompletableFuture[DocumentLink] = textDocumentService.documentLinkResolve(unresolved)
+  override def documentLinkResolve(unresolved: DocumentLink): CompletableFuture[DocumentLink] = if (serverCapabilities.getDocumentLinkProvider != null && serverCapabilities.getDocumentLinkProvider.getResolveProvider) textDocumentService.documentLinkResolve(unresolved) else null
 
-  override def rename(params: RenameParams): CompletableFuture[WorkspaceEdit] = textDocumentService.rename(params)
+  override def rename(params: RenameParams): CompletableFuture[WorkspaceEdit] = if (serverCapabilities.getRenameProvider) textDocumentService.rename(params) else null
 }

@@ -2,6 +2,9 @@ package com.github.gtache.settings;
 
 import com.github.gtache.client.MessageDialog;
 import com.github.gtache.client.languageserver.ArtifactLanguageServerDefinition;
+import com.github.gtache.client.languageserver.ExeLanguageServerDefinition;
+import com.github.gtache.client.languageserver.UserConfigurableServerDefinition;
+import com.github.gtache.client.languageserver.UserConfigurableServerDefinition$;
 import com.github.gtache.utils.Utils;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.uiDesigner.core.GridConstraints;
@@ -19,7 +22,7 @@ public class LSPGUI {
 
     private static final Logger LOG = Logger.getInstance(LSPGUI.class);
     private final LSPState state;
-    private ArtifactLanguageServerDefinition serverDefinition;
+    private UserConfigurableServerDefinition serverDefinition;
     private JLabel extLabel;
     private JPanel rootPanel;
     private JTextField extField;
@@ -61,7 +64,7 @@ public class LSPGUI {
         final String mainClass = mainClassField.getText();
         final String args = argsField.getText();
         LOG.info("Extracted " + ext + ", " + serv + ", " + mainClass + ", " + args + " from GUI");
-        serverDefinition = new ArtifactLanguageServerDefinition(ext, serv, mainClass, args.split(" "));
+        serverDefinition = UserConfigurableServerDefinition$.MODULE$.fromFields(ext, serv, mainClass, args);
         LSPState.getInstance().setExtToServ(Collections.singletonMap(ext, serverDefinition));
     }
 
@@ -73,9 +76,16 @@ public class LSPGUI {
         serverDefinition = state.getFirstServerDefinition();
         if (serverDefinition != null) {
             extField.setText(serverDefinition.ext());
-            servField.setText(serverDefinition.packge());
-            mainClassField.setText(serverDefinition.mainClass());
-            argsField.setText(Utils.arrayToString(serverDefinition.args(), " "));
+            if (serverDefinition instanceof ArtifactLanguageServerDefinition) {
+                servField.setText(((ArtifactLanguageServerDefinition) serverDefinition).packge());
+                mainClassField.setText(((ArtifactLanguageServerDefinition) serverDefinition).mainClass());
+                argsField.setText(Utils.arrayToString(((ArtifactLanguageServerDefinition) serverDefinition).args(), " "));
+            } else if (serverDefinition instanceof ExeLanguageServerDefinition) {
+                servField.setText(((ExeLanguageServerDefinition) serverDefinition).path());
+                argsField.setText(Utils.arrayToString(((ExeLanguageServerDefinition) serverDefinition).args(), " "));
+            } else {
+                LOG.error("Unknown UserConfigurableServerDefinition");
+            }
         }
     }
 

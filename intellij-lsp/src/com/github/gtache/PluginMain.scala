@@ -32,8 +32,8 @@ import scala.collection.mutable
 object PluginMain {
 
   private val LOG: Logger = Logger.getInstance(classOf[PluginMain])
-  private val extToLanguageWrapper: mutable.Map[(String, String), LanguageServerWrapper] = scala.collection.concurrent.TrieMap()
-  private val projectToLanguageWrappers: mutable.Map[String, mutable.Set[LanguageServerWrapper]] = scala.collection.concurrent.TrieMap()
+  private val extToLanguageWrapper: mutable.Map[(String, String), LanguageServerWrapper] = mutable.HashMap()
+  private val projectToLanguageWrappers: mutable.Map[String, mutable.Set[LanguageServerWrapper]] = mutable.HashMap()
   private var extToServerDefinition: Map[String, LanguageServerDefinition] = HashMap()
   private var loadedExtensions: Boolean = false
 
@@ -61,7 +61,11 @@ object PluginMain {
     *
     * @param newExt a Scala map
     */
-  def setExtToServerDefinition(newExt: collection.Map[String, _ <: LanguageServerDefinition]): Unit = extToServerDefinition = newExt.toMap
+  def setExtToServerDefinition(newExt: collection.Map[String, _ <: LanguageServerDefinition]): Unit = {
+    val nullDef = newExt.filter(d => d._2 == null)
+    nullDef.foreach(ext => LOG.error("Definition for " + ext + " is null"))
+    extToServerDefinition = newExt.toMap.filter(d => d._2 != null)
+  }
 
   /**
     * Returns the extensions->languageServer mapping
@@ -184,20 +188,22 @@ object PluginMain {
       case Some(set) =>
         val params: WorkspaceSymbolParams = new WorkspaceSymbolParams(name)
         val res = set.map(f => f.getRequestManager.symbol(params)).toSet
-        import scala.collection.JavaConverters._
-        try {
-          val arr = res.flatMap(r => r.get(Timeout.SYMBOLS_TIMEOUT, TimeUnit.MILLISECONDS).asInstanceOf[java.util.List[SymbolInformation]].asScala.toSet)
-          arr.filter(s => if (onlyKind.isEmpty) true else onlyKind.contains(s.getKind)).map(f => {
-            val start = f.getLocation.getRange.getStart
-            val uri = Utils.URIToVFS(f.getLocation.getUri)
-            LSPNavigationItem(f.getName, f.getContainerName, project, uri, start.getLine, start.getCharacter)
-          }).toArray.asInstanceOf[Array[NavigationItem]]
-        } catch {
-          case e: TimeoutException => LOG.warn(e)
-            Array()
-        }
+        if (!res.contains(null)) {
+          try {
+            import scala.collection.JavaConverters._
+            val arr = res.flatMap(r => r.get(Timeout.SYMBOLS_TIMEOUT, TimeUnit.MILLISECONDS).asInstanceOf[java.util.List[SymbolInformation]].asScala.toSet)
+            arr.filter(s => if (onlyKind.isEmpty) true else onlyKind.contains(s.getKind)).map(f => {
+              val start = f.getLocation.getRange.getStart
+              val uri = Utils.URIToVFS(f.getLocation.getUri)
+              LSPNavigationItem(f.getName, f.getContainerName, project, uri, start.getLine, start.getCharacter)
+            }).toArray.asInstanceOf[Array[NavigationItem]]
+          } catch {
+            case e: TimeoutException => LOG.warn(e)
+              Array()
+          }
+        } else Array.empty
       case None => LOG.info("No wrapper for project " + project.getBasePath)
-        Array()
+        Array.empty
     }
   }
 
@@ -234,8 +240,6 @@ class PluginMain extends ApplicationComponent {
 
   override def initComponent(): Unit = {
     LSPState.getInstance.getState //Need that to trigger loadState
-
-    extToServerDefinition.foreach(serv => LanguageServerDefinition.register(serv._2))
 
     EditorFactory.getInstance.addEditorFactoryListener(new EditorListener, Disposer.newDisposable())
     VirtualFileManager.getInstance().addVirtualFileListener(VFSListener)

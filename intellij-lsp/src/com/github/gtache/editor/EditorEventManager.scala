@@ -233,43 +233,26 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
-  /**
-    * Immediately requests the server for documentation at the current editor position
-    *
-    * @param editor The editor
-    */
-  def quickDoc(editor: Editor): Unit = {
-    if (editor == this.editor) {
-      val caretPos = editor.getCaretModel.getLogicalPosition
-      val pointPos = editor.logicalPositionToXY(caretPos)
-      val currentTime = System.nanoTime()
-      ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
-        override def run(): Unit = requestAndShowDoc(currentTime, caretPos, pointPos)
-      })
-      predTime = currentTime
-    } else {
-      LOG.warn("Not same editor!")
-    }
-  }
-
   private def requestAndShowDoc(curTime: Long, editorPos: LogicalPosition, point: Point): Unit = {
     isPopupOpen = true
     val serverPos = Utils.logicalToLSPPos(editorPos)
-    try {
-      val response = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
-      val hover = response.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
-      val range = hover.getRange
-      val string = HoverHandler.getHoverString(hover)
-      if (string != null) {
-        createAndShowBalloon(string, curTime, point)
-      } else {
-        isPopupOpen = false
-        LOG.warn("Hover string returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
+    val future = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
+    if (future != null) {
+      try {
+        val hover = future.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
+        val range = hover.getRange
+        val string = HoverHandler.getHoverString(hover)
+        if (string != null) {
+          createAndShowBalloon(string, curTime, point)
+        } else {
+          isPopupOpen = false
+          LOG.warn("Hover string returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
+        }
+      } catch {
+        case e: TimeoutException =>
+          isPopupOpen = false
+          LOG.warn(e)
       }
-    } catch {
-      case e: TimeoutException =>
-        isPopupOpen = false
-        LOG.warn(e)
     }
 
 
@@ -293,7 +276,26 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
-    * Requests the Hover information, synchronously
+    * Immediately requests the server for documentation at the current editor position
+    *
+    * @param editor The editor
+    */
+  def quickDoc(editor: Editor): Unit = {
+    if (editor == this.editor) {
+      val caretPos = editor.getCaretModel.getLogicalPosition
+      val pointPos = editor.logicalPositionToXY(caretPos)
+      val currentTime = System.nanoTime()
+      ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
+        override def run(): Unit = requestAndShowDoc(currentTime, caretPos, pointPos)
+      })
+      predTime = currentTime
+    } else {
+      LOG.warn("Not same editor!")
+    }
+  }
+
+  /**
+    * Requests the Hover information
     *
     * @param editor The editor
     * @param offset The offset in the editor
@@ -302,12 +304,17 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def requestDoc(editor: Editor, offset: Int): String = {
     if (editor == this.editor) {
       val serverPos = Utils.logicalToLSPPos(editor.offsetToLogicalPosition(offset))
-      try {
-        val response = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos)).get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
-        HoverHandler.getHoverString(response)
-      } catch {
-        case e: TimeoutException => LOG.warn(e)
-          ""
+      val future = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
+      if (future != null) {
+        try {
+          val response = future.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
+          HoverHandler.getHoverString(response)
+        } catch {
+          case e: TimeoutException => LOG.warn(e)
+            ""
+        }
+      } else {
+        ""
       }
     } else {
       LOG.warn("Not same editor")
@@ -378,22 +385,27 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def completion(pos: Position): Iterable[_ <: LookupElement] = {
     val future = requestManager.completion(new TextDocumentPositionParams(identifier, pos))
-    try {
-      val res = future.get(COMPLETION_TIMEOUT, TimeUnit.MILLISECONDS)
-      import scala.collection.JavaConverters._
-      val completion /*: CompletionList | List[CompletionItem] */ = if (res.isLeft) res.getLeft.asScala else res.getRight
-      completion match {
-        case c: CompletionList => c.getItems.asScala.map(item => LookupElementBuilder.create(item.getLabel).withPresentableText(item.getLabel).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT))
-        case l: List[CompletionItem@unchecked] => l.map(item => {
-          LookupElementBuilder.create(item.getLabel).withPresentableText(item.getLabel).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT)
-        })
+    if (future != null) {
+      try {
+        val res = future.get(COMPLETION_TIMEOUT, TimeUnit.MILLISECONDS)
+        import scala.collection.JavaConverters._
+        val completion /*: CompletionList | List[CompletionItem] */ = if (res.isLeft) res.getLeft.asScala else res.getRight
+        completion match {
+          case c: CompletionList => c.getItems.asScala.map(item => LookupElementBuilder.create(item.getLabel).withPresentableText(item.getLabel).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT))
+          case l: List[CompletionItem@unchecked] => l.map(item => {
+            LookupElementBuilder.create(item.getLabel).withPresentableText(item.getLabel).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT)
+          })
+
+        }
       }
-    } catch {
-      case e: TimeoutException =>
-        LOG.warn(e)
-        Iterable.empty
-    }
+      catch {
+        case e: TimeoutException =>
+          LOG.warn(e)
+          Iterable.empty
+      }
+    } else Iterable.empty
   }
+
 
   //TODO Manual
   /**
@@ -415,23 +427,25 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     val params = new ReferenceParams(new ReferenceContext(false))
     params.setPosition(lspPos)
     params.setTextDocument(identifier)
-    val references = requestManager.references(params)
-    try {
-      val res = references.get(REFERENCES_TIMEOUT, TimeUnit.MILLISECONDS)
-      import scala.collection.JavaConverters._
-      res.asScala.map(l => {
-        val start = l.getRange.getStart
-        val end = l.getRange.getEnd
-        val logicalStart = Utils.LSPPosToOffset(editor, start)
-        val logicalEnd = Utils.LSPPosToOffset(editor, end)
-        val name = editor.getDocument.getText(new TextRange(logicalStart, logicalEnd))
-        LSPPsiElement(name, editor.getProject, logicalStart, logicalEnd).getReference
-      }).toArray
-    } catch {
-      case e: TimeoutException =>
-        LOG.warn(e)
-        Array()
-    }
+    val future = requestManager.references(params)
+    if (future != null) {
+      try {
+        val res = future.get(REFERENCES_TIMEOUT, TimeUnit.MILLISECONDS)
+        import scala.collection.JavaConverters._
+        res.asScala.map(l => {
+          val start = l.getRange.getStart
+          val end = l.getRange.getEnd
+          val logicalStart = Utils.LSPPosToOffset(editor, start)
+          val logicalEnd = Utils.LSPPosToOffset(editor, end)
+          val name = editor.getDocument.getText(new TextRange(logicalStart, logicalEnd))
+          LSPPsiElement(name, editor.getProject, logicalStart, logicalEnd).getReference
+        }).toArray
+      } catch {
+        case e: TimeoutException =>
+          LOG.warn(e)
+          Array()
+      }
+    } else Array.empty
   }
 
   /**
@@ -482,7 +496,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     val servPos = Utils.logicalToLSPPos(editor.offsetToLogicalPosition(editor.getCaretModel.getCurrentCaret.getOffset))
     val params = new RenameParams(identifier, servPos, renameTo)
     val future = requestManager.rename(params)
-    future.thenAccept(res => WorkspaceEditHandler.applyEdit(res))
+    if (future != null) future.thenAccept(res => WorkspaceEditHandler.applyEdit(res))
   }
 
   /**
@@ -493,7 +507,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     params.setTextDocument(identifier)
     val options = new FormattingOptions()
     params.setOptions(options)
-    requestManager.formatting(params).thenAccept(formatting => applyEdit(edits = formatting.asScala))
+    val future = requestManager.formatting(params)
+    if (future != null) future.thenAccept(formatting => applyEdit(edits = formatting.asScala))
   }
 
   /**
@@ -570,6 +585,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     params.setRange(new Range(startingPos, endPos))
     val options = new FormattingOptions()
     params.setOptions(options)
-    requestManager.rangeFormatting(params).thenAccept(formatting => applyEdit(edits = formatting.asScala))
+    val future = requestManager.rangeFormatting(params)
+    if (future != null) future.thenAccept(formatting => applyEdit(edits = formatting.asScala))
   }
 }

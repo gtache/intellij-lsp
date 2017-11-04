@@ -83,15 +83,14 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   def start(): Unit = {
     if (!started) {
       try {
-        this.lspStreamProvider.start()
+        val (inputStream, outputStream) = serverDefinition.start()
         client = serverDefinition.createLanguageClient
         val initParams = new InitializeParams
         initParams.setRootUri(Utils.pathToUri(rootPath))
-        val launcher = LSPLauncher.createClientLauncher(client, this.lspStreamProvider.getInputStream, this.lspStreamProvider.getOutputStream)
+        val launcher = LSPLauncher.createClientLauncher(client, inputStream, outputStream)
 
         this.languageServer = launcher.getRemoteProxy
         client.connect(languageServer)
-        requestManager = new SimpleRequestManager(languageServer, client)
         this.launcherFuture = launcher.startListening
         //TODO update capabilities when implemented
         val workspaceClientCapabilites = new WorkspaceClientCapabilities
@@ -120,6 +119,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
           initializeResult = res
           LOG.info("Got initializeResult for " + rootPath)
+          requestManager = new SimpleRequestManager(languageServer, client, getServerCapabilities)
           res
         })
         initializeStartTime = System.currentTimeMillis

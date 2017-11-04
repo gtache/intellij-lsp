@@ -175,53 +175,6 @@ object Utils {
     sanitizeURI(new File(path).toURI.toString)
   }
 
-  /**
-    * Transforms a (java) Map<String, ServerDefinitionExtensionPointArtifact> to a Map<String, String[]>
-    *
-    * @param map A java map
-    * @return the transformed java map
-    */
-  def serverDefinitionArtifactMapToArrayMap(map: java.util.Map[String, ArtifactLanguageServerDefinition]): java.util.Map[String, Array[String]] = {
-    import scala.collection.JavaConverters._
-    map.asScala.map(e => (e._1, serverDefinitionArtifactToArray(e._2))).asJava
-  }
-
-  /**
-    * Transforms a ServerDefinitionExtensionPointArtifact into an array of String
-    *
-    * @param serverDefinitionExtensionPoint The ServerDefinition
-    * @return The Array of string
-    */
-  def serverDefinitionArtifactToArray(serverDefinitionExtensionPoint: ArtifactLanguageServerDefinition): Array[String] = {
-    Array(serverDefinitionExtensionPoint.ext, serverDefinitionExtensionPoint.packge, serverDefinitionExtensionPoint.mainClass) ++ serverDefinitionExtensionPoint.args
-  }
-
-  /**
-    * Transforms a (java) Map<String, String[]> to a Map<String, ServerDefinitionExtensionPointArtifact>
-    *
-    * @param map A java map
-    * @return the transformed java map
-    */
-  def arrayMapToServerDefinitionArtifactMap(map: java.util.Map[String, Array[String]]): java.util.Map[String, ArtifactLanguageServerDefinition] = {
-    import scala.collection.JavaConverters._
-    map.asScala.map(e => (e._1, arrayToServerDefinitionArtifact(e._2))).asJava
-  }
-
-  /**
-    * Transforms an array of string into a ServerDefinitionExtensionPointArtifact
-    *
-    * @param arr The array of string
-    * @return The corresponding ServerDefinitionExtensionPoint
-    */
-  def arrayToServerDefinitionArtifact(arr: Array[String]): ArtifactLanguageServerDefinition = {
-    if (arr.length < 3) {
-      LOG.warn("Not enough elements to translate into a ServerDefinition : " + arr)
-      null
-    } else {
-      ArtifactLanguageServerDefinition(arr.head, arr.tail.head, arr.tail.tail.head, if (arr.length > 3) arr.tail.tail.tail else Array())
-    }
-  }
-
   object OS extends Enumeration {
     type OS = Value
     val WINDOWS, UNIX = Value

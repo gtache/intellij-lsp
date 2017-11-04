@@ -1,9 +1,8 @@
 package com.github.gtache.client.languageserver
 
-import java.io.{InputStream, OutputStream}
-
 import com.github.gtache.CoursierImpl
 import com.github.gtache.client.connection.{ProcessStreamConnectionProvider, StreamConnectionProvider}
+import com.intellij.openapi.diagnostic.Logger
 
 /**
   * Represents a ServerDefinition for a LanguageServer stored on a repository
@@ -13,18 +12,9 @@ import com.github.gtache.client.connection.{ProcessStreamConnectionProvider, Str
   * @param mainClass The main class of the server
   * @param args      The arguments to give to the main class
   */
-case class ArtifactLanguageServerDefinition(ext: String, packge: String, mainClass: String, args: Array[String]) extends LanguageServerDefinition {
+case class ArtifactLanguageServerDefinition(ext: String, packge: String, mainClass: String, args: Array[String]) extends UserConfigurableServerDefinition {
 
-  override def start(): (InputStream, OutputStream) = {
-    streamConnectionProvider.start()
-    (streamConnectionProvider.getInputStream, streamConnectionProvider.getOutputStream)
-  }
-
-
-  override def stop(): Unit = {
-    streamConnectionProvider.stop()
-  }
-
+  import com.github.gtache.client.languageserver.ArtifactLanguageServerDefinition.typ
 
   override def createConnectionProvider(workingDir: String): StreamConnectionProvider = {
     if (streamConnectionProvider == null) {
@@ -35,4 +25,29 @@ case class ArtifactLanguageServerDefinition(ext: String, packge: String, mainCla
   }
 
   override def toString: String = super.toString + " artifact : " + packge + " mainClass : " + mainClass + " args : " + args.mkString(" ")
+
+  override def toArray: Array[String] = {
+    Array(typ, ext, packge, mainClass) ++ args
+  }
+
+}
+
+object ArtifactLanguageServerDefinition extends UserConfigurableServerDefinitionObject {
+  private val LOG: Logger = Logger.getInstance(this.getClass)
+
+  def fromArray(arr: Array[String]): ArtifactLanguageServerDefinition = {
+    if (arr.head == typ) {
+      val arrTail = arr.tail
+      if (arrTail.length < 3) {
+        LOG.warn("Not enough elements to translate into a ServerDefinition : " + arr)
+        null
+      } else {
+        ArtifactLanguageServerDefinition(arrTail.head, arrTail.tail.head, arrTail.tail.tail.head, if (arrTail.length > 3) arrTail.tail.tail.tail else Array())
+      }
+    } else {
+      null
+    }
+  }
+
+  def typ: String = "artifact"
 }

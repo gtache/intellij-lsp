@@ -2,6 +2,7 @@ package com.github.gtache.settings;
 
 import com.github.gtache.PluginMain;
 import com.github.gtache.client.languageserver.ArtifactLanguageServerDefinition;
+import com.github.gtache.client.languageserver.ExeLanguageServerDefinition;
 import com.github.gtache.client.languageserver.LanguageServerDefinition;
 import com.github.gtache.utils.Utils;
 import com.intellij.openapi.diagnostic.Logger;
@@ -59,6 +60,11 @@ public final class LSPSettings implements Configurable {
                 lspGUI.getExtField().setText(defImpl.ext());
                 lspGUI.getServField().setText(defImpl.packge());
                 lspGUI.getMainClassField().setText(defImpl.mainClass());
+                lspGUI.getArgsField().setText(Utils.arrayToString(defImpl.args(), " "));
+            } else if (def instanceof ExeLanguageServerDefinition) {
+                final ExeLanguageServerDefinition defImpl = (ExeLanguageServerDefinition) def;
+                lspGUI.getExtField().setText(defImpl.ext());
+                lspGUI.getServField().setText(defImpl.path());
                 lspGUI.getArgsField().setText(Utils.arrayToString(defImpl.args(), " "));
             }
         }
