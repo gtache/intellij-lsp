@@ -140,26 +140,28 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val ideRange = e.getNewRange
         val LSPPos = Utils.offsetToLSPPos(editor, ideRange.getStartOffset)
         val request = requestManager.documentHighlight(new TextDocumentPositionParams(identifier, LSPPos))
-        ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
-          override def run(): Unit = {
-            import scala.collection.JavaConverters._
-            try {
-              val resp = request.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS).asScala
-              ApplicationManager.getApplication.invokeLater(() => resp.foreach(dh => {
-                val range = dh.getRange
-                val kind = dh.getKind
-                val startOffset = Utils.LSPPosToOffset(editor, range.getStart)
-                val endOffset = Utils.LSPPosToOffset(editor, range.getEnd)
-                val colorScheme = editor.getColorsScheme
-                val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION, new TextAttributes(colorScheme.getColor(EditorColors.SELECTION_FOREGROUND_COLOR), colorScheme.getColor(EditorColors.SELECTION_BACKGROUND_COLOR), null, null, Font.PLAIN), HighlighterTargetArea.EXACT_RANGE)
-                selectedSymbHighlights.add(highlight)
-              }))
-            } catch {
-              case e: TimeoutException =>
-                LOG.warn(e)
+        if (request!=null) {
+          ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
+            override def run(): Unit = {
+              import scala.collection.JavaConverters._
+              try {
+                val resp = request.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS).asScala
+                ApplicationManager.getApplication.invokeLater(() => resp.foreach(dh => {
+                  val range = dh.getRange
+                  val kind = dh.getKind
+                  val startOffset = Utils.LSPPosToOffset(editor, range.getStart)
+                  val endOffset = Utils.LSPPosToOffset(editor, range.getEnd)
+                  val colorScheme = editor.getColorsScheme
+                  val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION, new TextAttributes(colorScheme.getColor(EditorColors.SELECTION_FOREGROUND_COLOR), colorScheme.getColor(EditorColors.SELECTION_BACKGROUND_COLOR), null, null, Font.PLAIN), HighlighterTargetArea.EXACT_RANGE)
+                  selectedSymbHighlights.add(highlight)
+                }))
+              } catch {
+                case e: TimeoutException =>
+                  LOG.warn(e)
+              }
             }
-          }
-        })
+          })
+        }
       }
     }
   }
@@ -236,10 +238,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private def requestAndShowDoc(curTime: Long, editorPos: LogicalPosition, point: Point): Unit = {
     isPopupOpen = true
     val serverPos = Utils.logicalToLSPPos(editorPos)
-    val future = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
-    if (future != null) {
+    val request = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
+    if (request != null) {
       try {
-        val hover = future.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
+        val hover = request.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
         val range = hover.getRange
         val string = HoverHandler.getHoverString(hover)
         if (string != null) {
@@ -304,10 +306,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def requestDoc(editor: Editor, offset: Int): String = {
     if (editor == this.editor) {
       val serverPos = Utils.logicalToLSPPos(editor.offsetToLogicalPosition(offset))
-      val future = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
-      if (future != null) {
+      val request = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
+      if (request != null) {
         try {
-          val response = future.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
+          val response = request.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
           HoverHandler.getHoverString(response)
         } catch {
           case e: TimeoutException => LOG.warn(e)
@@ -384,10 +386,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @return The suggestions
     */
   def completion(pos: Position): Iterable[_ <: LookupElement] = {
-    val future = requestManager.completion(new TextDocumentPositionParams(identifier, pos))
-    if (future != null) {
+    val request = requestManager.completion(new TextDocumentPositionParams(identifier, pos))
+    if (request != null) {
       try {
-        val res = future.get(COMPLETION_TIMEOUT, TimeUnit.MILLISECONDS)
+        val res = request.get(COMPLETION_TIMEOUT, TimeUnit.MILLISECONDS)
         import scala.collection.JavaConverters._
         val completion /*: CompletionList | List[CompletionItem] */ = if (res.isLeft) res.getLeft.asScala else res.getRight
         completion match {
@@ -427,10 +429,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     val params = new ReferenceParams(new ReferenceContext(false))
     params.setPosition(lspPos)
     params.setTextDocument(identifier)
-    val future = requestManager.references(params)
-    if (future != null) {
+    val request = requestManager.references(params)
+    if (request != null) {
       try {
-        val res = future.get(REFERENCES_TIMEOUT, TimeUnit.MILLISECONDS)
+        val res = request.get(REFERENCES_TIMEOUT, TimeUnit.MILLISECONDS)
         import scala.collection.JavaConverters._
         res.asScala.map(l => {
           val start = l.getRange.getStart
@@ -495,8 +497,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def rename(renameTo: String): Unit = {
     val servPos = Utils.logicalToLSPPos(editor.offsetToLogicalPosition(editor.getCaretModel.getCurrentCaret.getOffset))
     val params = new RenameParams(identifier, servPos, renameTo)
-    val future = requestManager.rename(params)
-    if (future != null) future.thenAccept(res => WorkspaceEditHandler.applyEdit(res))
+    val request = requestManager.rename(params)
+    if (request != null) request.thenAccept(res => WorkspaceEditHandler.applyEdit(res))
   }
 
   /**
@@ -507,8 +509,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     params.setTextDocument(identifier)
     val options = new FormattingOptions()
     params.setOptions(options)
-    val future = requestManager.formatting(params)
-    if (future != null) future.thenAccept(formatting => applyEdit(edits = formatting.asScala))
+    val request = requestManager.formatting(params)
+    if (request != null) request.thenAccept(formatting => applyEdit(edits = formatting.asScala))
   }
 
   /**
@@ -585,7 +587,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     params.setRange(new Range(startingPos, endPos))
     val options = new FormattingOptions()
     params.setOptions(options)
-    val future = requestManager.rangeFormatting(params)
-    if (future != null) future.thenAccept(formatting => applyEdit(edits = formatting.asScala))
+    val request = requestManager.rangeFormatting(params)
+    if (request != null) request.thenAccept(formatting => applyEdit(edits = formatting.asScala))
   }
 }
