@@ -1,7 +1,7 @@
-package com.github.gtache.client.languageserver
+package com.github.gtache.client.languageserver.serverdefinition
 
-import com.github.gtache.CoursierImpl
 import com.github.gtache.client.connection.{ProcessStreamConnectionProvider, StreamConnectionProvider}
+import com.github.gtache.utils.CoursierImpl
 import com.intellij.openapi.diagnostic.Logger
 
 /**
@@ -13,8 +13,6 @@ import com.intellij.openapi.diagnostic.Logger
   * @param args      The arguments to give to the main class
   */
 case class ArtifactLanguageServerDefinition(ext: String, packge: String, mainClass: String, args: Array[String]) extends UserConfigurableServerDefinition {
-
-  import com.github.gtache.client.languageserver.ArtifactLanguageServerDefinition.typ
 
   override def createConnectionProvider(workingDir: String): StreamConnectionProvider = {
     if (streamConnectionProvider == null) {

@@ -1,4 +1,4 @@
-package com.github.gtache.client.languageserver
+package com.github.gtache.client.languageserver.serverdefinition
 
 trait UserConfigurableServerDefinitionObject {
   def typ: String

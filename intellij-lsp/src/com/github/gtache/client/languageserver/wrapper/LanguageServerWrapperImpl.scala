@@ -1,5 +1,5 @@
 /* Adapted from lsp4e */
-package com.github.gtache.client.languageserver
+package com.github.gtache.client.languageserver.wrapper
 
 import java.io.IOException
 import java.net.URI
@@ -8,6 +8,8 @@ import java.util.concurrent._
 import com.github.gtache.PluginMain
 import com.github.gtache.client._
 import com.github.gtache.client.connection.StreamConnectionProvider
+import com.github.gtache.client.languageserver.requestmanager.{RequestManager, SimpleRequestManager}
+import com.github.gtache.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.editor.EditorEventManager
 import com.github.gtache.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.requests.Timeout
@@ -56,8 +58,6 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private var capabilitiesAlreadyRequested = false
   private var initializeStartTime = 0L
   private var started: Boolean = false
-
-  import com.github.gtache.client.languageserver.LanguageServerWrapperImpl._
 
   /**
     * Returns the EditorEventManager for a given uri

@@ -1,11 +1,10 @@
-package com.github.gtache.client.languageserver
+package com.github.gtache.client.languageserver.serverdefinition
 
 import java.io.{InputStream, OutputStream}
 
 import com.github.gtache.client.LanguageClientImpl
 import com.github.gtache.client.connection.StreamConnectionProvider
 import com.intellij.openapi.diagnostic.Logger
-import org.jetbrains.annotations.NotNull
 
 import scala.collection.mutable
 

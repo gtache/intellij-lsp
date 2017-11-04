@@ -1,4 +1,4 @@
-package com.github.gtache.client
+package com.github.gtache.client.languageserver.requestmanager
 
 import java.util.concurrent.CompletableFuture
 

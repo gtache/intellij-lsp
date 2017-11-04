@@ -1,4 +1,4 @@
-package com.github.gtache.client.languageserver
+package com.github.gtache.client.languageserver.serverdefinition
 
 object UserConfigurableServerDefinition extends UserConfigurableServerDefinitionObject {
   def fromFields(ext: String, path: String, mainClass: String, args: String): UserConfigurableServerDefinition = {

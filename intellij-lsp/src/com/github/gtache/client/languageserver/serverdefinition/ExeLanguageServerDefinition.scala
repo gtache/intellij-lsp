@@ -1,11 +1,9 @@
-package com.github.gtache.client.languageserver
+package com.github.gtache.client.languageserver.serverdefinition
 
 import com.github.gtache.client.connection.{ProcessStreamConnectionProvider, StreamConnectionProvider}
 import com.intellij.openapi.diagnostic.Logger
 
 case class ExeLanguageServerDefinition(ext: String, path: String, args: Array[String]) extends UserConfigurableServerDefinition {
-
-  import com.github.gtache.client.languageserver.ExeLanguageServerDefinition.typ
   override def createConnectionProvider(workingDir: String): StreamConnectionProvider = {
     if (streamConnectionProvider == null) {
       streamConnectionProvider = new ProcessStreamConnectionProvider(Seq(path) ++ args, workingDir)

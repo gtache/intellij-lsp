@@ -5,8 +5,8 @@ import java.awt.{Color, Font, KeyboardFocusManager, Point}
 import java.util.concurrent.{TimeUnit, TimeoutException}
 import java.util.{Collections, Timer, TimerTask}
 
-import com.github.gtache.client.RequestManager
-import com.github.gtache.client.languageserver.LanguageServerWrapperImpl
+import com.github.gtache.client.languageserver.requestmanager.RequestManager
+import com.github.gtache.client.languageserver.wrapper.LanguageServerWrapperImpl
 import com.github.gtache.contributors.psi.LSPPsiElement
 import com.github.gtache.requests.{HoverHandler, WorkspaceEditHandler}
 import com.github.gtache.utils.Utils
