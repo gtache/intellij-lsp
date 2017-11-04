@@ -45,6 +45,7 @@ object LanguageServerWrapperImpl {
   * @param rootPath         The root directory
   */
 class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, val rootPath: String) extends LanguageServerWrapper {
+  import LanguageServerWrapperImpl._
 
   private val lspStreamProvider: StreamConnectionProvider = serverDefinition.createConnectionProvider(rootPath)
   private val connectedEditors: mutable.Map[String, EditorEventManager] = mutable.HashMap()

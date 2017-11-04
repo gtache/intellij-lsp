@@ -2,7 +2,7 @@ package com.github.gtache.settings;
 
 import com.github.gtache.PluginMain;
 import com.github.gtache.client.languageserver.serverdefinition.UserConfigurableServerDefinition;
-import com.github.gtache.client.languageserver.UserConfigurableServerDefinition$;
+import com.github.gtache.client.languageserver.serverdefinition.UserConfigurableServerDefinition$;
 import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.components.State;
