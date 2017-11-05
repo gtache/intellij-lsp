@@ -55,17 +55,17 @@ class SimpleRequestManager(server: LanguageServer, client: LanguageClient, serve
   override def executeCommand(params: ExecuteCommandParams): CompletableFuture[AnyRef] = if (serverCapabilities.getExecuteCommandProvider != null) workspaceService.executeCommand(params) else null
 
   //TextDocument
-  override def didOpen(params: DidOpenTextDocumentParams): Unit = if (textDocumentOptions != null && textDocumentOptions.getOpenClose) textDocumentService.didOpen(params)
+  override def didOpen(params: DidOpenTextDocumentParams): Unit = if (textDocumentOptions == null || textDocumentOptions.getOpenClose) textDocumentService.didOpen(params)
 
-  override def didChange(params: DidChangeTextDocumentParams): Unit = if (textDocumentOptions != null && textDocumentOptions.getChange != null) textDocumentService.didChange(params)
+  override def didChange(params: DidChangeTextDocumentParams): Unit = if (textDocumentOptions == null || textDocumentOptions.getChange != null) textDocumentService.didChange(params)
 
-  override def willSave(params: WillSaveTextDocumentParams): Unit = if (textDocumentOptions != null && textDocumentOptions.getWillSave) textDocumentService.willSave(params)
+  override def willSave(params: WillSaveTextDocumentParams): Unit = if (textDocumentOptions == null || textDocumentOptions.getWillSave) textDocumentService.willSave(params)
 
-  override def willSaveWaitUntil(params: WillSaveTextDocumentParams): CompletableFuture[java.util.List[TextEdit]] = if (textDocumentOptions != null && textDocumentOptions.getWillSaveWaitUntil) textDocumentService.willSaveWaitUntil(params) else null
+  override def willSaveWaitUntil(params: WillSaveTextDocumentParams): CompletableFuture[java.util.List[TextEdit]] = if (textDocumentOptions == null || textDocumentOptions.getWillSaveWaitUntil) textDocumentService.willSaveWaitUntil(params) else null
 
-  override def didSave(params: DidSaveTextDocumentParams): Unit = if (textDocumentOptions != null && textDocumentOptions.getSave != null) textDocumentService.didSave(params)
+  override def didSave(params: DidSaveTextDocumentParams): Unit = if (textDocumentOptions == null || textDocumentOptions.getSave != null) textDocumentService.didSave(params)
 
-  override def didClose(params: DidCloseTextDocumentParams): Unit = if (textDocumentOptions != null && textDocumentOptions.getOpenClose) textDocumentService.didClose(params)
+  override def didClose(params: DidCloseTextDocumentParams): Unit = if (textDocumentOptions == null || textDocumentOptions.getOpenClose) textDocumentService.didClose(params)
 
   override def completion(params: TextDocumentPositionParams): CompletableFuture[jsonrpc.messages.Either[java.util.List[CompletionItem], CompletionList]] = if (serverCapabilities.getCompletionProvider != null) textDocumentService.completion(params) else null
 

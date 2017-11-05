@@ -108,8 +108,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   uriToManager.put(Utils.editorToURIString(editor), this)
   editorToManager.put(editor, this)
-  changesParams.getTextDocument.setUri(Utils.editorToURIString(editor))
-  requestManager.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(Utils.editorToURIString(editor), wrapper.serverDefinition.id, {
+  changesParams.getTextDocument.setUri(identifier.getUri)
+  requestManager.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(identifier.getUri, wrapper.serverDefinition.id, {
     version += 1
     version
   }, editor.getDocument.getText)))
@@ -265,7 +265,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val hover = request.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
         val range = hover.getRange
         val string = HoverHandler.getHoverString(hover)
-        if (string != null) {
+        if (string != null && string!="") {
           createAndShowBalloon(string, curTime, point)
         } else {
           isPopupOpen = false
