@@ -28,6 +28,7 @@ object FileEventManager {
     EditorEventManager.willSaveAll()
   }
 
+  //TODO Change to handle non-opened project files
   /**
     * Called when a file is changed. Notifies the server if this file was watched.
     *

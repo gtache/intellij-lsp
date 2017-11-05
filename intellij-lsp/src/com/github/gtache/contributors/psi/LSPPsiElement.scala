@@ -191,19 +191,19 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
   override def textMatches(element: PsiElement): Boolean = getText == element.getText
 
   /**
-    * Returns the text of the PSI element.
-    *
-    * @return the element text.
-    */
-  override def getText: String = name
-
-  /**
     * Checks if the text of this element contains the specified character.
     *
     * @param c the character to search for.
     * @return true if the character is found, false otherwise.
     */
   override def textContains(c: Char): Boolean = getText.contains(c)
+
+  /**
+    * Returns the text of the PSI element.
+    *
+    * @return the element text.
+    */
+  override def getText: String = name
 
   /**
     * Passes the element to the specified visitor.

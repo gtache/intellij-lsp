@@ -93,54 +93,47 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   @throws[IOException]
   def start(): Unit = {
     if (!started) {
-      try {
-        val (inputStream, outputStream) = serverDefinition.start()
-        client = serverDefinition.createLanguageClient
-        val initParams = new InitializeParams
-        initParams.setRootUri(Utils.pathToUri(rootPath))
-        val launcher = LSPLauncher.createClientLauncher(client, inputStream, outputStream)
+      val (inputStream, outputStream) = serverDefinition.start()
+      client = serverDefinition.createLanguageClient
+      val initParams = new InitializeParams
+      initParams.setRootUri(Utils.pathToUri(rootPath))
+      val launcher = LSPLauncher.createClientLauncher(client, inputStream, outputStream)
 
-        this.languageServer = launcher.getRemoteProxy
-        client.connect(languageServer)
-        this.launcherFuture = launcher.startListening
-        //TODO update capabilities when implemented
-        val workspaceClientCapabilites = new WorkspaceClientCapabilities
-        workspaceClientCapabilites.setApplyEdit(true)
-        workspaceClientCapabilites.setExecuteCommand(new ExecuteCommandCapabilities)
-        workspaceClientCapabilites.setSymbol(new SymbolCapabilities)
-        val textDocumentClientCapabilities = new TextDocumentClientCapabilities
-        textDocumentClientCapabilities.setCodeAction(new CodeActionCapabilities)
-        textDocumentClientCapabilities.setCodeLens(new CodeLensCapabilities)
-        textDocumentClientCapabilities.setCompletion(new CompletionCapabilities(new CompletionItemCapabilities(false)))
-        textDocumentClientCapabilities.setDefinition(new DefinitionCapabilities)
-        textDocumentClientCapabilities.setDocumentHighlight(new DocumentHighlightCapabilities)
-        textDocumentClientCapabilities.setDocumentLink(new DocumentLinkCapabilities)
-        textDocumentClientCapabilities.setDocumentSymbol(new DocumentSymbolCapabilities)
-        textDocumentClientCapabilities.setFormatting(new FormattingCapabilities)
-        textDocumentClientCapabilities.setHover(new HoverCapabilities)
-        textDocumentClientCapabilities.setOnTypeFormatting(null)
+      this.languageServer = launcher.getRemoteProxy
+      client.connect(languageServer)
+      this.launcherFuture = launcher.startListening
+      //TODO update capabilities when implemented
+      val workspaceClientCapabilites = new WorkspaceClientCapabilities
+      workspaceClientCapabilites.setApplyEdit(true)
+      workspaceClientCapabilites.setExecuteCommand(new ExecuteCommandCapabilities)
+      workspaceClientCapabilites.setSymbol(new SymbolCapabilities)
+      val textDocumentClientCapabilities = new TextDocumentClientCapabilities
+      textDocumentClientCapabilities.setCodeAction(new CodeActionCapabilities)
+      textDocumentClientCapabilities.setCodeLens(new CodeLensCapabilities)
+      textDocumentClientCapabilities.setCompletion(new CompletionCapabilities(new CompletionItemCapabilities(false)))
+      textDocumentClientCapabilities.setDefinition(new DefinitionCapabilities)
+      textDocumentClientCapabilities.setDocumentHighlight(new DocumentHighlightCapabilities)
+      textDocumentClientCapabilities.setDocumentLink(new DocumentLinkCapabilities)
+      textDocumentClientCapabilities.setDocumentSymbol(new DocumentSymbolCapabilities)
+      textDocumentClientCapabilities.setFormatting(new FormattingCapabilities)
+      textDocumentClientCapabilities.setHover(new HoverCapabilities)
+      textDocumentClientCapabilities.setOnTypeFormatting(null)
 
-        textDocumentClientCapabilities.setRangeFormatting(new RangeFormattingCapabilities)
-        textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
-        textDocumentClientCapabilities.setRename(new RenameCapabilities)
-        textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
-        textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, false, true))
-        initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilites, textDocumentClientCapabilities, null))
-        initParams.setInitializationOptions(this.lspStreamProvider.getInitializationOptions(URI.create(initParams.getRootUri)))
-        initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
-          initializeResult = res
-          LOG.info("Got initializeResult for " + rootPath)
-          requestManager = new SimpleRequestManager(languageServer, client, getServerCapabilities)
-          res
-        })
-        initializeStartTime = System.currentTimeMillis
-        started = true
-      }
-      catch {
-        case ex: Exception =>
-          LOG.error(ex)
-          stop()
-      }
+      textDocumentClientCapabilities.setRangeFormatting(new RangeFormattingCapabilities)
+      textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
+      textDocumentClientCapabilities.setRename(new RenameCapabilities)
+      textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
+      textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, false, true))
+      initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilites, textDocumentClientCapabilities, null))
+      initParams.setInitializationOptions(this.lspStreamProvider.getInitializationOptions(URI.create(initParams.getRootUri)))
+      initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
+        initializeResult = res
+        LOG.info("Got initializeResult for " + rootPath)
+        requestManager = new SimpleRequestManager(languageServer, client, getServerCapabilities)
+        res
+      })
+      initializeStartTime = System.currentTimeMillis
+      started = true
     }
   }
 

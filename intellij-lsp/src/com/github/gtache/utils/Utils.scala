@@ -10,6 +10,8 @@ import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
 import org.eclipse.lsp4j.{Position, TextDocumentIdentifier}
 
+import scala.annotation.varargs
+
 /**
   * Object containing some useful methods for the plugin
   */
@@ -71,6 +73,10 @@ object Utils {
     arr.mkString(sep)
   }
 
+  @varargs def concatenateArrays(arr: Array[Any]*): Array[Any] = {
+    arr.flatten.toArray
+  }
+
   /**
     * Returns a file type given an editor
     *
@@ -118,17 +124,6 @@ object Utils {
     }
   }
 
-  /**
-    * Transforms an URI string into a VFS file
-    *
-    * @param uri The uri
-    * @return The virtual file
-    */
-  def URIToVFS(uri: String): VirtualFile = {
-    val res = LocalFileSystem.getInstance().findFileByPath(new File(new URI(sanitizeURI(uri)).getPath).getAbsolutePath)
-    res
-  }
-
   private def sanitizeURI(uri: String): String = {
     val reconstructed: StringBuilder = StringBuilder.newBuilder
     var uriCp = new String(uri)
@@ -149,6 +144,17 @@ object Utils {
       }
 
     }
+  }
+
+  /**
+    * Transforms an URI string into a VFS file
+    *
+    * @param uri The uri
+    * @return The virtual file
+    */
+  def URIToVFS(uri: String): VirtualFile = {
+    val res = LocalFileSystem.getInstance().findFileByPath(new File(new URI(sanitizeURI(uri)).getPath).getAbsolutePath)
+    res
   }
 
   /**

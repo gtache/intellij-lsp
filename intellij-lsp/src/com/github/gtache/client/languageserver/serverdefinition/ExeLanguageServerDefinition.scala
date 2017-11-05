@@ -1,6 +1,5 @@
 package com.github.gtache.client.languageserver.serverdefinition
 
-import com.github.gtache.client.connection.{ProcessStreamConnectionProvider, StreamConnectionProvider}
 import com.intellij.openapi.diagnostic.Logger
 
 /**
@@ -10,22 +9,23 @@ import com.intellij.openapi.diagnostic.Logger
   * @param path The path to the exe file
   * @param args The arguments for the exe file
   */
-case class ExeLanguageServerDefinition(ext: String, path: String, args: Array[String]) extends UserConfigurableServerDefinition {
+case class ExeLanguageServerDefinition(ext: String, path: String, args: Array[String]) extends CommandServerDefinition {
 
   import ExeLanguageServerDefinition.typ
 
-  override def createConnectionProvider(workingDir: String): StreamConnectionProvider = {
-    if (streamConnectionProvider == null) {
-      streamConnectionProvider = new ProcessStreamConnectionProvider(Seq(path) ++ args, workingDir)
-    }
-    streamConnectionProvider
+  override def toArray: Array[String] = Array(typ, ext, path) ++ args
+
+  override def toString: String = typ + " : path " + path + " args : " + args.mkString(" ")
+
+  override def command: Array[String] = Array(path) ++ args
+
+  override def equals(obj: scala.Any): Boolean = obj match {
+    case ExeLanguageServerDefinition(ext1, path1, args1) =>
+      ext == ext1 && path == path1 && args.toSeq == args1.toSeq
+    case _ => false
   }
 
-  override def toString: String = super.toString + " exe : " + path + " args : " + args.mkString(" ")
-
-  override def toArray: Array[String] = {
-    Array(typ, ext, path) ++ args
-  }
+  override def hashCode(): Int = ext.hashCode + 3 * path.hashCode + 7 * args.hashCode()
 
 }
 
@@ -47,4 +47,6 @@ object ExeLanguageServerDefinition extends UserConfigurableServerDefinitionObjec
   }
 
   override def typ: String = "exe"
+
+  override def getPresentableTyp: String = "Executable"
 }

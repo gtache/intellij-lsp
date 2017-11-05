@@ -24,11 +24,19 @@ case class ArtifactLanguageServerDefinition(ext: String, packge: String, mainCla
     streamConnectionProvider
   }
 
-  override def toString: String = super.toString + " artifact : " + packge + " mainClass : " + mainClass + " args : " + args.mkString(" ")
+  override def toString: String = super.toString + " " + typ + " : " + packge + " mainClass : " + mainClass + " args : " + args.mkString(" ")
 
   override def toArray: Array[String] = {
     Array(typ, ext, packge, mainClass) ++ args
   }
+
+  override def equals(obj: Any): Boolean = obj match {
+    case ArtifactLanguageServerDefinition(ext1, packge1, mainClass1, args1) =>
+      ext == ext1 && packge == packge1 && mainClass == mainClass1 && args.toSeq == args1.toSeq
+    case _ => false
+  }
+
+  override def hashCode(): Int = ext.hashCode + 3 * packge.hashCode + 7 * mainClass.hashCode + 11 * args.hashCode()
 
 }
 
@@ -49,5 +57,7 @@ object ArtifactLanguageServerDefinition extends UserConfigurableServerDefinition
     }
   }
 
-  def typ: String = "artifact"
+  override def typ: String = "artifact"
+
+  override def getPresentableTyp: String = "Artifact"
 }

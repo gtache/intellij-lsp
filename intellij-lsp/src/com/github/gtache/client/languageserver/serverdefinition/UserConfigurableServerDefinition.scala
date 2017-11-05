@@ -1,24 +1,10 @@
 package com.github.gtache.client.languageserver.serverdefinition
 
+import com.intellij.openapi.diagnostic.Logger
+
 object UserConfigurableServerDefinition extends UserConfigurableServerDefinitionObject {
 
-  /**
-    * Returns the UserConfigurableServerDefinition corresponding to the given GUI fields
-    *
-    * @param ext       The extension
-    * @param path      The path or artifact
-    * @param mainClass The mainClass
-    * @param args      The arguments
-    * @return The server definition
-    */
-  def fromFields(ext: String, path: String, mainClass: String, args: String): UserConfigurableServerDefinition = {
-    if ((mainClass.isEmpty || mainClass == null) && path.endsWith(".exe")) {
-      new ExeLanguageServerDefinition(ext, path, args.split(" "))
-    }
-    else {
-      new ArtifactLanguageServerDefinition(ext, path, mainClass, args.split(" "))
-    }
-  }
+  private val LOG: Logger = Logger.getInstance(this.getClass)
 
   /**
     * Transforms a (java) Map<String, ServerDefinitionExtensionPointArtifact> to a Map<String, String[]>
@@ -43,15 +29,18 @@ object UserConfigurableServerDefinition extends UserConfigurableServerDefinition
   }
 
   override def fromArray(arr: Array[String]): UserConfigurableServerDefinition = {
-    val artifact = ArtifactLanguageServerDefinition.fromArray(arr)
+    val filteredArr = arr.filter(s => s != null && s.trim() != "")
+    val artifact = ArtifactLanguageServerDefinition.fromArray(filteredArr)
     if (artifact == null) {
-      ExeLanguageServerDefinition.fromArray(arr)
+      CommandServerDefinition.fromArray(filteredArr)
     } else {
       artifact
     }
   }
 
   override def typ: String = "userConfigurable"
+
+  override def getPresentableTyp: String = "Configurable"
 }
 
 /**
@@ -59,8 +48,11 @@ object UserConfigurableServerDefinition extends UserConfigurableServerDefinition
   */
 trait UserConfigurableServerDefinition extends LanguageServerDefinition {
 
+  private val LOG: Logger = Logger.getInstance(classOf[UserConfigurableServerDefinition])
+
   /**
     * @return The array corresponding to the server definition
     */
   def toArray: Array[String]
+
 }

@@ -10,6 +10,11 @@ trait UserConfigurableServerDefinitionObject {
   def typ: String
 
   /**
+    * @return the type of the server definition in a nicer way
+    */
+  def getPresentableTyp: String
+
+  /**
     * Transforms an array of string into the corresponding UserConfigurableServerDefinition
     *
     * @param arr The array

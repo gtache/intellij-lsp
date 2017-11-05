@@ -1,10 +1,9 @@
 package com.github.gtache.settings;
 
 import com.github.gtache.PluginMain;
-import com.github.gtache.client.languageserver.serverdefinition.ArtifactLanguageServerDefinition;
-import com.github.gtache.client.languageserver.serverdefinition.ExeLanguageServerDefinition;
 import com.github.gtache.client.languageserver.serverdefinition.LanguageServerDefinition;
-import com.github.gtache.utils.Utils;
+import com.github.gtache.client.languageserver.serverdefinition.UserConfigurableServerDefinition;
+import com.github.gtache.settings.gui.LSPGUI;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.options.Configurable;
 import org.jetbrains.annotations.Nls;
@@ -51,21 +50,13 @@ public final class LSPSettings implements Configurable {
         return lspGUI.getRootPanel();
     }
 
-    //TODO complete
-    public void setGUIFields(final Map<String, LanguageServerDefinition> map) {
+    private void setGUIFields(final Map<String, LanguageServerDefinition> map) {
+        if (!lspGUI.getRows().isEmpty()) {
+            lspGUI.clear();
+        }
         for (final Map.Entry<String, LanguageServerDefinition> entry : map.entrySet()) {
-            final LanguageServerDefinition def = entry.getValue();
-            if (def instanceof ArtifactLanguageServerDefinition) {
-                final ArtifactLanguageServerDefinition defImpl = (ArtifactLanguageServerDefinition) def;
-                lspGUI.getExtField().setText(defImpl.ext());
-                lspGUI.getServField().setText(defImpl.packge());
-                lspGUI.getMainClassField().setText(defImpl.mainClass());
-                lspGUI.getArgsField().setText(Utils.arrayToString(defImpl.args(), " "));
-            } else if (def instanceof ExeLanguageServerDefinition) {
-                final ExeLanguageServerDefinition defImpl = (ExeLanguageServerDefinition) def;
-                lspGUI.getExtField().setText(defImpl.ext());
-                lspGUI.getServField().setText(defImpl.path());
-                lspGUI.getArgsField().setText(Utils.arrayToString(defImpl.args(), " "));
+            if (entry instanceof UserConfigurableServerDefinition) {
+                lspGUI.addServerDefinition((UserConfigurableServerDefinition) entry);
             }
         }
     }
