@@ -15,6 +15,7 @@ import com.intellij.openapi.diagnostic.Logger
 case class ArtifactLanguageServerDefinition(ext: String, packge: String, mainClass: String, args: Array[String]) extends UserConfigurableServerDefinition {
 
   import ArtifactLanguageServerDefinition.typ
+
   override def createConnectionProvider(workingDir: String): StreamConnectionProvider = {
     if (streamConnectionProvider == null) {
       val cp = CoursierImpl.resolveClasspath(packge)

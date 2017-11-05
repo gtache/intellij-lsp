@@ -1,6 +1,16 @@
 package com.github.gtache.client.languageserver.serverdefinition
 
 object UserConfigurableServerDefinition extends UserConfigurableServerDefinitionObject {
+
+  /**
+    * Returns the UserConfigurableServerDefinition corresponding to the given GUI fields
+    *
+    * @param ext       The extension
+    * @param path      The path or artifact
+    * @param mainClass The mainClass
+    * @param args      The arguments
+    * @return The server definition
+    */
   def fromFields(ext: String, path: String, mainClass: String, args: String): UserConfigurableServerDefinition = {
     if ((mainClass.isEmpty || mainClass == null) && path.endsWith(".exe")) {
       new ExeLanguageServerDefinition(ext, path, args.split(" "))
@@ -44,7 +54,13 @@ object UserConfigurableServerDefinition extends UserConfigurableServerDefinition
   override def typ: String = "userConfigurable"
 }
 
+/**
+  * A UserConfigurableServerDefinition is a server definition which can be manually entered by the user in the IntellliJ settings
+  */
 trait UserConfigurableServerDefinition extends LanguageServerDefinition {
 
+  /**
+    * @return The array corresponding to the server definition
+    */
   def toArray: Array[String]
 }

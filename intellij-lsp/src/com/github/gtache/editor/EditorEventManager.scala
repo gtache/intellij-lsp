@@ -5,6 +5,7 @@ import java.awt.{Color, Font, KeyboardFocusManager, Point}
 import java.util.concurrent.{TimeUnit, TimeoutException}
 import java.util.{Collections, Timer, TimerTask}
 
+import com.github.gtache.client.languageserver.ServerOptions
 import com.github.gtache.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.client.languageserver.wrapper.LanguageServerWrapperImpl
 import com.github.gtache.contributors.psi.LSPPsiElement
@@ -47,14 +48,25 @@ object EditorEventManager {
     false
   })
 
+  /**
+    * @param uri A file uri
+    * @return The manager for the given uri, or None
+    */
   def forUri(uri: String): Option[EditorEventManager] = {
     uriToManager.get(uri)
   }
 
+  /**
+    * @param editor An editor
+    * @return The manager for the given editor, or None
+    */
   def forEditor(editor: Editor): Option[EditorEventManager] = {
     editorToManager.get(editor)
   }
 
+  /**
+    * Tells the server that all the documents will be saved
+    */
   def willSaveAll(): Unit = {
     editorToManager.foreach(e => e._2.willSave())
   }
@@ -69,10 +81,10 @@ object EditorEventManager {
   * @param documentListener    A listener for keystrokes
   * @param selectionListener   A listener for selection changes in the editor
   * @param requestManager      The related RequestManager, connected to the right LanguageServer
-  * @param syncKind            The type of synchronization
+  * @param serverOptions       the options of the server regarding completion, signatureHelp, syncKind, etc
   * @param wrapper             The corresponding LanguageServerWrapper
   */
-class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListener, val mouseMotionListener: EditorMouseMotionListener, val documentListener: DocumentListener, val selectionListener: SelectionListener, val requestManager: RequestManager, val syncKind: TextDocumentSyncKind = TextDocumentSyncKind.Full, val wrapper: LanguageServerWrapperImpl) {
+class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListener, val mouseMotionListener: EditorMouseMotionListener, val documentListener: DocumentListener, val selectionListener: SelectionListener, val requestManager: RequestManager, val serverOptions: ServerOptions, val wrapper: LanguageServerWrapperImpl) {
 
 
   import com.github.gtache.editor.EditorEventManager._
@@ -84,6 +96,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private val changesParams = new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(), Collections.singletonList(new TextDocumentContentChangeEvent()))
   private val selectedSymbHighlights: mutable.Set[RangeHighlighter] = mutable.HashSet()
   private val diagnosticsHighlights: mutable.Set[DiagnosticRangeHighlighter] = mutable.HashSet()
+  private val syncKind = serverOptions.syncKind
+  private val completionTriggers = if (serverOptions.completionOptions != null) serverOptions.completionOptions.getTriggerCharacters.asScala.toSet else Set[String]()
+  private val signatureTriggers = if (serverOptions.signatureHelpOptions != null) serverOptions.signatureHelpOptions.getTriggerCharacters.asScala.toSet else Set[String]()
   private var version: Int = -1
   private var predTime: Long = -1L
   private var isOpen: Boolean = true
@@ -99,6 +114,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     version
   }, editor.getDocument.getText)))
 
+  /**
+    * Adds all the listeners
+    */
   def addListeners(): Unit = {
     editor.addEditorMouseListener(mouseListener)
     editor.addEditorMouseMotionListener(mouseMotionListener)
@@ -106,6 +124,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     editor.getSelectionModel.addSelectionListener(selectionListener)
   }
 
+  /**
+    * Removes all the listeners
+    */
   def removeListeners(): Unit = {
     editor.removeEditorMouseMotionListener(mouseMotionListener)
     editor.getDocument.removeDocumentListener(documentListener)
@@ -140,7 +161,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val ideRange = e.getNewRange
         val LSPPos = Utils.offsetToLSPPos(editor, ideRange.getStartOffset)
         val request = requestManager.documentHighlight(new TextDocumentPositionParams(identifier, LSPPos))
-        if (request!=null) {
+        if (request != null) {
           ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
             override def run(): Unit = {
               import scala.collection.JavaConverters._
@@ -235,6 +256,25 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
+  /**
+    * Immediately requests the server for documentation at the current editor position
+    *
+    * @param editor The editor
+    */
+  def quickDoc(editor: Editor): Unit = {
+    if (editor == this.editor) {
+      val caretPos = editor.getCaretModel.getLogicalPosition
+      val pointPos = editor.logicalPositionToXY(caretPos)
+      val currentTime = System.nanoTime()
+      ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
+        override def run(): Unit = requestAndShowDoc(currentTime, caretPos, pointPos)
+      })
+      predTime = currentTime
+    } else {
+      LOG.warn("Not same editor!")
+    }
+  }
+
   private def requestAndShowDoc(curTime: Long, editorPos: LogicalPosition, point: Point): Unit = {
     isPopupOpen = true
     val serverPos = Utils.logicalToLSPPos(editorPos)
@@ -275,25 +315,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       })
       currentPopup.show(new RelativePoint(editor.getContentComponent, point), Balloon.Position.above)
     })
-  }
-
-  /**
-    * Immediately requests the server for documentation at the current editor position
-    *
-    * @param editor The editor
-    */
-  def quickDoc(editor: Editor): Unit = {
-    if (editor == this.editor) {
-      val caretPos = editor.getCaretModel.getLogicalPosition
-      val pointPos = editor.logicalPositionToXY(caretPos)
-      val currentTime = System.nanoTime()
-      ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
-        override def run(): Unit = requestAndShowDoc(currentTime, caretPos, pointPos)
-      })
-      predTime = currentTime
-    } else {
-      LOG.warn("Not same editor!")
-    }
   }
 
   /**
@@ -589,5 +610,18 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     params.setOptions(options)
     val request = requestManager.rangeFormatting(params)
     if (request != null) request.thenAccept(formatting => applyEdit(edits = formatting.asScala))
+  }
+
+  /**
+    * Calls completion or signatureHelp if the character typed was a trigger characte
+    *
+    * @param c The character just typed
+    */
+  def characterTyped(c: Char): Unit = {
+    if (completionTriggers.contains(c.toString)) {
+      //completion(Utils.offsetToLSPPos(editor,editor.getCaretModel.getCurrentCaret.getOffset))
+    } else if (signatureTriggers.contains(c.toString)) {
+
+    }
   }
 }

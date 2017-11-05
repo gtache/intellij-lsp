@@ -3,9 +3,17 @@ package com.github.gtache.client.languageserver.serverdefinition
 import com.github.gtache.client.connection.{ProcessStreamConnectionProvider, StreamConnectionProvider}
 import com.intellij.openapi.diagnostic.Logger
 
+/**
+  * Class representing server definitions corresponding to an exe file
+  *
+  * @param ext  The extension
+  * @param path The path to the exe file
+  * @param args The arguments for the exe file
+  */
 case class ExeLanguageServerDefinition(ext: String, path: String, args: Array[String]) extends UserConfigurableServerDefinition {
 
   import ExeLanguageServerDefinition.typ
+
   override def createConnectionProvider(workingDir: String): StreamConnectionProvider = {
     if (streamConnectionProvider == null) {
       streamConnectionProvider = new ProcessStreamConnectionProvider(Seq(path) ++ args, workingDir)

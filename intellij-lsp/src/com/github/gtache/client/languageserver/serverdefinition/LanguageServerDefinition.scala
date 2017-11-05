@@ -23,7 +23,7 @@ object LanguageServerDefinition {
     * @param definition The server definition
     */
   def register(definition: LanguageServerDefinition): Unit = {
-    if (definition!=null) {
+    if (definition != null) {
       allDefinitions.add(definition)
       LOG.info("Added definition for " + definition)
     } else {

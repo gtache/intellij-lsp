@@ -2,7 +2,6 @@ package com.github.gtache
 
 import java.util.concurrent.{TimeUnit, TimeoutException}
 
-import com.github.gtache.client.languageserver._
 import com.github.gtache.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.client.languageserver.wrapper.{LanguageServerWrapper, LanguageServerWrapperImpl}
 import com.github.gtache.contributors.LSPNavigationItem

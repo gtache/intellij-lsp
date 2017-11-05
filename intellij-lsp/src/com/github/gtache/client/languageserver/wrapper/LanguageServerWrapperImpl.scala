@@ -8,6 +8,7 @@ import java.util.concurrent._
 import com.github.gtache.PluginMain
 import com.github.gtache.client._
 import com.github.gtache.client.connection.StreamConnectionProvider
+import com.github.gtache.client.languageserver.ServerOptions
 import com.github.gtache.client.languageserver.requestmanager.{RequestManager, SimpleRequestManager}
 import com.github.gtache.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.editor.EditorEventManager
@@ -29,10 +30,18 @@ object LanguageServerWrapperImpl {
   private val uriToLanguageServerWrapper: mutable.Map[String, LanguageServerWrapper] = mutable.HashMap()
   private val editorToLanguageServerWrapper: mutable.Map[Editor, LanguageServerWrapper] = mutable.HashMap()
 
+  /**
+    * @param uri A file uri
+    * @return The wrapper for the given uri, or None
+    */
   def forUri(uri: String): Option[LanguageServerWrapper] = {
     uriToLanguageServerWrapper.get(uri)
   }
 
+  /**
+    * @param editor An editor
+    * @return The wrapper for the given editor, or None
+    */
   def forEditor(editor: Editor): Option[LanguageServerWrapper] = {
     editorToLanguageServerWrapper.get(editor)
   }
@@ -45,6 +54,7 @@ object LanguageServerWrapperImpl {
   * @param rootPath         The root directory
   */
 class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, val rootPath: String) extends LanguageServerWrapper {
+
   import LanguageServerWrapperImpl._
 
   private val lspStreamProvider: StreamConnectionProvider = serverDefinition.createConnectionProvider(rootPath)
@@ -154,7 +164,8 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       if (this.initializeFuture != null && editor != null) {
         initializeFuture.thenRun(() => {
           if (!this.connectedEditors.contains(uri)) {
-            val syncOptions: Either[TextDocumentSyncKind, TextDocumentSyncOptions] = if (initializeFuture == null) null else initializeResult.getCapabilities.getTextDocumentSync
+            val capabilities = getServerCapabilities
+            val syncOptions: Either[TextDocumentSyncKind, TextDocumentSyncOptions] = if (initializeFuture == null) null else capabilities.getTextDocumentSync
             var syncKind: TextDocumentSyncKind = null
             if (syncOptions != null) {
               if (syncOptions.isRight) syncKind = syncOptions.getRight.getChange
@@ -163,7 +174,8 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
               val mouseMotionListener = new EditorMouseMotionListenerImpl
               val documentListener = new DocumentListenerImpl
               val selectionListener = new SelectionListenerImpl
-              val manager = new EditorEventManager(editor, mouseListener, mouseMotionListener, documentListener, selectionListener, requestManager, syncKind, this)
+              val serverOptions = ServerOptions(syncKind, capabilities.getCompletionProvider, capabilities.getSignatureHelpProvider, capabilities.getCodeLensProvider, capabilities.getDocumentOnTypeFormattingProvider, capabilities.getDocumentLinkProvider, capabilities.getExecuteCommandProvider)
+              val manager = new EditorEventManager(editor, mouseListener, mouseMotionListener, documentListener, selectionListener, requestManager, serverOptions, this)
               mouseListener.setManager(manager)
               mouseMotionListener.setManager(manager)
               documentListener.setManager(manager)

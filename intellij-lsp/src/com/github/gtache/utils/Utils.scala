@@ -3,7 +3,6 @@ package com.github.gtache.utils
 import java.io.File
 import java.net.{MalformedURLException, URI, URL}
 
-import com.github.gtache.client.languageserver.serverdefinition.ArtifactLanguageServerDefinition
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -99,7 +98,7 @@ object Utils {
     * @return The URI
     */
   def editorToURIString(editor: Editor): String = {
-    VFSToURIString(FileDocumentManager.getInstance().getFile(editor.getDocument))
+    sanitizeURI(VFSToURIString(FileDocumentManager.getInstance().getFile(editor.getDocument)))
   }
 
   /**
@@ -119,10 +118,22 @@ object Utils {
     }
   }
 
+  /**
+    * Transforms an URI string into a VFS file
+    *
+    * @param uri The uri
+    * @return The virtual file
+    */
+  def URIToVFS(uri: String): VirtualFile = {
+    val res = LocalFileSystem.getInstance().findFileByPath(new File(new URI(sanitizeURI(uri)).getPath).getAbsolutePath)
+    res
+  }
+
   private def sanitizeURI(uri: String): String = {
     val reconstructed: StringBuilder = StringBuilder.newBuilder
     var uriCp = new String(uri)
     if (!uri.startsWith("file:")) {
+      LOG.warn("Malformed uri : " + uri)
       uri //Probably not an uri
     } else {
       uriCp = uriCp.drop(5).dropWhile(c => c == '/')
@@ -138,17 +149,6 @@ object Utils {
       }
 
     }
-  }
-
-  /**
-    * Transforms an URI string into a VFS file
-    *
-    * @param uri The uri
-    * @return The virtual file
-    */
-  def URIToVFS(uri: String): VirtualFile = {
-    val res = LocalFileSystem.getInstance().findFileByPath(new File(new URI(sanitizeURI(uri)).getPath).getAbsolutePath)
-    res
   }
 
   /**
