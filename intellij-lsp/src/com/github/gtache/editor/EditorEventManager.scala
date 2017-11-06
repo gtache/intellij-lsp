@@ -15,7 +15,7 @@ import com.intellij.codeInsight.lookup.{AutoCompletionPolicy, LookupElement, Loo
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.editor.colors.EditorColors
+import com.intellij.openapi.editor.colors.{EditorColors, TextAttributesKey}
 import com.intellij.openapi.editor.event._
 import com.intellij.openapi.editor.markup._
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
@@ -173,7 +173,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                   val startOffset = Utils.LSPPosToOffset(editor, range.getStart)
                   val endOffset = Utils.LSPPosToOffset(editor, range.getEnd)
                   val colorScheme = editor.getColorsScheme
-                  val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION, new TextAttributes(colorScheme.getColor(EditorColors.SELECTION_FOREGROUND_COLOR), colorScheme.getColor(EditorColors.SELECTION_BACKGROUND_COLOR), null, null, Font.PLAIN), HighlighterTargetArea.EXACT_RANGE)
+                  val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION-1, colorScheme.getAttributes(EditorColors.IDENTIFIER_UNDER_CARET_ATTRIBUTES), HighlighterTargetArea.EXACT_RANGE)
                   selectedSymbHighlights.add(highlight)
                 }))
               } catch {
@@ -186,6 +186,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       }
     }
   }
+
 
   /**
     * Will show documentation if the mouse doesn't move for a given time (Hover)
@@ -281,6 +282,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   }
 
+  //TODO Use QuickDocInfoPane, HintManagerImpl, LightweightHint
   private def createAndShowBalloon(string: String, curTime: Long, point: Point): Unit = {
     ApplicationManager.getApplication.invokeLater(() => {
       val popupBuilder = JBPopupFactory.getInstance().createHtmlTextBalloonBuilder(string, com.intellij.openapi.ui.MessageType.INFO, null)
