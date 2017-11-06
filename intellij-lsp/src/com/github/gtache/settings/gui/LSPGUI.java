@@ -16,12 +16,15 @@ import java.awt.*;
 import java.awt.event.ItemEvent;
 import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * The GUI for the LSP settings
  */
 public class LSPGUI {
 
+    private static final String EXT_LABEL = "Extension";
+    private static final String EXT_TOOLTIP = "e.g. scala, java, c, js, ...";
     private static final String EXT = "ext";
     private static final String MAINCLASS = "mainclass";
     private static final String ARGS = "args";
@@ -90,7 +93,7 @@ public class LSPGUI {
     }
 
     public boolean isModified() {
-        if (serverDefinitions.size() == rows.size()) {
+        if (serverDefinitions.size() == rows.stream().filter(row -> Arrays.stream(row.toStringArray()).skip(1).anyMatch(s -> s != null && !s.isEmpty())).collect(Collectors.toList()).size()) {
             for (final LSPGUIRow row : rows) {
                 final UserConfigurableServerDefinition stateDef = serverDefinitions.get(row.getText(EXT));
                 final UserConfigurableServerDefinition rowDef = UserConfigurableServerDefinition$.MODULE$.fromArray(row.toStringArray());
@@ -161,100 +164,82 @@ public class LSPGUI {
         return removeRowButton;
     }
 
-    private JPanel createArtifactRow(final String ext, final String serv, final String mainClass, final String args) {
+    private JPanel createRow(final List<JComponent> labelFields, final String selectedItem) {
         final JPanel panel = new JPanel();
-        panel.setLayout(new GridLayoutManager(2, 18, JBUI.emptyInsets(), -1, -1));
+        int colIdx = 0;
+        panel.setLayout(new GridLayoutManager(2, 17, JBUI.emptyInsets(), -1, -1));
 
-        panel.add(new Spacer(), new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1, GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
-        panel.add(new Spacer(), new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
-        final JComboBox<String> typeBox = createComboBox(panel, ArtifactLanguageServerDefinition$.MODULE$.getPresentableTyp());
-        panel.add(typeBox, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        panel.add(new Spacer(), new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE, 1, GridConstraints.SIZEPOLICY_FIXED, new Dimension(0, 10), new Dimension(0, 10), new Dimension(0, 10), 0, false));
+        final JComboBox<String> typeBox = createComboBox(panel, selectedItem);
+        panel.add(typeBox, new GridConstraints(0, colIdx++, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
 
-        panel.add(new Spacer(), new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, 1, null, null, null, 0, false));
-        panel.add(new JLabel("Extension"), new GridConstraints(0, 3, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        final JTextField extField = new JTextField();
-        extField.setToolTipText("e.g. scala, java, c, js, ...");
-        extField.setText(ext);
-        panel.add(extField, new GridConstraints(0, 4, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
-
-        panel.add(new Spacer(), new GridConstraints(0, 5, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
-        panel.add(new JLabel("Artifact"), new GridConstraints(0, 6, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        final JTextField packgeField = new JTextField();
-        packgeField.setToolTipText("e.g. ch.epfl.lamp:dotty-language-server_0.3:0.3.0-RC2");
-        packgeField.setText(serv);
-        panel.add(packgeField, new GridConstraints(0, 7, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
-
-        panel.add(new Spacer(), new GridConstraints(0, 8, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
-        panel.add(new JLabel("Main class"), new GridConstraints(0, 9, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        final JTextField mainClassField = new JTextField();
-        mainClassField.setToolTipText("e.g. dotty.tools.languageserver.Main");
-        mainClassField.setText(mainClass);
-        panel.add(mainClassField, new GridConstraints(0, 10, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
-
-        panel.add(new Spacer(), new GridConstraints(0, 11, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
-        panel.add(new JLabel("Args"), new GridConstraints(0, 12, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        final JTextField argsField = new JTextField();
-        argsField.setToolTipText("e.g. -stdio");
-        argsField.setText(args);
-        panel.add(argsField, new GridConstraints(0, 13, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
+        final Iterator<JComponent> iterator = labelFields.iterator();
+        while (iterator.hasNext()) {
+            final JComponent label = iterator.next();
+            final JComponent field = iterator.next();
+            panel.add(new Spacer(), new GridConstraints(0, colIdx++, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, 1, null, null, null, 0, false));
+            panel.add(label, new GridConstraints(0, colIdx++, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+            panel.add(field, new GridConstraints(0, colIdx++, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
+        }
 
         panel.add(new Spacer(), new GridConstraints(0, 14, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
         final JButton newRowButton = createNewRowButton();
         panel.add(newRowButton, new GridConstraints(0, 15, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        if (!rows.isEmpty()) {
+        if (rows.isEmpty()) {
+            panel.add(new Spacer(), new GridConstraints(0, 16, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, 1, null, null, null, 0, false));
+        } else {
             final JButton removeRowButton = createRemoveRowButton(panel);
             panel.add(removeRowButton, new GridConstraints(0, 16, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         }
 
-        panel.add(new Spacer(), new GridConstraints(0, 17, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return panel;
+    }
+
+    private JPanel createArtifactRow(final String ext, final String serv, final String mainClass, final String args) {
+        final JLabel extLabel = new JLabel(EXT_LABEL);
+        final JTextField extField = new JTextField();
+        extField.setToolTipText(EXT_TOOLTIP);
+        extField.setText(ext);
+        final JLabel packgeLabel = new JLabel("Artifact");
+        final JTextField packgeField = new JTextField();
+        packgeField.setToolTipText("e.g. ch.epfl.lamp:dotty-language-server_0.3:0.3.0-RC2");
+        packgeField.setText(serv);
+        final JLabel mainClassLabel = new JLabel("Main class");
+        final JTextField mainClassField = new JTextField();
+        mainClassField.setToolTipText("e.g. dotty.tools.languageserver.Main");
+        mainClassField.setText(mainClass);
+        final JLabel argsLabel = new JLabel("Args");
+        final JTextField argsField = new JTextField();
+        argsField.setToolTipText("e.g. -stdio");
+        argsField.setText(args);
+        final List<JComponent> components = Arrays.asList(extLabel, extField, packgeLabel, packgeField, mainClassLabel, mainClassField, argsLabel, argsField);
+
+        final JPanel panel = createRow(components, ArtifactLanguageServerDefinition$.MODULE$.getPresentableTyp());
         final scala.collection.mutable.LinkedHashMap<String, JComponent> map = new scala.collection.mutable.LinkedHashMap<>();
         map.put(EXT, extField);
         map.put(PACKGE, packgeField);
         map.put(MAINCLASS, mainClassField);
         map.put(ARGS, argsField);
         rows.add(new LSPGUIRow(panel, ArtifactLanguageServerDefinition$.MODULE$.typ(), map));
-        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         return panel;
     }
 
     private JPanel createExeRow(final String ext, final String path, final String args) {
-        final JPanel panel = new JPanel();
-        panel.setLayout(new GridLayoutManager(2, 15, JBUI.emptyInsets(), -1, -1));
-        panel.add(new Spacer(), new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1, GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
-        panel.add(new Spacer(), new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
-        final JComboBox<String> typeBox = createComboBox(panel, ExeLanguageServerDefinition$.MODULE$.getPresentableTyp());
-        panel.add(typeBox, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-
-        panel.add(new Spacer(), new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, 1, null, null, null, 0, false));
-        panel.add(new JLabel("Extension"), new GridConstraints(0, 3, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        final JLabel extLabel = new JLabel(EXT_LABEL);
         final JTextField extField = new JTextField();
-        extField.setToolTipText("e.g. scala, java, c, js, ...");
+        extField.setToolTipText(EXT_TOOLTIP);
         extField.setText(ext);
-        panel.add(extField, new GridConstraints(0, 4, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
-
-        panel.add(new Spacer(), new GridConstraints(0, 5, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
-        panel.add(new JLabel("Path"), new GridConstraints(0, 6, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        final JLabel pathLabel = new JLabel("Path");
         final JTextField pathField = new JTextField();
         pathField.setToolTipText("e.g. C:\\rustLS\\rls.exe");
         pathField.setText(path);
-        panel.add(pathField, new GridConstraints(0, 7, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
-
-        panel.add(new Spacer(), new GridConstraints(0, 8, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
-        panel.add(new JLabel("Args"), new GridConstraints(0, 9, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        final JLabel argsLabel = new JLabel("Args");
         final JTextField argsField = new JTextField();
         argsField.setToolTipText("e.g. -stdio");
         argsField.setText(args);
-        panel.add(argsField, new GridConstraints(0, 10, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
-
-        panel.add(new Spacer(), new GridConstraints(0, 11, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
-        final JButton newRowButton = createNewRowButton();
-        panel.add(newRowButton, new GridConstraints(0, 12, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        if (!rows.isEmpty()) {
-            final JButton removeRowButton = createRemoveRowButton(panel);
-            panel.add(removeRowButton, new GridConstraints(0, 13, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        }
-        panel.add(new Spacer(), new GridConstraints(0, 14, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
-
+        final List<JComponent> components = Arrays.asList(extLabel, extField, pathLabel, pathField, argsLabel, argsField);
+        final JPanel panel = createRow(components, ExeLanguageServerDefinition$.MODULE$.getPresentableTyp());
         final scala.collection.mutable.LinkedHashMap<String, JComponent> map = new scala.collection.mutable.LinkedHashMap<>();
         map.put(EXT, extField);
         map.put(PATH, pathField);
@@ -265,36 +250,17 @@ public class LSPGUI {
     }
 
     private JPanel createCommandRow(final String ext, final String command) {
-        final JPanel panel = new JPanel();
-        panel.setLayout(new GridLayoutManager(2, 12, JBUI.emptyInsets(), -1, -1));
-        panel.add(new Spacer(), new GridConstraints(1, 3, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1, GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
-        panel.add(new Spacer(), new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
-        final JComboBox<String> typeBox = createComboBox(panel, RawCommandServerDefinition$.MODULE$.getPresentableTyp());
-        panel.add(typeBox, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-
-        panel.add(new Spacer(), new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, 1, null, null, null, 0, false));
-        panel.add(new JLabel("Extension"), new GridConstraints(0, 3, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        final JLabel extLabel = new JLabel(EXT_LABEL);
         final JTextField extField = new JTextField();
-        extField.setToolTipText("e.g. scala, java, c, js, ...");
+        extField.setToolTipText(EXT_TOOLTIP);
         extField.setText(ext);
-        panel.add(extField, new GridConstraints(0, 4, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
-
-        panel.add(new Spacer(), new GridConstraints(0, 5, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
-        panel.add(new JLabel("Command"), new GridConstraints(0, 6, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        final JLabel commandLabel = new JLabel("Command");
         final JTextField commandField = new JTextField();
         commandField.setText(command);
         commandField.setToolTipText("e.g. python.exe -m C:\\python-ls\\pyls");
-        panel.add(commandField, new GridConstraints(0, 7, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
 
-        panel.add(new Spacer(), new GridConstraints(0, 8, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
-        final JButton newRowButton = createNewRowButton();
-        panel.add(newRowButton, new GridConstraints(0, 9, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        if (!rows.isEmpty()) {
-            final JButton removeRowButton = createRemoveRowButton(panel);
-            panel.add(removeRowButton, new GridConstraints(0, 10, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        }
-        panel.add(new Spacer(), new GridConstraints(0, 11, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
-
+        final List<JComponent> components = Arrays.asList(extLabel, extField, commandLabel, commandField);
+        final JPanel panel = createRow(components, RawCommandServerDefinition$.MODULE$.getPresentableTyp());
         final scala.collection.mutable.LinkedHashMap<String, JComponent> map = new scala.collection.mutable.LinkedHashMap<>();
         map.put(EXT, extField);
         map.put(COMMAND, commandField);
