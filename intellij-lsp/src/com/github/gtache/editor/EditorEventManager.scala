@@ -280,7 +280,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   }
 
-  //TODO Use QuickDocInfoPane, HintManagerImpl, LightweightHint
   private def createAndShowBalloon(string: String, curTime: Long, point: Point): Unit = {
     ApplicationManager.getApplication.invokeLater(() => {
       val hint = new LightweightHint(new JLabel(string))
