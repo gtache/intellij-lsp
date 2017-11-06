@@ -1,6 +1,7 @@
 # intellij-lsp
 Plugin adding support for Language Server Protocol for IntelliJ     
 
+## Features
 What's working :      
 Requests to the server:     
 -hover     
@@ -24,6 +25,7 @@ Concretely, what you can do with IntelliJ at the moment :
 -Format a document / a selection (CTRL+ALT(+SHIFT)+L by default)    
 -See diagnostics (error, warnings) and hover over them to see the message
 
+## Add a Language Server
 To add a supported language server, you can either create a plugin (see intellij-lsp-dotty) which extends this plugin and extend LanguageServerDefinition or instantiate a concrete subclass of it and register it, or simply go to IntelliJ/file/settings/Languages & Frameworks/Language Server Protocol and fill the required informations.    
 Note that the settings will always override a possible LSP plugin for the same file extension.
 
