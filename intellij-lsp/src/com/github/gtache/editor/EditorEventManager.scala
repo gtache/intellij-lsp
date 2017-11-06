@@ -4,6 +4,7 @@ import java.awt.event.KeyEvent
 import java.awt.{Color, Font, KeyboardFocusManager, Point}
 import java.util.concurrent.{TimeUnit, TimeoutException}
 import java.util.{Collections, Timer, TimerTask}
+import javax.swing.JLabel
 
 import com.github.gtache.client.languageserver.ServerOptions
 import com.github.gtache.client.languageserver.requestmanager.RequestManager
@@ -11,19 +12,21 @@ import com.github.gtache.client.languageserver.wrapper.LanguageServerWrapperImpl
 import com.github.gtache.contributors.psi.LSPPsiElement
 import com.github.gtache.requests.{HoverHandler, WorkspaceEditHandler}
 import com.github.gtache.utils.Utils
+import com.intellij.codeInsight.CodeInsightSettings
+import com.intellij.codeInsight.hint.{HintManager, HintManagerImpl}
 import com.intellij.codeInsight.lookup.{AutoCompletionPolicy, LookupElement, LookupElementBuilder}
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.editor.colors.{EditorColors, TextAttributesKey}
+import com.intellij.openapi.editor.colors.EditorColors
 import com.intellij.openapi.editor.event._
 import com.intellij.openapi.editor.markup._
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.fileEditor.FileDocumentManager
-import com.intellij.openapi.ui.popup.{Balloon, JBPopupFactory, JBPopupListener, LightweightWindowEvent}
+import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.util.{Computable, TextRange}
 import com.intellij.psi.PsiReference
-import com.intellij.ui.awt.RelativePoint
+import com.intellij.ui.LightweightHint
 import org.eclipse.lsp4j._
 
 import scala.collection.JavaConverters._
@@ -102,9 +105,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private var version: Int = -1
   private var predTime: Long = -1L
   private var isOpen: Boolean = true
-  @volatile private var isPopupOpen: Boolean = false
   private var mouseInEditor: Boolean = true
-  @volatile private var currentPopup: Balloon = _
 
   uriToManager.put(Utils.editorToURIString(editor), this)
   editorToManager.put(editor, this)
@@ -154,34 +155,36 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param e The selection event
     */
   def selectionChanged(e: SelectionEvent): Unit = {
-    if (e.getEditor == editor) {
-      selectedSymbHighlights.foreach(h => editor.getMarkupModel.removeHighlighter(h))
-      selectedSymbHighlights.clear()
-      if (editor.getSelectionModel.hasSelection) {
-        val ideRange = e.getNewRange
-        val LSPPos = Utils.offsetToLSPPos(editor, ideRange.getStartOffset)
-        val request = requestManager.documentHighlight(new TextDocumentPositionParams(identifier, LSPPos))
-        if (request != null) {
-          ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
-            override def run(): Unit = {
-              import scala.collection.JavaConverters._
-              try {
-                val resp = request.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS).asScala
-                ApplicationManager.getApplication.invokeLater(() => resp.foreach(dh => {
-                  val range = dh.getRange
-                  val kind = dh.getKind
-                  val startOffset = Utils.LSPPosToOffset(editor, range.getStart)
-                  val endOffset = Utils.LSPPosToOffset(editor, range.getEnd)
-                  val colorScheme = editor.getColorsScheme
-                  val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION-1, colorScheme.getAttributes(EditorColors.IDENTIFIER_UNDER_CARET_ATTRIBUTES), HighlighterTargetArea.EXACT_RANGE)
-                  selectedSymbHighlights.add(highlight)
-                }))
-              } catch {
-                case e: TimeoutException =>
-                  LOG.warn(e)
+    if (CodeInsightSettings.getInstance().HIGHLIGHT_IDENTIFIER_UNDER_CARET) {
+      if (e.getEditor == editor) {
+        selectedSymbHighlights.foreach(h => editor.getMarkupModel.removeHighlighter(h))
+        selectedSymbHighlights.clear()
+        if (editor.getSelectionModel.hasSelection) {
+          val ideRange = e.getNewRange
+          val LSPPos = Utils.offsetToLSPPos(editor, ideRange.getStartOffset)
+          val request = requestManager.documentHighlight(new TextDocumentPositionParams(identifier, LSPPos))
+          if (request != null) {
+            ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
+              override def run(): Unit = {
+                import scala.collection.JavaConverters._
+                try {
+                  val resp = request.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS).asScala
+                  ApplicationManager.getApplication.invokeLater(() => resp.foreach(dh => {
+                    val range = dh.getRange
+                    val kind = dh.getKind
+                    val startOffset = Utils.LSPPosToOffset(editor, range.getStart)
+                    val endOffset = Utils.LSPPosToOffset(editor, range.getEnd)
+                    val colorScheme = editor.getColorsScheme
+                    val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION - 1, colorScheme.getAttributes(EditorColors.IDENTIFIER_UNDER_CARET_ATTRIBUTES), HighlighterTargetArea.EXACT_RANGE)
+                    selectedSymbHighlights.add(highlight)
+                  }))
+                } catch {
+                  case e: TimeoutException =>
+                    LOG.warn(e)
+                }
               }
-            }
-          })
+            })
+          }
         }
       }
     }
@@ -199,11 +202,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       if (predTime == (-1L)) {
         predTime = curTime
       } else {
-        if (!isPopupOpen && !isKeyPressed) {
+        if (!isKeyPressed) {
           scheduleDocumentation(curTime, getPos(e), e.getMouseEvent.getPoint)
-        } else if (currentPopup != null) {
-          currentPopup.hide()
-          currentPopup = null
         }
         predTime = curTime
       }
@@ -236,7 +236,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         hoverThread.schedule(new TimerTask {
           override def run(): Unit = {
             val curTime = System.nanoTime()
-            if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && !isPopupOpen && !isKeyPressed) {
+            if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && !isKeyPressed) {
               val editorOffset = ApplicationManager.getApplication.runReadAction(new Computable[Int] {
                 override def compute(): Int = editor.logicalPositionToOffset(editorPos)
               })
@@ -258,7 +258,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   private def requestAndShowDoc(curTime: Long, editorPos: LogicalPosition, point: Point): Unit = {
-    isPopupOpen = true
+    //isPopupOpen = true
     val serverPos = Utils.logicalToLSPPos(editorPos)
     val request = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
     if (request != null) {
@@ -266,15 +266,13 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val hover = request.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
         val range = hover.getRange
         val string = HoverHandler.getHoverString(hover)
-        if (string != null && string!="") {
+        if (string != null && string != "") {
           createAndShowBalloon(string, curTime, point)
         } else {
-          isPopupOpen = false
           LOG.warn("Hover string returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
         }
       } catch {
         case e: TimeoutException =>
-          isPopupOpen = false
           LOG.warn(e)
       }
     }
@@ -285,18 +283,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   //TODO Use QuickDocInfoPane, HintManagerImpl, LightweightHint
   private def createAndShowBalloon(string: String, curTime: Long, point: Point): Unit = {
     ApplicationManager.getApplication.invokeLater(() => {
+      val hint = new LightweightHint(new JLabel(string))
+      val constraint = HintManager.ABOVE
+      val p = HintManagerImpl.getHintPosition(hint, editor, editor.xyToLogicalPosition(point), constraint)
+      HintManagerImpl.getInstanceImpl.showEditorHint(hint, editor, p, HintManager.HIDE_BY_ANY_KEY | HintManager.HIDE_BY_TEXT_CHANGE | HintManager.HIDE_BY_SCROLLING, 0, false, HintManagerImpl.createHintHint(editor, p, hint, constraint).setContentActive(false))
       val popupBuilder = JBPopupFactory.getInstance().createHtmlTextBalloonBuilder(string, com.intellij.openapi.ui.MessageType.INFO, null)
       popupBuilder.setHideOnKeyOutside(true).setHideOnAction(true).setHideOnClickOutside(true).setHideOnCloseClick(true).setHideOnLinkClick(true).setHideOnFrameResize(true)
-      currentPopup = popupBuilder.createBalloon()
-      currentPopup.addListener(new JBPopupListener {
-        override def onClosed(lightweightWindowEvent: LightweightWindowEvent): Unit = {
-          isPopupOpen = false
-          predTime = curTime
-        }
-
-        override def beforeShown(lightweightWindowEvent: LightweightWindowEvent): Unit = {}
-      })
-      currentPopup.show(new RelativePoint(editor.getContentComponent, point), Balloon.Position.above)
     })
   }
 
@@ -537,6 +529,24 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
+    * Reformat the text currently selected in the editor
+    */
+  def reformatSelection(): Unit = {
+    val params = new DocumentRangeFormattingParams()
+    params.setTextDocument(identifier)
+    val selectionModel = editor.getSelectionModel
+    val start = selectionModel.getSelectionStart
+    val end = selectionModel.getSelectionEnd
+    val startingPos = Utils.offsetToLSPPos(editor, start)
+    val endPos = Utils.offsetToLSPPos(editor, end)
+    params.setRange(new Range(startingPos, endPos))
+    val options = new FormattingOptions()
+    params.setOptions(options)
+    val request = requestManager.rangeFormatting(params)
+    if (request != null) request.thenAccept(formatting => applyEdit(edits = formatting.asScala))
+  }
+
+  /**
     * Applies the edits given a version
     *
     * @param version The version of the changes ; If it is lower than the current version, they are discarded
@@ -594,24 +604,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     } else {
       false
     }
-  }
-
-  /**
-    * Reformat the text currently selected in the editor
-    */
-  def reformatSelection(): Unit = {
-    val params = new DocumentRangeFormattingParams()
-    params.setTextDocument(identifier)
-    val selectionModel = editor.getSelectionModel
-    val start = selectionModel.getSelectionStart
-    val end = selectionModel.getSelectionEnd
-    val startingPos = Utils.offsetToLSPPos(editor, start)
-    val endPos = Utils.offsetToLSPPos(editor, end)
-    params.setRange(new Range(startingPos, endPos))
-    val options = new FormattingOptions()
-    params.setOptions(options)
-    val request = requestManager.rangeFormatting(params)
-    if (request != null) request.thenAccept(formatting => applyEdit(edits = formatting.asScala))
   }
 
   /**
