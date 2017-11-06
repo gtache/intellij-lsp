@@ -1,9 +1,9 @@
 out/
 .gradle/
 .idea/
-LSP.iml
-LSP.zip
+*.iml
+*.zip
 LSP/
-copyPlugin.ps1
+*.ps1
 target/
 project/

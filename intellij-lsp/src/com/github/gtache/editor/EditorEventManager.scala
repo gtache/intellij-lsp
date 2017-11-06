@@ -188,7 +188,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
-    * Will show documentation if the mosue doesn't move for a given time (Hover)
+    * Will show documentation if the mouse doesn't move for a given time (Hover)
     *
     * @param e the event
     */

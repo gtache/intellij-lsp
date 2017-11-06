@@ -28,7 +28,7 @@ case class LSPGUIRow(panel: JPanel, typ: String, fields: mutable.LinkedHashMap[S
   def getText(label: String): String = {
     fields.get(label).fold("") {
       case t: JTextField => t.getText()
-      case b: JComboBox[String] => b.getSelectedItem.asInstanceOf[String]
+      case b: JComboBox[String @unchecked] => b.getSelectedItem.asInstanceOf[String]
       case u: JComponent => LOG.error("Unknown JComponent : " + u)
         ""
     }
@@ -40,7 +40,7 @@ case class LSPGUIRow(panel: JPanel, typ: String, fields: mutable.LinkedHashMap[S
   def toStringArray: Array[String] = {
     Array(typ) ++ fields.values.map {
       case t: JTextField => t.getText()
-      case b: JComboBox[String] => b.getSelectedItem.asInstanceOf[String]
+      case b: JComboBox[String @unchecked] => b.getSelectedItem.asInstanceOf[String]
       case u: JComponent => LOG.error("Unknown JComponent : " + u)
         ""
     }
