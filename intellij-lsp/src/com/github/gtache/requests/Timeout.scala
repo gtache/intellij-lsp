@@ -4,6 +4,7 @@ package com.github.gtache.requests
   * An object containing the Timeout for the various requests
   */
 object Timeout {
+  val SIGNATURE_TIMEOUT: Int = 1000
   val SYMBOLS_TIMEOUT: Int = 2000
   val HOVER_TIMEOUT: Int = 1000
   val COMPLETION_TIMEOUT: Int = 1000

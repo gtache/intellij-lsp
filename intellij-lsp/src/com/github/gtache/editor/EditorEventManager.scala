@@ -10,7 +10,7 @@ import com.github.gtache.client.languageserver.ServerOptions
 import com.github.gtache.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.client.languageserver.wrapper.LanguageServerWrapperImpl
 import com.github.gtache.contributors.psi.LSPPsiElement
-import com.github.gtache.requests.{HoverHandler, WorkspaceEditHandler}
+import com.github.gtache.requests.{HoverHandler, Timeout, WorkspaceEditHandler}
 import com.github.gtache.utils.Utils
 import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.codeInsight.hint.{HintManager, HintManagerImpl}
@@ -20,6 +20,7 @@ import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.colors.EditorColors
 import com.intellij.openapi.editor.event._
+import com.intellij.openapi.editor.ex.EditorSettingsExternalizable
 import com.intellij.openapi.editor.markup._
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -33,7 +34,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 object EditorEventManager {
-  private val HOVER_TIME_THRES: Long = 1500000000L //1.5 sec
+  private val HOVER_TIME_THRES: Long = EditorSettingsExternalizable.getInstance().getQuickDocOnMouseOverElementDelayMillis * 1000000
   private val SCHEDULE_THRES = 10000000 //Time before the Timer is scheduled
   private val POPUP_THRES = HOVER_TIME_THRES / 1000000 + 20
 
@@ -100,7 +101,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private val selectedSymbHighlights: mutable.Set[RangeHighlighter] = mutable.HashSet()
   private val diagnosticsHighlights: mutable.Set[DiagnosticRangeHighlighter] = mutable.HashSet()
   private val syncKind = serverOptions.syncKind
-  private val completionTriggers = if (serverOptions.completionOptions != null) serverOptions.completionOptions.getTriggerCharacters.asScala.toSet else Set[String]()
+  private val completionTriggers = if (serverOptions.completionOptions != null) serverOptions.completionOptions.getTriggerCharacters.asScala.toSet.filter(s => s != ".") else Set[String]()
   private val signatureTriggers = if (serverOptions.signatureHelpOptions != null) serverOptions.signatureHelpOptions.getTriggerCharacters.asScala.toSet else Set[String]()
   private var version: Int = -1
   private var predTime: Long = -1L
@@ -197,6 +198,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param e the event
     */
   def mouseMoved(e: EditorMouseEvent): Unit = {
+    //if (EditorSettingsExternalizable.getInstance().isShowQuickDocOnMouseOverElement) { //TODO fix double docs before uncommenting
     if (e.getEditor == editor) {
       val curTime = System.nanoTime()
       if (predTime == (-1L)) {
@@ -210,6 +212,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     } else {
       LOG.error("Wrong editor for EditorEventManager")
     }
+    //}
   }
 
   private def getPos(e: EditorMouseEvent): LogicalPosition = {
@@ -246,7 +249,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 val message = first.message
                 val code = first.code
                 val source = first.source
-                createAndShowBalloon(if (source != "" && source != null) source + " : " + message else message, time, point)
+                createAndShowHint(if (source != "" && source != null) source + " : " + message else message, time, point)
               } else {
                 requestAndShowDoc(curTime, editorPos, point)
               }
@@ -258,7 +261,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   private def requestAndShowDoc(curTime: Long, editorPos: LogicalPosition, point: Point): Unit = {
-    //isPopupOpen = true
     val serverPos = Utils.logicalToLSPPos(editorPos)
     val request = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
     if (request != null) {
@@ -267,7 +269,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val range = hover.getRange
         val string = HoverHandler.getHoverString(hover)
         if (string != null && string != "") {
-          createAndShowBalloon(string, curTime, point)
+          createAndShowHint(string, curTime, point)
         } else {
           LOG.warn("Hover string returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
         }
@@ -280,7 +282,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   }
 
-  private def createAndShowBalloon(string: String, curTime: Long, point: Point): Unit = {
+  private def createAndShowHint(string: String, curTime: Long, point: Point): Unit = {
     ApplicationManager.getApplication.invokeLater(() => {
       val hint = new LightweightHint(new JLabel(string))
       val constraint = HintManager.ABOVE
@@ -528,24 +530,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
-    * Reformat the text currently selected in the editor
-    */
-  def reformatSelection(): Unit = {
-    val params = new DocumentRangeFormattingParams()
-    params.setTextDocument(identifier)
-    val selectionModel = editor.getSelectionModel
-    val start = selectionModel.getSelectionStart
-    val end = selectionModel.getSelectionEnd
-    val startingPos = Utils.offsetToLSPPos(editor, start)
-    val endPos = Utils.offsetToLSPPos(editor, end)
-    params.setRange(new Range(startingPos, endPos))
-    val options = new FormattingOptions()
-    params.setOptions(options)
-    val request = requestManager.rangeFormatting(params)
-    if (request != null) request.thenAccept(formatting => applyEdit(edits = formatting.asScala))
-  }
-
-  /**
     * Applies the edits given a version
     *
     * @param version The version of the changes ; If it is lower than the current version, they are discarded
@@ -606,6 +590,24 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
+    * Reformat the text currently selected in the editor
+    */
+  def reformatSelection(): Unit = {
+    val params = new DocumentRangeFormattingParams()
+    params.setTextDocument(identifier)
+    val selectionModel = editor.getSelectionModel
+    val start = selectionModel.getSelectionStart
+    val end = selectionModel.getSelectionEnd
+    val startingPos = Utils.offsetToLSPPos(editor, start)
+    val endPos = Utils.offsetToLSPPos(editor, end)
+    params.setRange(new Range(startingPos, endPos))
+    val options = new FormattingOptions()
+    params.setOptions(options)
+    val request = requestManager.rangeFormatting(params)
+    if (request != null) request.thenAccept(formatting => applyEdit(edits = formatting.asScala))
+  }
+
+  /**
     * Calls completion or signatureHelp if the character typed was a trigger characte
     *
     * @param c The character just typed
@@ -614,7 +616,30 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     if (completionTriggers.contains(c.toString)) {
       //completion(Utils.offsetToLSPPos(editor,editor.getCaretModel.getCurrentCaret.getOffset))
     } else if (signatureTriggers.contains(c.toString)) {
+      signatureHelp()
+    }
+  }
 
+  def signatureHelp(): Unit = {
+    val lPos = editor.getCaretModel.getCurrentCaret.getLogicalPosition
+    val point = editor.logicalPositionToXY(lPos)
+    val params = new TextDocumentPositionParams(identifier, Utils.logicalToLSPPos(lPos))
+    val future = requestManager.signatureHelp(params)
+    if (future != null) {
+      try {
+        val signature = future.get(Timeout.SIGNATURE_TIMEOUT, TimeUnit.MILLISECONDS)
+        if (signature != null) {
+          val activeSignature = signature.getSignatures.get(signature.getActiveSignature)
+          val activeParameter = activeSignature.getParameters.get(signature.getActiveParameter)
+          val signatureLabel = activeSignature.getLabel
+          val signatureDoc = activeSignature.getDocumentation
+          val parameterLabel = activeParameter.getLabel
+          val parameterDoc = activeParameter.getDocumentation
+
+        }
+      } catch {
+        case e: TimeoutException => LOG.warn(e)
+      }
     }
   }
 }

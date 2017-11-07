@@ -49,7 +49,7 @@ object Utils {
     * @return The offset
     */
   def LSPPosToOffset(editor: Editor, pos: Position): Int = {
-    editor.logicalPositionToOffset(LSPToLogicalPos(pos))
+    math.min(math.max(editor.logicalPositionToOffset(LSPToLogicalPos(pos)), 0), editor.getDocument.getTextLength - 1)
   }
 
   /**
@@ -124,6 +124,17 @@ object Utils {
     }
   }
 
+  /**
+    * Transforms an URI string into a VFS file
+    *
+    * @param uri The uri
+    * @return The virtual file
+    */
+  def URIToVFS(uri: String): VirtualFile = {
+    val res = LocalFileSystem.getInstance().findFileByPath(new File(new URI(sanitizeURI(uri)).getPath).getAbsolutePath)
+    res
+  }
+
   private def sanitizeURI(uri: String): String = {
     val reconstructed: StringBuilder = StringBuilder.newBuilder
     var uriCp = new String(uri)
@@ -144,17 +155,6 @@ object Utils {
       }
 
     }
-  }
-
-  /**
-    * Transforms an URI string into a VFS file
-    *
-    * @param uri The uri
-    * @return The virtual file
-    */
-  def URIToVFS(uri: String): VirtualFile = {
-    val res = LocalFileSystem.getInstance().findFileByPath(new File(new URI(sanitizeURI(uri)).getPath).getAbsolutePath)
-    res
   }
 
   /**
