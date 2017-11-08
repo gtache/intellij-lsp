@@ -3,7 +3,6 @@ out/
 .idea/
 *.iml
 *.zip
-LSP/
 *.ps1
 target/
 project/
