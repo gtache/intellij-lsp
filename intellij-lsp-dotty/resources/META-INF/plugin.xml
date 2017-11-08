@@ -1,8 +1,8 @@
 <idea-plugin>
-    <id>com.github.gtache.intellij.dotty</id>
-    <name>intellij-dotty</name>
+    <id>com.github.gtache.lsp.dotty</id>
+    <name>Dotty LSP Support</name>
     <version>1.0</version>
-    <vendor email="guillaume.tache@epfl.ch">gtache</vendor>
+    <vendor email="guillaume.tache@epfl.ch" url="https://github.com/gtache">gtache</vendor>
 
     <description><![CDATA[
       Enter short description for your plugin here.<br>
@@ -26,27 +26,23 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Add your extensions here -->
-        <lang.findUsagesProvider implementationClass="com.github.gtache.contributors.LSPFindUsagesProvider"
+        <preloadingActivity implementation="com.github.gtache.lsp.dotty.DottyPreloadingActivity" id="DottyPreloader" />
+        <lang.findUsagesProvider implementationClass="com.github.gtache.lsp.contributors.LSPFindUsagesProvider"
                                  id="DottyLSPFindUsagesProvider" language="Dotty"/>
-        <lang.documentationProvider implementationClass="com.github.gtache.contributors.LSPDocumentationProvider"
+        <lang.documentationProvider implementationClass="com.github.gtache.lsp.contributors.LSPDocumentationProvider"
                                     language="Dotty" id="DottyLSPDocumentationProvider"/>
-        <completion.contributor implementationClass="com.github.gtache.contributors.LSPCompletionContributor"
+        <completion.contributor implementationClass="com.github.gtache.lsp.contributors.LSPCompletionContributor"
                                 language="Dotty" id="DottyLSPCompletionContributor"/>
-        <lang.refactoringSupport language="Dotty" implementationClass="com.github.gtache.contributors.LSPRefactoringSupportProvider" id="DottyRefactoringSupport" />
-        <psi.referenceContributor implementation="com.github.gtache.contributors.LSPReferenceContributor" language="Dotty" id="DottyReferenceContributor" />
+        <lang.refactoringSupport language="Dotty" implementationClass="com.github.gtache.lsp.contributors.LSPRefactoringSupportProvider" id="DottyRefactoringSupport" />
+        <psi.referenceContributor implementation="com.github.gtache.lsp.contributors.LSPReferenceContributor" language="Dotty" id="DottyReferenceContributor" />
     </extensions>
 
-    <project-components>
-        <component>
-            <implementation-class>PluginMain</implementation-class>
-        </component>
-    </project-components>
 
     <actions>
         <!-- Add your actions here -->
     </actions>
 
-    <depends>com.github.gtache.LSP</depends>
+    <depends>com.github.gtache.lsp</depends>
 
     <resource-bundle xmlns="">org.jetbrains.plugins.scala.ScalaBundle</resource-bundle>
 
@@ -64,7 +60,7 @@
                         interface="org.jetbrains.plugins.scala.lang.resolve.DynamicTypeReferenceResolver"/>
     </extensionPoints>
 
-    <extensions defaultExtensionNs="com.github.gtache.intellij.dotty" >
+    <extensions defaultExtensionNs="com.github.gtache.lsp.dotty" >
         <scalaFileFactory implementation="org.jetbrains.plugins.dotty.DottyFileFactory" id="org.jetbrains.plugins.dotty.DottyFileFactory" />
     </extensions>
 

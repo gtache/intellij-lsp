@@ -1,8 +1,8 @@
 <idea-plugin>
-  <id>com.your.company.unique.plugin.id</id>
-  <name>Plugin display name here</name>
+  <id>com.github.gtache.lsp.rust</id>
+  <name>Rust LSP Support</name>
   <version>1.0</version>
-  <vendor email="support@yourcompany.com" url="http://www.yourcompany.com">YourCompany</vendor>
+  <vendor email="guillaume.tache@hotmail.com" url="https://github.com/gtache">gtache</vendor>
 
   <description><![CDATA[
       Enter short description for your plugin here.<br>
@@ -26,13 +26,13 @@
 
   <extensions defaultExtensionNs="com.intellij">
     <!-- Add your extensions here -->
-      <preloadingActivity implementation="RustPreloadingActivity" id="RustPreloadingActivity" />
+      <preloadingActivity implementation="com.github.gtache.lsp.rust.RustPreloadingActivity" id="com.github.gtache.lsp.rust.RustPreloadingActivity" />
   </extensions>
 
   <actions>
     <!-- Add your actions here -->
   </actions>
 
-  <depends>com.github.gtache.LSP</depends>
+  <depends>com.github.gtache.lsp</depends>
 
 </idea-plugin>

@@ -1,8 +1,8 @@
 <idea-plugin>
-    <id>com.github.gtache.LSP</id>
-    <name>LSPIntegration</name>
+    <id>com.github.gtache.lsp</id>
+    <name>LSP Support</name>
     <version>1.0</version>
-    <vendor email="guillaume.tache@epfl.ch">gtache</vendor>
+    <vendor email="guillaume.tache@epfl.ch" url="https://github.com/gtache">gtache</vendor>
 
     <description>Adds LSP (Language Server Protocol) support for IntelliJ</description>
 
@@ -21,37 +21,37 @@
     <extensions defaultExtensionNs="com.intellij">
         <!-- Add your extensions here -->
         <applicationConfigurable groupId="language" displayName="Language Server Protocol"
-                                 instance="com.github.gtache.settings.LSPSettings" id="LSPSettings"/>
+                                 instance="com.github.gtache.lsp.settings.LSPSettings" id="LSPSettings"/>
         <applicationService id="LSPState"
-                            serviceInterface="com.github.gtache.settings.LSPState"
-                            serviceImplementation="com.github.gtache.settings.LSPState"/>
-        <gotoSymbolContributor implementation="com.github.gtache.contributors.gotoo.LSPGotoSymbolContributor"
+                            serviceInterface="com.github.gtache.lsp.settings.LSPState"
+                            serviceImplementation="com.github.gtache.lsp.settings.LSPState"/>
+        <gotoSymbolContributor implementation="com.github.gtache.lsp.contributors.gotoo.LSPGotoSymbolContributor"
                                id="LSPGotoSymbolContributor"/>
-        <gotoClassContributor implementation="com.github.gtache.contributors.gotoo.LSPGotoClassContributor"
+        <gotoClassContributor implementation="com.github.gtache.lsp.contributors.gotoo.LSPGotoClassContributor"
                               id="LSPGotoClassContributor"/>
-        <documentationProvider implementation="com.github.gtache.contributors.LSPDocumentationProvider"
+        <documentationProvider implementation="com.github.gtache.lsp.contributors.LSPDocumentationProvider"
                                id="LSPDocumentationProvider"/>
-        <typedHandler implementation="com.github.gtache.editor.listeners.LSPTypedHandler" id="LSPTypedHandler"/>
+        <typedHandler implementation="com.github.gtache.lsp.editor.listeners.LSPTypedHandler" id="LSPTypedHandler"/>
     </extensions>
 
     <extensionPoints>
     </extensionPoints>
 
     <actions>
-        <action class="com.github.gtache.actions.LSPQuickDocAction" id="QuickJavaDoc" text="Quick Doc"
+        <action class="com.github.gtache.lsp.actions.LSPQuickDocAction" id="QuickJavaDoc" text="Quick Doc"
                 overrides="true"/> <!-- Overrides quickdoc if possible, otherwise delegates to it -->
-        <action class="com.github.gtache.actions.LSPReformatAction" id="ReformatCode" use-shortcut-of="ReformatCode"
+        <action class="com.github.gtache.lsp.actions.LSPReformatAction" id="ReformatCode" use-shortcut-of="ReformatCode"
                 overrides="true"/>
-        <action class="com.github.gtache.actions.LSPShowReformatDialogAction" id="ShowReformatFileDialog"
+        <action class="com.github.gtache.lsp.actions.LSPShowReformatDialogAction" id="ShowReformatFileDialog"
                 use-shortcut-of="ShowReformatFileDialog" overrides="true"/>
-        <action class="com.github.gtache.actions.LSPRefactoringAction" id="LSPRefactoringAction">
+        <action class="com.github.gtache.lsp.actions.LSPRefactoringAction" id="LSPRefactoringAction">
             <keyboard-shortcut first-keystroke="shift alt F6" keymap="$default"/>
         </action>
     </actions>
 
     <application-components>
         <component>
-            <implementation-class>com.github.gtache.PluginMain</implementation-class>
+            <implementation-class>com.github.gtache.lsp.PluginMain</implementation-class>
         </component>
     </application-components>
     <project-components>
