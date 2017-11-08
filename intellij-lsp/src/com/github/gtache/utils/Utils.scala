@@ -17,8 +17,8 @@ import scala.annotation.varargs
   */
 object Utils {
 
+  val os: OS.Value = if (System.getProperty("os.name").contains("win")) OS.WINDOWS else OS.UNIX
   private val LOG: Logger = Logger.getInstance(Utils.getClass)
-  private val os: OS.Value = if (System.getProperty("os.name").contains("win")) OS.WINDOWS else OS.UNIX
 
   /**
     * Calculates a Position given an editor and an offset
@@ -124,17 +124,6 @@ object Utils {
     }
   }
 
-  /**
-    * Transforms an URI string into a VFS file
-    *
-    * @param uri The uri
-    * @return The virtual file
-    */
-  def URIToVFS(uri: String): VirtualFile = {
-    val res = LocalFileSystem.getInstance().findFileByPath(new File(new URI(sanitizeURI(uri)).getPath).getAbsolutePath)
-    res
-  }
-
   private def sanitizeURI(uri: String): String = {
     val reconstructed: StringBuilder = StringBuilder.newBuilder
     var uriCp = new String(uri)
@@ -155,6 +144,17 @@ object Utils {
       }
 
     }
+  }
+
+  /**
+    * Transforms an URI string into a VFS file
+    *
+    * @param uri The uri
+    * @return The virtual file
+    */
+  def URIToVFS(uri: String): VirtualFile = {
+    val res = LocalFileSystem.getInstance().findFileByPath(new File(new URI(sanitizeURI(uri)).getPath).getAbsolutePath)
+    res
   }
 
   /**
