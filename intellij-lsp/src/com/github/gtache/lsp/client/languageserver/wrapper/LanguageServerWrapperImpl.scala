@@ -173,7 +173,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
               mouseMotionListener.setManager(manager)
               documentListener.setManager(manager)
               selectionListener.setManager(manager)
-              manager.addListeners()
+              manager.registerListeners()
               this.connectedEditors.put(uri, manager)
               LOG.info("Created a manager for " + uri)
             }

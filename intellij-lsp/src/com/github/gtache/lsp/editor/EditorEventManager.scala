@@ -2,6 +2,8 @@ package com.github.gtache.lsp.editor
 
 import java.awt.event.KeyEvent
 import java.awt.{Color, Font, KeyboardFocusManager, Point}
+import java.io.File
+import java.net.URI
 import java.util.concurrent.{TimeUnit, TimeoutException}
 import java.util.{Collections, Timer, TimerTask}
 import javax.swing.JLabel
@@ -23,10 +25,11 @@ import com.intellij.openapi.editor.event._
 import com.intellij.openapi.editor.ex.EditorSettingsExternalizable
 import com.intellij.openapi.editor.markup._
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
-import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, OpenFileDescriptor}
 import com.intellij.openapi.util.{Computable, TextRange}
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiReference
-import com.intellij.ui.LightweightHint
+import com.intellij.ui.{Hint, LightweightHint}
 import org.eclipse.lsp4j._
 
 import scala.collection.mutable
@@ -40,8 +43,17 @@ object EditorEventManager {
   private val editorToManager: mutable.Map[Editor, EditorEventManager] = mutable.HashMap()
 
   @volatile private var isKeyPressed = false
+  @volatile private var isCtrlDown = false
+  @volatile private var ctrlRange: CtrlRangeMarker = _
 
   KeyboardFocusManager.getCurrentKeyboardFocusManager.addKeyEventDispatcher((e: KeyEvent) => this.synchronized {
+    if (e.isControlDown) {
+      isCtrlDown = true
+    } else {
+      isCtrlDown = false
+      if (ctrlRange != null) ctrlRange.dispose()
+      ctrlRange = null
+    }
     e.getID match {
       case KeyEvent.KEY_PRESSED => isKeyPressed = true
       case KeyEvent.KEY_RELEASED => isKeyPressed = false
@@ -95,17 +107,18 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   private val identifier: TextDocumentIdentifier = new TextDocumentIdentifier(Utils.editorToURIString(editor))
   private val LOG: Logger = Logger.getInstance(classOf[EditorEventManager])
-  private val hoverThread = new Timer("Hover", true)
   private val changesParams = new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(), Collections.singletonList(new TextDocumentContentChangeEvent()))
   private val selectedSymbHighlights: mutable.Set[RangeHighlighter] = mutable.HashSet()
   private val diagnosticsHighlights: mutable.Set[DiagnosticRangeHighlighter] = mutable.HashSet()
   private val syncKind = serverOptions.syncKind
   private val completionTriggers = if (serverOptions.completionOptions != null) serverOptions.completionOptions.getTriggerCharacters.asScala.toSet.filter(s => s != ".") else Set[String]()
   private val signatureTriggers = if (serverOptions.signatureHelpOptions != null) serverOptions.signatureHelpOptions.getTriggerCharacters.asScala.toSet else Set[String]()
+  private var hoverThread = new Timer("Hover", true)
   private var version: Int = -1
   private var predTime: Long = -1L
   private var isOpen: Boolean = true
   private var mouseInEditor: Boolean = true
+  private var currentHint: Hint = _
 
   uriToManager.put(Utils.editorToURIString(editor), this)
   editorToManager.put(editor, this)
@@ -118,7 +131,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   /**
     * Adds all the listeners
     */
-  def addListeners(): Unit = {
+  def registerListeners(): Unit = {
     editor.addEditorMouseListener(mouseListener)
     editor.addEditorMouseMotionListener(mouseMotionListener)
     editor.getDocument.addDocumentListener(documentListener)
@@ -147,6 +160,23 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def stopListening(): Unit = {
     mouseInEditor = false
+  }
+
+
+  def mouseClicked(): Unit = {
+    if (ctrlRange != null && isCtrlDown) {
+      val loc = ctrlRange.loc
+      val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(loc.getUri).getPath))
+      val descriptor = new OpenFileDescriptor(editor.getProject, file, Utils.LSPPosToOffset(editor, loc.getRange.getStart))
+      ApplicationManager.getApplication.invokeLater(() => ApplicationManager.getApplication.runWriteAction(new Runnable {
+        override def run(): Unit = {
+          val newEditor = FileEditorManager.getInstance(editor.getProject).openTextEditor(descriptor, true)
+          newEditor.getSelectionModel.setSelection(Utils.LSPPosToOffset(newEditor, loc.getRange.getStart), Utils.LSPPosToOffset(newEditor, loc.getRange.getEnd))
+        }
+      }))
+      ctrlRange.dispose()
+      ctrlRange = null
+    }
   }
 
   /**
@@ -202,8 +232,23 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       if (predTime == (-1L)) {
         predTime = curTime
       } else {
-        if (!isKeyPressed) {
-          scheduleDocumentation(curTime, getPos(e), e.getMouseEvent.getPoint)
+        val lPos = getPos(e)
+        if (lPos != null) {
+          if (!isKeyPressed || isCtrlDown) {
+            val offset = editor.logicalPositionToOffset(lPos)
+            if (isCtrlDown && currentHint != null) {
+              if (ctrlRange == null || !ctrlRange.containsOffset(offset)) {
+                currentHint.hide()
+                currentHint = null
+                if (ctrlRange != null) ctrlRange.dispose()
+                ctrlRange = null
+                requestAndShowDoc(curTime, lPos, e.getMouseEvent.getPoint)
+              }
+            } else {
+              scheduleDocumentation(curTime, lPos, e.getMouseEvent.getPoint)
+            }
+
+          }
         }
         predTime = curTime
       }
@@ -234,26 +279,33 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private def scheduleDocumentation(time: Long, editorPos: LogicalPosition, point: Point): Unit = {
     if (editorPos != null) {
       if (time - predTime > SCHEDULE_THRES) {
-        hoverThread.schedule(new TimerTask {
-          override def run(): Unit = {
-            val curTime = System.nanoTime()
-            if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && !isKeyPressed) {
-              val editorOffset = ApplicationManager.getApplication.runReadAction(new Computable[Int] {
-                override def compute(): Int = editor.logicalPositionToOffset(editorPos)
-              })
-              val inHighlights = diagnosticsHighlights.filter(diag => diag.rangeHighlighter.getStartOffset <= editorOffset && editorOffset <= diag.rangeHighlighter.getEndOffset).toList.sortBy(diag => diag.rangeHighlighter.getLayer)
-              if (inHighlights.nonEmpty) {
-                val first = inHighlights.head
-                val message = first.message
-                val code = first.code
-                val source = first.source
-                createAndShowHint(if (source != "" && source != null) source + " : " + message else message, time, point)
-              } else {
-                requestAndShowDoc(curTime, editorPos, point)
+        try {
+          hoverThread.schedule(new TimerTask {
+            override def run(): Unit = {
+              val curTime = System.nanoTime()
+              if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && (!isKeyPressed || isCtrlDown)) {
+                val editorOffset = ApplicationManager.getApplication.runReadAction(new Computable[Int] {
+                  override def compute(): Int = editor.logicalPositionToOffset(editorPos)
+                })
+                val inHighlights = diagnosticsHighlights.filter(diag => diag.rangeHighlighter.getStartOffset <= editorOffset && editorOffset <= diag.rangeHighlighter.getEndOffset).toList.sortBy(diag => diag.rangeHighlighter.getLayer)
+                if (inHighlights.nonEmpty && !isCtrlDown) {
+                  val first = inHighlights.head
+                  val message = first.message
+                  val code = first.code
+                  val source = first.source
+                  createAndShowHint(if (source != "" && source != null) source + " : " + message else message, time, point)
+                } else {
+                  requestAndShowDoc(curTime, editorPos, point)
+                }
               }
             }
-          }
-        }, POPUP_THRES)
+          }, POPUP_THRES)
+        } catch {
+          case e: Exception =>
+            hoverThread = new Timer("Hover", true)
+            LOG.warn(e)
+            LOG.warn("Hover timer reset")
+        }
       }
     }
   }
@@ -264,12 +316,28 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     if (request != null) {
       try {
         val hover = request.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
-        val range = hover.getRange
-        val string = HoverHandler.getHoverString(hover)
-        if (string != null && string != "") {
-          createAndShowHint(string, curTime, point)
+        if (hover != null) {
+          val range = if (hover.getRange == null) new Range(Utils.logicalToLSPPos(editorPos), Utils.logicalToLSPPos(editorPos)) else hover.getRange
+          val string = HoverHandler.getHoverString(hover)
+          if (string != null && string != "") {
+            if (isCtrlDown) {
+              createAndShowHint(string, curTime, point, flags = HintManager.HIDE_BY_OTHER_HINT)
+              val loc = requestDefinition(serverPos)
+              if (loc != null) {
+                ApplicationManager.getApplication.invokeLater(() => {
+                  val startOffset = Utils.LSPPosToOffset(editor, range.getStart)
+                  val endOffset = Utils.LSPPosToOffset(editor, range.getEnd)
+                  ctrlRange = CtrlRangeMarker(loc, editor, editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.HYPERLINK, editor.getColorsScheme.getAttributes(EditorColors.REFERENCE_HYPERLINK_COLOR), HighlighterTargetArea.EXACT_RANGE))
+                })
+              }
+            } else {
+              createAndShowHint(string, curTime, point)
+            }
+          } else {
+            LOG.warn("Hover string returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
+          }
         } else {
-          LOG.warn("Hover string returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
+          LOG.warn("Hover is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
         }
       } catch {
         case e: TimeoutException =>
@@ -280,12 +348,34 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   }
 
-  private def createAndShowHint(string: String, curTime: Long, point: Point): Unit = {
+  private def requestDefinition(position: Position): Location = {
+    val params = new TextDocumentPositionParams(identifier, position)
+    val request = requestManager.definition(params)
+    if (request != null) {
+      try {
+        val definition = request.get(DEFINITION_TIMEOUT, TimeUnit.MILLISECONDS).asScala
+        if (definition != null && definition.nonEmpty) {
+          definition.head
+        } else {
+          null
+        }
+      } catch {
+        case e: TimeoutException =>
+          LOG.warn(e)
+          null
+      }
+    } else {
+      null
+    }
+  }
+
+  private def createAndShowHint(string: String, curTime: Long, point: Point, pos: Int = HintManager.ABOVE, flags: Int = HintManager.HIDE_BY_ANY_KEY | HintManager.HIDE_BY_TEXT_CHANGE | HintManager.HIDE_BY_SCROLLING): Unit = {
     ApplicationManager.getApplication.invokeLater(() => {
       val hint = new LightweightHint(new JLabel(string))
+      currentHint = hint
       val constraint = HintManager.ABOVE
       val p = HintManagerImpl.getHintPosition(hint, editor, editor.xyToLogicalPosition(point), constraint)
-      HintManagerImpl.getInstanceImpl.showEditorHint(hint, editor, p, HintManager.HIDE_BY_ANY_KEY | HintManager.HIDE_BY_TEXT_CHANGE | HintManager.HIDE_BY_SCROLLING, 0, false, HintManagerImpl.createHintHint(editor, p, hint, constraint).setContentActive(false))
+      HintManagerImpl.getInstanceImpl.showEditorHint(hint, editor, p, flags, 0, false, HintManagerImpl.createHintHint(editor, p, hint, constraint).setContentActive(false))
     })
   }
 
@@ -406,7 +496,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val completion /*: CompletionList | List[CompletionItem] */ = if (res.isLeft) res.getLeft.asScala else res.getRight
         completion match {
           case c: CompletionList => c.getItems.asScala.map(item => LookupElementBuilder.create(item.getLabel).withPresentableText(item.getLabel).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT))
-          case l: List[CompletionItem@unchecked] => l.map(item => {
+          case l: Iterable[CompletionItem@unchecked] => l.map(item => {
             LookupElementBuilder.create(item.getLabel).withPresentableText(item.getLabel).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT)
           })
 
@@ -422,6 +512,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
 
   //TODO Manual
+
   /**
     * Indicates that the document will be saved
     */
@@ -436,7 +527,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @return An array of PsiReference
     */
   def references(pos: LogicalPosition): Array[PsiReference] = {
-    LOG.info("References")
     val lspPos = Utils.logicalToLSPPos(pos)
     val params = new ReferenceParams(new ReferenceContext(false))
     params.setPosition(lspPos)
@@ -615,6 +705,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
+  /**
+    * Calls signatureHelp at the current editor caret position
+    */
   def signatureHelp(): Unit = {
     val lPos = editor.getCaretModel.getCurrentCaret.getLogicalPosition
     val point = editor.logicalPositionToXY(lPos)
@@ -624,13 +717,19 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       try {
         val signature = future.get(SIGNATURE_TIMEOUT, TimeUnit.MILLISECONDS)
         if (signature != null) {
-          val activeSignature = signature.getSignatures.get(signature.getActiveSignature)
-          val activeParameter = activeSignature.getParameters.get(signature.getActiveParameter)
-          val signatureLabel = activeSignature.getLabel
-          val signatureDoc = activeSignature.getDocumentation
-          val parameterLabel = activeParameter.getLabel
-          val parameterDoc = activeParameter.getDocumentation
-
+          val signatures = signature.getSignatures.asScala
+          if (signatures != null && signatures.nonEmpty) {
+            val activeSignatureIndex = signature.getActiveSignature
+            val activeParameterIndex = signature.getActiveParameter
+            val activeParameter = signatures(activeSignatureIndex).getParameters.get(activeParameterIndex).getLabel
+            val builder = StringBuilder.newBuilder
+            builder.append("<html>")
+            signatures.take(activeSignatureIndex).foreach(sig => builder.append(sig.getLabel).append("<br>"))
+            builder.append("<i>").append(signatures(activeSignatureIndex).getLabel.replace(activeParameter, "<b><font color=\"yellow\">" + activeParameter + "</font></b>")).append("</i>")
+            signatures.drop(activeSignatureIndex + 1).foreach(sig => builder.append("<br>").append(sig.getLabel))
+            builder.append("</html>")
+            createAndShowHint(builder.toString(), System.nanoTime(), point, HintManager.UNDER, HintManager.HIDE_BY_OTHER_HINT)
+          }
         }
       } catch {
         case e: TimeoutException => LOG.warn(e)

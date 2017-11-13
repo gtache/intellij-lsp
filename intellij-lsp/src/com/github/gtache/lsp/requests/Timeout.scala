@@ -11,6 +11,7 @@ object Timeout {
   val DOC_HIGHLIGHT_TIMEOUT: Int = 1000
   val REFERENCES_TIMEOUT: Int = 2000
   val SHUTDOWN_TIMEOUT: Int = 5000
+  val DEFINITION_TIMEOUT: Int = 2000
   val IMMEDIATELY: Int = 0
 
 }

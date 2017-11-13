@@ -32,6 +32,7 @@
         <documentationProvider implementation="com.github.gtache.lsp.contributors.LSPDocumentationProvider"
                                id="LSPDocumentationProvider"/>
         <typedHandler implementation="com.github.gtache.lsp.editor.listeners.LSPTypedHandler" id="LSPTypedHandler"/>
+        <completion.contributor implementationClass="com.github.gtache.lsp.contributors.LSPCompletionContributor" id="LSPCompletionContributor" language="any" />
     </extensions>
 
     <extensionPoints>
