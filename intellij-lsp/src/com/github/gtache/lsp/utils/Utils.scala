@@ -7,6 +7,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileTypes.FileType
+import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
 import org.eclipse.lsp4j.{Position, TextDocumentIdentifier}
 
@@ -20,6 +21,14 @@ object Utils {
   val os: OS.Value = if (System.getProperty("os.name").toLowerCase.contains("win")) OS.WINDOWS else OS.UNIX
   private val LOG: Logger = Logger.getInstance(Utils.getClass)
 
+
+  def getSample(editor: Editor, startOffset: Int, endOffset: Int) : String = {
+    val doc = editor.getDocument
+    val lineIdx = doc.getLineNumber(startOffset)
+    val lineStartOff = doc.getLineStartOffset(lineIdx)
+    val lineEndOff = doc.getLineEndOffset(lineIdx)
+    doc.getText(new TextRange(lineStartOff,lineEndOff))
+  }
   /**
     * Calculates a Position given an editor and an offset
     *

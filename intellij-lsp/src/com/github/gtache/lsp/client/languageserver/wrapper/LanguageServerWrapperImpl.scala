@@ -24,11 +24,12 @@ import org.eclipse.lsp4j.launch.LSPLauncher
 import org.eclipse.lsp4j.services.LanguageServer
 import org.jetbrains.annotations.Nullable
 
+import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
 object LanguageServerWrapperImpl {
-  private val uriToLanguageServerWrapper: mutable.Map[String, LanguageServerWrapper] = mutable.HashMap()
-  private val editorToLanguageServerWrapper: mutable.Map[Editor, LanguageServerWrapper] = mutable.HashMap()
+  private val uriToLanguageServerWrapper: mutable.Map[String, LanguageServerWrapper] = TrieMap()
+  private val editorToLanguageServerWrapper: mutable.Map[Editor, LanguageServerWrapper] = TrieMap()
 
   /**
     * @param uri A file uri
