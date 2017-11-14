@@ -22,6 +22,6 @@ class EditorMouseListenerImpl extends EditorMouseListener with LSPListener {
   }
 
   override def mouseClicked(e: EditorMouseEvent): Unit = {
-    if (checkManager()) manager.mouseClicked()
+    if (checkManager()) manager.mouseClicked(e)
   }
 }
