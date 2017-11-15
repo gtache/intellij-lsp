@@ -24,7 +24,7 @@ Concretely, what you can do with IntelliJ at the moment :
 -Use Goto file/class/symbol (Ctrl(+Shift+Alt)+N by default)    
 -See which symbols are the same as the one selected    
 -Rename a symbol with Shift+Alt+F6    
--Format a document / a selection (Ctrl+ALT(+Shift)+L by default) - untested     
+-Format a document / a selection (Ctrl+Alt(+Shift)+L by default) - untested     
 -Go to definition of a symbol, using Ctrl+Click    
 -See usages / references of a symbol, using Shift+Alt+F7 on it or Ctrl+Click on its definition, and go to these locations by clicking on them in the generated window     
 -Get the signature help when typing - untested     
