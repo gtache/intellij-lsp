@@ -22,13 +22,22 @@ object Utils {
   private val LOG: Logger = Logger.getInstance(Utils.getClass)
 
 
-  def getSample(editor: Editor, startOffset: Int, endOffset: Int) : String = {
+  /**
+    * Gets the line at the given offset given an editor
+    *
+    * @param editor      The editor
+    * @param startOffset The starting offset
+    * @param endOffset   The ending offset
+    * @return The document line
+    */
+  def getLine(editor: Editor, startOffset: Int, endOffset: Int): String = {
     val doc = editor.getDocument
     val lineIdx = doc.getLineNumber(startOffset)
     val lineStartOff = doc.getLineStartOffset(lineIdx)
     val lineEndOff = doc.getLineEndOffset(lineIdx)
-    doc.getText(new TextRange(lineStartOff,lineEndOff))
+    doc.getText(new TextRange(lineStartOff, lineEndOff))
   }
+
   /**
     * Calculates a Position given an editor and an offset
     *
@@ -133,6 +142,28 @@ object Utils {
     }
   }
 
+  private def sanitizeURI(uri: String): String = {
+    val reconstructed: StringBuilder = StringBuilder.newBuilder
+    var uriCp = new String(uri)
+    if (!uri.startsWith("file:")) {
+      LOG.warn("Malformed uri : " + uri)
+      uri //Probably not an uri
+    } else {
+      uriCp = uriCp.drop(5).dropWhile(c => c == '/')
+      reconstructed.append("file:///")
+      if (os == OS.UNIX) {
+        reconstructed.append(uriCp).toString()
+      } else {
+        reconstructed.append(uriCp.takeWhile(c => c != '/'))
+        if (!reconstructed.endsWith(":")) {
+          reconstructed.append(":")
+        }
+        reconstructed.append(uriCp.dropWhile(c => c != '/')).toString()
+      }
+
+    }
+  }
+
   /**
     * Transforms an URI string into a VFS file
     *
@@ -168,28 +199,9 @@ object Utils {
     sanitizeURI(new File(path).toURI.toString)
   }
 
-  private def sanitizeURI(uri: String): String = {
-    val reconstructed: StringBuilder = StringBuilder.newBuilder
-    var uriCp = new String(uri)
-    if (!uri.startsWith("file:")) {
-      LOG.warn("Malformed uri : " + uri)
-      uri //Probably not an uri
-    } else {
-      uriCp = uriCp.drop(5).dropWhile(c => c == '/')
-      reconstructed.append("file:///")
-      if (os == OS.UNIX) {
-        reconstructed.append(uriCp).toString()
-      } else {
-        reconstructed.append(uriCp.takeWhile(c => c != '/'))
-        if (!reconstructed.endsWith(":")) {
-          reconstructed.append(":")
-        }
-        reconstructed.append(uriCp.dropWhile(c => c != '/')).toString()
-      }
-
-    }
-  }
-
+  /**
+    * Object representing the OS type (Windows or Unix)
+    */
   object OS extends Enumeration {
     type OS = Value
     val WINDOWS, UNIX = Value

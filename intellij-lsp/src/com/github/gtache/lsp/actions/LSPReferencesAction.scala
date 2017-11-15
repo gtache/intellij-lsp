@@ -8,6 +8,9 @@ import com.intellij.openapi.actionSystem.{AnActionEvent, CommonDataKeys}
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.psi.PsiDocumentManager
 
+/**
+  * Action for references / see usages (SHIFT+ALT+F7)
+  */
 class LSPReferencesAction extends DumbAwareAction{
 
   override def actionPerformed(e: AnActionEvent): Unit = {

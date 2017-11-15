@@ -7,13 +7,14 @@ import com.intellij.lang.LanguageFormatting
 import com.intellij.openapi.actionSystem.{AnActionEvent, CommonDataKeys}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.project.DumbAware
 import com.intellij.psi.PsiDocumentManager
 
 /**
   * Class overriding the default action handling the Reformat dialog event (CTRL+ALT+SHIFT+L by default)
   * Fallback to the default action if the language is already supported or not supported by any language server
   */
-class LSPShowReformatDialogAction extends ShowReformatFileDialog {
+class LSPShowReformatDialogAction extends ShowReformatFileDialog with DumbAware {
   private val HELP_ID = "editing.codeReformatting"
 
   private val LOG: Logger = Logger.getInstance(classOf[LSPShowReformatDialogAction])
