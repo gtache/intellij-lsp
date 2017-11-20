@@ -410,16 +410,16 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           if (lPos != null) {
             if (!isKeyPressed || isCtrlDown) {
               val offset = editor.logicalPositionToOffset(lPos)
-              if (isCtrlDown && currentHint != null) {
+              if (isCtrlDown) {
                 if (ctrlRange == null || !ctrlRange.containsOffset(offset)) {
-                  currentHint.hide()
+                  if (currentHint != null) currentHint.hide()
                   currentHint = null
                   if (ctrlRange != null) ctrlRange.dispose()
                   ctrlRange = null
                   pool(() => requestAndShowDoc(curTime, lPos, e.getMouseEvent.getPoint))
                 }
               } else {
-                pool(() => scheduleDocumentation(curTime, lPos, e.getMouseEvent.getPoint))
+                scheduleDocumentation(curTime, lPos, e.getMouseEvent.getPoint)
               }
 
             }
@@ -485,25 +485,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
-  /**
-    * Immediately requests the server for documentation at the current editor position
-    *
-    * @param editor The editor
-    */
-  def quickDoc(editor: Editor): Unit = {
-    if (editor == this.editor) {
-      val caretPos = editor.getCaretModel.getLogicalPosition
-      val pointPos = editor.logicalPositionToXY(caretPos)
-      val currentTime = System.nanoTime()
-      pool(() => requestAndShowDoc(currentTime, caretPos, pointPos))
-      predTime = currentTime
-    } else {
-      LOG.warn("Not same editor!")
-    }
-  }
-
-  //TODO async?
-
   private def requestAndShowDoc(curTime: Long, editorPos: LogicalPosition, point: Point): Unit = {
     val serverPos = Utils.logicalToLSPPos(editorPos)
     val request = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
@@ -560,6 +541,23 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       }
     } else {
       null
+    }
+  }
+
+  /**
+    * Immediately requests the server for documentation at the current editor position
+    *
+    * @param editor The editor
+    */
+  def quickDoc(editor: Editor): Unit = {
+    if (editor == this.editor) {
+      val caretPos = editor.getCaretModel.getLogicalPosition
+      val pointPos = editor.logicalPositionToXY(caretPos)
+      val currentTime = System.nanoTime()
+      pool(() => requestAndShowDoc(currentTime, caretPos, pointPos))
+      predTime = currentTime
+    } else {
+      LOG.warn("Not same editor!")
     }
   }
 
@@ -636,7 +634,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
 
-  //TODO Manual
 
   /**
     * Notifies the server that the corresponding document has been closed
@@ -746,8 +743,51 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
-    * Indicates that the document will be saved
+    * Applies the given edits to the document
+    *
+    * @param version The version of the edits (will be discarded if older than current version)
+    * @param edits   The edits to apply
+    * @param name    The name of the edits (Rename, for example)
+    * @return True if the edits were applied, false otherwise
     */
+  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Boolean = {
+    if (version >= this.version) {
+      invokeLater(() => {
+        val document = editor.getDocument
+        if (document.isWritable) {
+          val runnable = new Runnable {
+            override def run(): Unit = {
+              edits.foreach(edit => {
+                val text = edit.getNewText
+                val range = edit.getRange
+                val start = Utils.LSPPosToOffset(editor, range.getStart)
+                val end = Utils.LSPPosToOffset(editor, range.getEnd)
+                if (text == "" || text == null) {
+                  document.deleteString(start, end)
+                } else if (end - start <= 0) {
+                  document.insertString(start, text)
+                } else {
+                  document.replaceString(start, end, text)
+                }
+              })
+              FileDocumentManager.getInstance().saveDocument(document)
+            }
+          }
+          writeAction(() => CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, name, "LSPPlugin", document))
+        } else {
+          LOG.warn("Document is not writable")
+        }
+      })
+      true
+    } else {
+      LOG.warn("Version " + version + " is older than " + this.version)
+      false
+    }
+  }
+
+  /**
+    * Indicates that the document will be saved
+    */  //TODO Manual
   def willSave(): Unit = {
     pool(() => {
       requestManager.willSave(new WillSaveTextDocumentParams(identifier, TextDocumentSaveReason.Manual))
@@ -879,41 +919,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       val request = requestManager.rangeFormatting(params)
       if (request != null) request.thenAccept(formatting => applyEdit(edits = formatting.asScala, name = "Reformat selection"))
     })
-  }
-
-  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Boolean = {
-    if (version >= this.version) {
-      invokeLater(() => {
-        val document = editor.getDocument
-        if (document.isWritable) {
-          val runnable = new Runnable {
-            override def run(): Unit = {
-              edits.foreach(edit => {
-                val text = edit.getNewText
-                val range = edit.getRange
-                val start = Utils.LSPPosToOffset(editor, range.getStart)
-                val end = Utils.LSPPosToOffset(editor, range.getEnd)
-                if (text == "" || text == null) {
-                  document.deleteString(start, end)
-                } else if (end - start <= 0) {
-                  document.insertString(start, text)
-                } else {
-                  document.replaceString(start, end, text)
-                }
-              })
-              FileDocumentManager.getInstance().saveDocument(document)
-            }
-          }
-          writeAction(() => CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, name, "LSPPlugin", document))
-        } else {
-          LOG.warn("Document is not writable")
-        }
-      })
-      true
-    } else {
-      LOG.warn("Version " + version + " is older than " + this.version)
-      false
-    }
   }
 
   /**
