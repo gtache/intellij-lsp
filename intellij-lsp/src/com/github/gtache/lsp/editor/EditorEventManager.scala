@@ -11,15 +11,14 @@ import javax.swing.{JFrame, JLabel, JPanel}
 import com.github.gtache.lsp.client.languageserver.ServerOptions
 import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapperImpl
-import com.github.gtache.lsp.contributors.LSPIconProvider
+import com.github.gtache.lsp.contributors.icon.LSPIconProvider
 import com.github.gtache.lsp.requests.{HoverHandler, WorkspaceEditHandler}
 import com.github.gtache.lsp.utils.{GUIUtils, Utils}
 import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.codeInsight.completion.InsertionContext
 import com.intellij.codeInsight.hint.HintManager
-import com.intellij.codeInsight.lookup.{AutoCompletionPolicy, LookupElement, LookupElementBuilder}
+import com.intellij.codeInsight.lookup._
 import com.intellij.lang.LanguageDocumentation
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.colors.EditorColors
@@ -29,7 +28,7 @@ import com.intellij.openapi.editor.markup._
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, OpenFileDescriptor, TextEditor}
 import com.intellij.openapi.fileTypes.PlainTextLanguage
-import com.intellij.openapi.util.{Computable, TextRange}
+import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
 import com.intellij.psi.{PsiDocumentManager, PsiReference}
 import com.intellij.ui.Hint
@@ -208,7 +207,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def getReferences(offset: Int): Unit = {
     invokeLater(() => {
       writeAction(() => editor.getCaretModel.getCurrentCaret.moveToOffset(offset))
-      getReferences(false)
+      getReferences(includeDefinition = false)
     })
   }
 
@@ -420,7 +419,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                   pool(() => requestAndShowDoc(curTime, lPos, e.getMouseEvent.getPoint))
                 }
               } else {
-                scheduleDocumentation(curTime, lPos, e.getMouseEvent.getPoint)
+                pool(() => scheduleDocumentation(curTime, lPos, e.getMouseEvent.getPoint))
               }
 
             }
@@ -459,9 +458,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             override def run(): Unit = {
               val curTime = System.nanoTime()
               if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && (!isKeyPressed || isCtrlDown)) {
-                val editorOffset = ApplicationManager.getApplication.runReadAction(new Computable[Int] {
-                  override def compute(): Int = editor.logicalPositionToOffset(editorPos)
-                })
+                val editorOffset = computableReadAction[Int](() => editor.logicalPositionToOffset(editorPos))
                 val inHighlights = diagnosticsHighlights.filter(diag =>
                   diag.rangeHighlighter.getStartOffset <= editorOffset &&
                     editorOffset <= diag.rangeHighlighter.getEndOffset)
@@ -684,12 +681,29 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           val label = item.getLabel
           val textEdit = item.getTextEdit
           val sortText = item.getSortText
-          val iconProviders = LSPIconProvider.EP_NAME.getExtensions()
+          val presentableText = if (label != null && label != "") label
+          else if (insertText != null) insertText else ""
+          val tailText = if (detail != null) detail else ""
+          val iconProviders = try {
+            LSPIconProvider.EP_NAME.getExtensions()
+          } catch {
+            case e: IllegalArgumentException => Array[LSPIconProvider]()
+            case e: Exception => throw e
+          }
           val icon = {
             val mapped = iconProviders.map(provider => provider.getIcon(kind)).dropWhile(i => i == null)
             if (mapped.isEmpty) null else mapped.head
           }
-          val lookupElementBuilder = LookupElementBuilder.create().withPresentableText(label).withIcon(icon)
+          val lookupElementBuilder = LookupElementBuilder.create(if (insertText != null && insertText != "") insertText else label)
+            .withPresentableText(presentableText).withTailText(tailText, true).withIcon(icon)
+          /*            .withRenderer((element: LookupElement, presentation: LookupElementPresentation) => { //TODO later
+                      presentation match {
+                        case realPresentation: RealLookupElementPresentation =>
+                          if (!realPresentation.hasEnoughSpaceFor(presentation.getItemText, presentation.isItemTextBold)) {
+                          }
+                      }
+                    })*/
+          if (kind == CompletionItemKind.Keyword) lookupElementBuilder.withBoldness(true)
           if (textEdit != null) {
             if (addTextEdits != null) {
               lookupElementBuilder.withInsertHandler((context: InsertionContext, item: LookupElement) => {
@@ -703,14 +717,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               })
             }
           } else if (addTextEdits != null) {
-            lookupElementBuilder.withLookupString(if (insertText != null && insertText != "") insertText else label)
-              .withInsertHandler((context: InsertionContext, item: LookupElement) => {
-                context.commitDocument()
-                applyEdit(edits = addTextEdits.asScala, name = "Completion : " + label)
-              })
+            lookupElementBuilder.withInsertHandler((context: InsertionContext, item: LookupElement) => {
+              context.commitDocument()
+              applyEdit(edits = addTextEdits.asScala, name = "Completion : " + label)
+            })
           } else {
-            lookupElementBuilder.withLookupString(if (insertText != null && insertText != "") insertText else label)
-              .withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT)
+            lookupElementBuilder.withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT)
           }
         }
 
@@ -849,6 +861,26 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     })
   }
 
+  /**
+    * Reformat the text currently selected in the editor
+    */
+  def reformatSelection(): Unit = {
+    pool(() => {
+      val params = new DocumentRangeFormattingParams()
+      params.setTextDocument(identifier)
+      val selectionModel = editor.getSelectionModel
+      val start = selectionModel.getSelectionStart
+      val end = selectionModel.getSelectionEnd
+      val startingPos = Utils.offsetToLSPPos(editor, start)
+      val endPos = Utils.offsetToLSPPos(editor, end)
+      params.setRange(new Range(startingPos, endPos))
+      val options = new FormattingOptions()
+      params.setOptions(options)
+      val request = requestManager.rangeFormatting(params)
+      if (request != null) request.thenAccept(formatting => applyEdit(edits = formatting.asScala, name = "Reformat selection"))
+    })
+  }
+
   def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Boolean = {
     if (version >= this.version) {
       invokeLater(() => {
@@ -882,26 +914,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       LOG.warn("Version " + version + " is older than " + this.version)
       false
     }
-  }
-
-  /**
-    * Reformat the text currently selected in the editor
-    */
-  def reformatSelection(): Unit = {
-    pool(() => {
-      val params = new DocumentRangeFormattingParams()
-      params.setTextDocument(identifier)
-      val selectionModel = editor.getSelectionModel
-      val start = selectionModel.getSelectionStart
-      val end = selectionModel.getSelectionEnd
-      val startingPos = Utils.offsetToLSPPos(editor, start)
-      val endPos = Utils.offsetToLSPPos(editor, end)
-      params.setRange(new Range(startingPos, endPos))
-      val options = new FormattingOptions()
-      params.setOptions(options)
-      val request = requestManager.rangeFormatting(params)
-      if (request != null) request.thenAccept(formatting => applyEdit(edits = formatting.asScala, name = "Reformat selection"))
-    })
   }
 
   /**

@@ -17,6 +17,9 @@
     <!-- uncomment to enable plugin in all products -->
     <depends>com.intellij.modules.lang</depends>
 
+    <extensionPoints>
+        <extensionPoint interface="com.github.gtache.lsp.contributors.icon.LSPIconProvider" name="LSPIconProvider" area="IDEA_APPLICATION"/>
+    </extensionPoints>
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Add your extensions here -->
@@ -34,8 +37,9 @@
                                 id="LSPCompletionContributor" language="any"/>
     </extensions>
 
-    <extensionPoints>
-    </extensionPoints>
+    <extensions defaultExtensionNs="com.github.gtache.lsp">
+        <LSPIconProvider implementation="com.github.gtache.lsp.contributors.icon.LSPDefaultIconProvider" id="LSPDefaultIconProvider" />
+    </extensions>
 
     <actions>
         <action class="com.github.gtache.lsp.actions.LSPQuickDocAction" id="QuickJavaDoc" text="Quick Doc"

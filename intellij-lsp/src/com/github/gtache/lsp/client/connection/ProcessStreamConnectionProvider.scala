@@ -14,7 +14,7 @@ import org.jetbrains.annotations.Nullable
   * @param workingDir The working directory of the process
   */
 class ProcessStreamConnectionProvider(private var commands: Seq[String], private var workingDir: String) extends StreamConnectionProvider {
-  private val LOG: Logger = Logger.getInstance(classOf[ProcessOverSocketStreamConnectionProvider])
+  private val LOG: Logger = Logger.getInstance(classOf[ProcessStreamConnectionProvider])
   @Nullable private var process: Process = _
 
   @throws[IOException]
@@ -33,6 +33,18 @@ class ProcessStreamConnectionProvider(private var commands: Seq[String], private
     builder.directory(new File(getWorkingDirectory))
     builder.redirectError(ProcessBuilder.Redirect.INHERIT)
     builder
+  }
+
+  protected def getCommands: Seq[String] = commands
+
+  def setCommands(commands: Seq[String]): Unit = {
+    this.commands = commands
+  }
+
+  protected def getWorkingDirectory: String = workingDir
+
+  def setWorkingDirectory(workingDir: String): Unit = {
+    this.workingDir = workingDir
   }
 
   @Nullable override def getInputStream: InputStream = {
@@ -56,18 +68,6 @@ class ProcessStreamConnectionProvider(private var commands: Seq[String], private
       case _ => false
     }
 
-  }
-
-  protected def getCommands: Seq[String] = commands
-
-  def setCommands(commands: Seq[String]): Unit = {
-    this.commands = commands
-  }
-
-  protected def getWorkingDirectory: String = workingDir
-
-  def setWorkingDirectory(workingDir: String): Unit = {
-    this.workingDir = workingDir
   }
 
   override def hashCode: Int = {
