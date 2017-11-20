@@ -9,6 +9,8 @@ Requests to the server:
 -completion     
 -workspaceSymbol     
 -rename     
+-definition     
+-references     
 -formatting, rangeFormatting    
 -willSave, didSave, didClose, didOpen, didChange       
 Client :      
@@ -18,11 +20,14 @@ Client :
 -publishDiagnostics
 
 Concretely, what you can do with IntelliJ at the moment :     
--Hover to get documentation (you can also use (by default) CTRL+Q)    
--Use Goto file/class/symbol (CTRL(+SHIFT+ALT)+N by default)    
+-Hover to get documentation (you can also use (by default) Ctrl+Q)    
+-Use Goto file/class/symbol (Ctrl(+Shift+Alt)+N by default)    
 -See which symbols are the same as the one selected    
--Rename a symbol with SHIFT+ALT+F6    
--Format a document / a selection (CTRL+ALT(+SHIFT)+L by default)    
+-Rename a symbol with Shift+Alt+F6    
+-Format a document / a selection (Ctrl+Alt(+Shift)+L by default) - untested     
+-Go to definition of a symbol, using Ctrl+Click    
+-See usages / references of a symbol, using Shift+Alt+F7 on it or Ctrl+Click on its definition, and go to these locations by clicking on them in the generated window     
+-Get the signature help when typing - untested     
 -See diagnostics (error, warnings) and hover over them to see the message
 
 ## Add a Language Server
