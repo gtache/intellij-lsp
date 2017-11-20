@@ -72,6 +72,17 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private var started: Boolean = false
 
   /**
+    * @return if the server supports willSaveWaitUntil
+    */
+  def isWillSaveWaitUntil : Boolean = {
+    val capabilities = getServerCapabilities.getTextDocumentSync
+    if (capabilities.isLeft) {
+      false
+    } else {
+      capabilities.getRight.getWillSaveWaitUntil
+    }
+  }
+  /**
     * Returns the EditorEventManager for a given uri
     *
     * @param uri the URI as a string

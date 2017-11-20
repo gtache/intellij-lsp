@@ -6,7 +6,7 @@ import java.util.concurrent.{Callable, Future}
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.editor.{Editor, LogicalPosition}
+import com.intellij.openapi.editor.{Document, Editor, LogicalPosition}
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.util.{Computable, TextRange}
@@ -199,6 +199,10 @@ object Utils {
     */
   def pathToUri(path: String): String = {
     sanitizeURI(new File(path).toURI.toString)
+  }
+
+  def documentToUri(document: Document) : String = {
+    sanitizeURI(VFSToURIString(FileDocumentManager.getInstance().getFile(document)))
   }
 
   def invokeLater(runnable: Runnable): Unit = {

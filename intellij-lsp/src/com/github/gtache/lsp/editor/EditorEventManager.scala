@@ -120,6 +120,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private val syncKind = serverOptions.syncKind
   private val completionTriggers = if (serverOptions.completionOptions != null) serverOptions.completionOptions.getTriggerCharacters.asScala.toSet.filter(s => s != ".") else Set[String]()
   private val signatureTriggers = if (serverOptions.signatureHelpOptions != null) serverOptions.signatureHelpOptions.getTriggerCharacters.asScala.toSet else Set[String]()
+  @volatile var needSave = false
   private var hoverThread = new Timer("Hover", true)
   private var version: Int = -1
   private var predTime: Long = -1L
@@ -485,6 +486,23 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
+  /**
+    * Immediately requests the server for documentation at the current editor position
+    *
+    * @param editor The editor
+    */
+  def quickDoc(editor: Editor): Unit = {
+    if (editor == this.editor) {
+      val caretPos = editor.getCaretModel.getLogicalPosition
+      val pointPos = editor.logicalPositionToXY(caretPos)
+      val currentTime = System.nanoTime()
+      pool(() => requestAndShowDoc(currentTime, caretPos, pointPos))
+      predTime = currentTime
+    } else {
+      LOG.warn("Not same editor!")
+    }
+  }
+
   private def requestAndShowDoc(curTime: Long, editorPos: LogicalPosition, point: Point): Unit = {
     val serverPos = Utils.logicalToLSPPos(editorPos)
     val request = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
@@ -541,23 +559,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       }
     } else {
       null
-    }
-  }
-
-  /**
-    * Immediately requests the server for documentation at the current editor position
-    *
-    * @param editor The editor
-    */
-  def quickDoc(editor: Editor): Unit = {
-    if (editor == this.editor) {
-      val caretPos = editor.getCaretModel.getLogicalPosition
-      val pointPos = editor.logicalPositionToXY(caretPos)
-      val currentTime = System.nanoTime()
-      pool(() => requestAndShowDoc(currentTime, caretPos, pointPos))
-      predTime = currentTime
-    } else {
-      LOG.warn("Not same editor!")
     }
   }
 
@@ -632,8 +633,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       requestManager.didSave(params)
     })
   }
-
-
 
   /**
     * Notifies the server that the corresponding document has been closed
@@ -743,55 +742,48 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
-    * Applies the given edits to the document
-    *
-    * @param version The version of the edits (will be discarded if older than current version)
-    * @param edits   The edits to apply
-    * @param name    The name of the edits (Rename, for example)
-    * @return True if the edits were applied, false otherwise
+    * Indicates that the document will be saved
     */
-  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Boolean = {
-    if (version >= this.version) {
-      invokeLater(() => {
-        val document = editor.getDocument
-        if (document.isWritable) {
-          val runnable = new Runnable {
-            override def run(): Unit = {
-              edits.foreach(edit => {
-                val text = edit.getNewText
-                val range = edit.getRange
-                val start = Utils.LSPPosToOffset(editor, range.getStart)
-                val end = Utils.LSPPosToOffset(editor, range.getEnd)
-                if (text == "" || text == null) {
-                  document.deleteString(start, end)
-                } else if (end - start <= 0) {
-                  document.insertString(start, text)
-                } else {
-                  document.replaceString(start, end, text)
-                }
-              })
-              FileDocumentManager.getInstance().saveDocument(document)
+  //TODO Manual
+  def willSave(): Unit = {
+    if (wrapper.isWillSaveWaitUntil) willSaveWaitUntil() else pool(() => {
+      requestManager.willSave(new WillSaveTextDocumentParams(identifier, TextDocumentSaveReason.Manual))
+    })
+  }
+
+  private def willSaveWaitUntil(): Unit = {
+    if (wrapper.isWillSaveWaitUntil) {
+      pool(() => {
+        needSave = false
+        val params = new WillSaveTextDocumentParams(identifier, TextDocumentSaveReason.Manual)
+        val future = requestManager.willSaveWaitUntil(params)
+        if (future != null) {
+          try {
+            val edits = future.get(WILLSAVE_TIMEOUT, TimeUnit.MILLISECONDS)
+            if (edits != null) {
+              applyEdit(edits = edits.asScala, name = "WaitUntil edits")
             }
+          } catch {
+            case e: TimeoutException =>
+              LOG.warn(e)
+          } finally {
+            needSave = true
+            saveDocument()
           }
-          writeAction(() => CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, name, "LSPPlugin", document))
         } else {
-          LOG.warn("Document is not writable")
+          needSave = true
+          saveDocument()
         }
       })
-      true
     } else {
-      LOG.warn("Version " + version + " is older than " + this.version)
-      false
+      LOG.error("Server doesn't support WillSaveWaitUntil")
+      needSave = true
+      saveDocument()
     }
   }
 
-  /**
-    * Indicates that the document will be saved
-    */  //TODO Manual
-  def willSave(): Unit = {
-    pool(() => {
-      requestManager.willSave(new WillSaveTextDocumentParams(identifier, TextDocumentSaveReason.Manual))
-    })
+  private def saveDocument(): Unit = {
+    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
   }
 
   /**
@@ -899,6 +891,49 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       val request = requestManager.formatting(params)
       if (request != null) request.thenAccept(formatting => applyEdit(edits = formatting.asScala, name = "Reformat document"))
     })
+  }
+
+  /**
+    * Applies the given edits to the document
+    *
+    * @param version The version of the edits (will be discarded if older than current version)
+    * @param edits   The edits to apply
+    * @param name    The name of the edits (Rename, for example)
+    * @return True if the edits were applied, false otherwise
+    */
+  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Boolean = {
+    if (version >= this.version) {
+      invokeLater(() => {
+        val document = editor.getDocument
+        if (document.isWritable) {
+          val runnable = new Runnable {
+            override def run(): Unit = {
+              edits.foreach(edit => {
+                val text = edit.getNewText
+                val range = edit.getRange
+                val start = Utils.LSPPosToOffset(editor, range.getStart)
+                val end = Utils.LSPPosToOffset(editor, range.getEnd)
+                if (text == "" || text == null) {
+                  document.deleteString(start, end)
+                } else if (end - start <= 0) {
+                  document.insertString(start, text)
+                } else {
+                  document.replaceString(start, end, text)
+                }
+              })
+              FileDocumentManager.getInstance().saveDocument(document)
+            }
+          }
+          writeAction(() => CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, name, "LSPPlugin", document))
+        } else {
+          LOG.warn("Document is not writable")
+        }
+      })
+      true
+    } else {
+      LOG.warn("Version " + version + " is older than " + this.version)
+      false
+    }
   }
 
   /**

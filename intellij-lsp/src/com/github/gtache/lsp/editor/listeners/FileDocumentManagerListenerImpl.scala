@@ -9,7 +9,9 @@ import com.intellij.openapi.vfs.VirtualFile
   * A FileDocumentManagerListener implementation which listens to beforeDocumentSaving / beforeAllDocumentsSaving
   */
 object FileDocumentManagerListenerImpl extends FileDocumentManagerListener {
-  override def beforeDocumentSaving(document: Document): Unit = FileEventManager.willSave(document)
+  override def beforeDocumentSaving(document: Document): Unit = {
+    FileEventManager.willSave(document)
+  }
 
   override def unsavedDocumentsDropped(): Unit = {}
 
