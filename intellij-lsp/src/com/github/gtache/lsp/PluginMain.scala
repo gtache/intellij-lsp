@@ -7,6 +7,7 @@ import com.github.gtache.lsp.client.MessageDialog
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.client.languageserver.wrapper.{LanguageServerWrapper, LanguageServerWrapperImpl}
 import com.github.gtache.lsp.contributors.LSPNavigationItem
+import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.{EditorListener, FileDocumentManagerListenerImpl, VFSListener}
 import com.github.gtache.lsp.requests.Timeout
 import com.github.gtache.lsp.settings.LSPState
@@ -38,7 +39,9 @@ object PluginMain {
   private var extToServerDefinition: Map[String, LanguageServerDefinition] = HashMap()
   private var loadedExtensions: Boolean = false
 
-
+  def getAllServerWrappers: Set[LanguageServerWrapper] = {
+    projectToLanguageWrappers.values.flatten.toSet
+  }
   /**
     * @param ext An extension
     * @return True if there is a LanguageServer supporting this extension, false otherwise
