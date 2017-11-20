@@ -15,4 +15,6 @@ trait LSPGotoContributor extends ChooseByNameContributor {
     val res = PluginMain.workspaceSymbols("", "", project, includeNonProjectItems).map(f => f.getName)
     res
   }
+
+
 }

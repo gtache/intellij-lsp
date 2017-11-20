@@ -7,23 +7,20 @@ import com.github.gtache.lsp.client.MessageDialog
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.client.languageserver.wrapper.{LanguageServerWrapper, LanguageServerWrapperImpl}
 import com.github.gtache.lsp.contributors.LSPNavigationItem
-import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.{EditorListener, FileDocumentManagerListenerImpl, VFSListener}
 import com.github.gtache.lsp.requests.Timeout
 import com.github.gtache.lsp.settings.LSPState
 import com.github.gtache.lsp.utils.Utils
 import com.intellij.AppTopics
-import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.navigation.NavigationItem
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.ApplicationComponent
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.editor.{Editor, EditorFactory, LogicalPosition}
+import com.intellij.openapi.editor.{Editor, EditorFactory}
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.{VirtualFile, VirtualFileManager}
-import com.intellij.psi.PsiReference
 import org.eclipse.lsp4j._
 
 import scala.collection.immutable.HashMap
@@ -180,17 +177,6 @@ object PluginMain {
     }
   }
 
-  /**
-    * Returns the completion suggestions for a given editor and position
-    *
-    * @param editor The editor
-    * @param pos    The position
-    * @return The suggestions
-    */
-  def completion(editor: Editor, pos: Position): java.lang.Iterable[_ <: LookupElement] = {
-    import scala.collection.JavaConverters._
-    EditorEventManager.forEditor(editor).map(e => e.completion(pos)).getOrElse(Iterable()).asJava
-  }
 
   /**
     * Returns the corresponding workspaceSymbols given a name and a project
@@ -224,17 +210,6 @@ object PluginMain {
       case None => LOG.info("No wrapper for project " + project.getBasePath)
         Array.empty
     }
-  }
-
-  /**
-    * Asks for references given an editor and a position
-    *
-    * @param e   The editor
-    * @param pos The LogicalPosition
-    * @return An Array of PsiReference
-    */
-  def references(e: Editor, pos: LogicalPosition): Array[PsiReference] = {
-    EditorEventManager.forEditor(e).map(e => e.references(pos)).getOrElse(Array())
   }
 
   /**

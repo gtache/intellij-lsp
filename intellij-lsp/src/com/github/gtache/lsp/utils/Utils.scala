@@ -2,12 +2,14 @@ package com.github.gtache.lsp.utils
 
 import java.io.File
 import java.net.{MalformedURLException, URI, URL}
+import java.util.concurrent.{Callable, Future}
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileTypes.FileType
-import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.util.{Computable, TextRange}
 import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
 import org.eclipse.lsp4j.{Position, TextDocumentIdentifier}
 
@@ -197,6 +199,30 @@ object Utils {
     */
   def pathToUri(path: String): String = {
     sanitizeURI(new File(path).toURI.toString)
+  }
+
+  def invokeLater(runnable: Runnable): Unit = {
+    ApplicationManager.getApplication.invokeLater(runnable)
+  }
+
+  def pool(runnable: Runnable): Unit = {
+    ApplicationManager.getApplication.executeOnPooledThread(runnable)
+  }
+
+  def callablePool[T](callable: Callable[T]): Future[T] = {
+    ApplicationManager.getApplication.executeOnPooledThread(callable)
+  }
+
+  def computableReadAction[T](computable: Computable[T]): T = {
+    ApplicationManager.getApplication.runReadAction(computable)
+  }
+
+  def writeAction(runnable: Runnable): Unit = {
+    ApplicationManager.getApplication.runWriteAction(runnable)
+  }
+
+  def computableWriteAction[T](computable: Computable[T]): T = {
+    ApplicationManager.getApplication.runWriteAction(computable)
   }
 
   /**

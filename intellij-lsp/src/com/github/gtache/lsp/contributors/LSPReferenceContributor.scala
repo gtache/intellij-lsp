@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.contributors
 
-import com.github.gtache.lsp.PluginMain
+import com.github.gtache.lsp.editor.EditorEventManager
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
@@ -20,7 +20,7 @@ class LSPReferenceContributor extends PsiReferenceContributor {
       if (editor != null) {
         LOG.info("Reference for editor " + editor)
         val lpos = editor.offsetToLogicalPosition(element.getTextOffset)
-        PluginMain.references(editor, lpos)
+        EditorEventManager.forEditor(editor).map(e => e.references(lpos)).getOrElse(Array())
       } else {
         LOG.info("No editor for LSPReferenceContributor")
         Array()

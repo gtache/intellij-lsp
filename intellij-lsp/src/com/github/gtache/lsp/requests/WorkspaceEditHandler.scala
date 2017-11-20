@@ -3,59 +3,60 @@ package com.github.gtache.lsp.requests
 import java.io.File
 import java.net.URI
 
-import com.github.gtache.lsp.PluginMain
 import com.github.gtache.lsp.editor.EditorEventManager
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.{FileEditorManager, OpenFileDescriptor}
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.vfs.LocalFileSystem
-import org.eclipse.lsp4j.WorkspaceEdit
+import org.eclipse.lsp4j.{TextEdit, WorkspaceEdit}
 
 /**
   * An Object handling WorkspaceEdits
   */
 object WorkspaceEditHandler {
 
+  import com.github.gtache.lsp.utils.Utils.{computableWriteAction, invokeLater, writeAction}
+
   private val LOG: Logger = Logger.getInstance(WorkspaceEditHandler.getClass)
 
-  //TODO clean code
   /**
     * Applies a WorkspaceEdit
     *
     * @param edit The edit
     * @return True if everything was applied, false otherwise
     */
-  def applyEdit(edit: WorkspaceEdit): Boolean = {
+  def applyEdit(edit: WorkspaceEdit, name: String = "LSP edits"): Boolean = {
     import scala.collection.JavaConverters._
     val changes = edit.getChanges.asScala
     val dChanges = edit.getDocumentChanges.asScala
     var didApply: Boolean = true
+
+    def manageUnopenedEditor(edits: Iterable[TextEdit], uri: String, version: Int = Int.MaxValue): Unit = {
+      val project = ProjectManager.getInstance().getOpenProjects()(0)
+      val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(uri)))
+      val fileEditorManager = FileEditorManager.getInstance(project)
+      val descriptor = new OpenFileDescriptor(project, file)
+      invokeLater(() => {
+        val editor = computableWriteAction(() => {
+          fileEditorManager.openTextEditor(descriptor, false)
+        })
+        EditorEventManager.forEditor(editor) match {
+          case Some(manager) => if (!manager.applyEdit(version, edits, name)) didApply = false
+          case None => didApply = false
+        }
+      })
+      writeAction(() => fileEditorManager.closeFile(file))
+    }
+
     if (dChanges != null) {
       dChanges.foreach(edit => {
         val doc = edit.getTextDocument
         val version = doc.getVersion
         val uri = doc.getUri
         EditorEventManager.forUri(uri) match {
-          case Some(manager) => if (!manager.applyEdit(version, edit.getEdits.asScala.toList)) didApply = false
+          case Some(manager) => if (!manager.applyEdit(version, edit.getEdits.asScala.toList, name)) didApply = false
           case None =>
-            val project = ProjectManager.getInstance().getOpenProjects()(0)
-            val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(uri)))
-            if (PluginMain.isExtensionSupported(file.getExtension)) {
-              val fileEditorManager = FileEditorManager.getInstance(project)
-              val descriptor = new OpenFileDescriptor(project, file)
-              ApplicationManager.getApplication.invokeLater(() => ApplicationManager.getApplication.runWriteAction(new Runnable {
-                override def run(): Unit = fileEditorManager.openTextEditor(descriptor, false)
-              }))
-              while (EditorEventManager.forUri(uri).isEmpty) {}
-              if (!EditorEventManager.forUri(uri).get.applyEdit(version, edit.getEdits.asScala.toList)) didApply = false
-              ApplicationManager.getApplication.invokeLater(() => ApplicationManager.getApplication.runWriteAction(new Runnable {
-                override def run(): Unit = fileEditorManager.closeFile(file)
-              }))
-            }
-            else {
-              LOG.warn("Unsupported file ext sent by server : " + uri)
-            }
+            manageUnopenedEditor(edit.getEdits.asScala, uri, version)
         }
       })
     } else {
@@ -63,24 +64,9 @@ object WorkspaceEditHandler {
         val uri = edit._1
         val changes = edit._2.asScala
         EditorEventManager.forUri(uri) match {
-          case Some(manager) => if (!manager.applyEdit(edits = changes.toList)) didApply = false
+          case Some(manager) => if (!manager.applyEdit(edits = changes.toList, name = name)) didApply = false
           case None =>
-            val project = ProjectManager.getInstance().getOpenProjects()(0)
-            val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(uri)))
-            if (PluginMain.isExtensionSupported(file.getExtension)) { //Should always be true
-              val fileEditorManager = FileEditorManager.getInstance(project)
-              val descriptor = new OpenFileDescriptor(project, file)
-              ApplicationManager.getApplication.invokeLater(() => ApplicationManager.getApplication.runWriteAction(new Runnable {
-                override def run(): Unit = fileEditorManager.openTextEditor(descriptor, false)
-              }))
-              while (EditorEventManager.forUri(uri).isEmpty) {}
-              if (!EditorEventManager.forUri(uri).get.applyEdit(edits = changes.toList)) didApply = false
-              ApplicationManager.getApplication.invokeLater(() => ApplicationManager.getApplication.runWriteAction(new Runnable {
-                override def run(): Unit = fileEditorManager.closeFile(file)
-              }))
-            } else {
-              LOG.warn("Unsupported file ext sent by server : " + uri)
-            }
+            manageUnopenedEditor(changes, uri)
         }
       })
     }
