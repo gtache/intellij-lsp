@@ -2,6 +2,7 @@ package com.github.gtache.lsp.client
 
 import java.util.concurrent.CompletableFuture
 
+import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.requests.WorkspaceEditHandler
 import com.intellij.openapi.diagnostic.Logger
@@ -9,7 +10,6 @@ import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.services.{LanguageClient, LanguageServer}
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable
 
 
 /**
@@ -18,14 +18,16 @@ import scala.collection.mutable
 class LanguageClientImpl extends LanguageClient {
   private val LOG: Logger = Logger.getInstance(classOf[LanguageClientImpl])
   private var server: LanguageServer = _
+  private var wrapper: LanguageServerWrapper = _
 
   /**
     * Connects the LanguageClient to the server
     *
     * @param server The LanguageServer
     */
-  def connect(server: LanguageServer): Unit = {
+  def connect(server: LanguageServer, wrapper: LanguageServerWrapper): Unit = {
     this.server = server
+    this.wrapper = wrapper
   }
 
   override def applyEdit(params: ApplyWorkspaceEditParams): CompletableFuture[ApplyWorkspaceEditResponse] = {
@@ -34,9 +36,9 @@ class LanguageClientImpl extends LanguageClient {
     })
   }
 
-  override def registerCapability(params: RegistrationParams): CompletableFuture[Void] = null
+  override def registerCapability(params: RegistrationParams): CompletableFuture[Void] = wrapper.registerCapability(params)
 
-  override def unregisterCapability(params: UnregistrationParams): CompletableFuture[Void] = null
+  override def unregisterCapability(params: UnregistrationParams): CompletableFuture[Void] = wrapper.unregisterCapability(params)
 
   override def telemetryEvent(o: Any): Unit = {
     //TODO

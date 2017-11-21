@@ -1,11 +1,12 @@
 package com.github.gtache.lsp.client.languageserver.wrapper
 
 import java.io.IOException
+import java.util.concurrent.CompletableFuture
 
 import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.intellij.openapi.editor.Editor
-import org.eclipse.lsp4j.ServerCapabilities
+import org.eclipse.lsp4j.{RegistrationParams, ServerCapabilities, UnregistrationParams}
 import org.eclipse.lsp4j.jsonrpc.messages.Message
 import org.eclipse.lsp4j.services.LanguageServer
 import org.jetbrains.annotations.Nullable
@@ -14,6 +15,12 @@ import org.jetbrains.annotations.Nullable
   * A LanguageServerWrapper represents a connection to a LanguageServer and manages starting / stopping it as well as  connecting / disconnecting documents to it
   */
 trait LanguageServerWrapper {
+
+
+  def registerCapability(params: RegistrationParams): CompletableFuture[Void]
+
+  def unregisterCapability(params: UnregistrationParams) : CompletableFuture[Void]
+
   /**
     * Returns the EditorEventManager for a given uri
     *

@@ -6,11 +6,11 @@ import java.net.URI
 import java.util.concurrent._
 
 import com.github.gtache.lsp.PluginMain
-import com.github.gtache.lsp.client.LanguageClientImpl
 import com.github.gtache.lsp.client.connection.StreamConnectionProvider
 import com.github.gtache.lsp.client.languageserver.ServerOptions
 import com.github.gtache.lsp.client.languageserver.requestmanager.{RequestManager, SimpleRequestManager}
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
+import com.github.gtache.lsp.client.{LanguageClientImpl, Methods}
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.lsp.requests.Timeout
@@ -70,6 +70,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private var capabilitiesAlreadyRequested = false
   private var initializeStartTime = 0L
   private var started: Boolean = false
+  private var registrations: mutable.Map[String, Methods] = mutable.HashMap()
 
   /**
     * @return if the server supports willSaveWaitUntil
@@ -113,7 +114,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       val launcher = LSPLauncher.createClientLauncher(client, inputStream, outputStream)
 
       this.languageServer = launcher.getRemoteProxy
-      client.connect(languageServer)
+      client.connect(languageServer, this)
       this.launcherFuture = launcher.startListening
       //TODO update capabilities when implemented
       val workspaceClientCapabilities = new WorkspaceClientCapabilities
@@ -298,5 +299,33 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     PluginMain.languageServerStopped(this)
   }
 
+  override def registerCapability(params: RegistrationParams): CompletableFuture[Void] = {
+    CompletableFuture.runAsync(() => {
+      import scala.collection.JavaConverters._
+      params.getRegistrations.asScala.foreach(r => {
+        val id = r.getId
+        val method = Methods.forName(method)
+        val options = r.getRegisterOptions
+        registrations.put(id, method)
+      })
+    })
+  }
 
+  override def unregisterCapability(params: UnregistrationParams): CompletableFuture[Void] = {
+    CompletableFuture.runAsync(() => {
+      import scala.collection.JavaConverters._
+      params.getUnregisterations.asScala.foreach(r => {
+        val id = r.getId
+        val method = Methods.forName(method)
+        if (registrations.contains(id)) {
+          registrations.remove(id)
+        } else {
+          val invert = registrations.map(mapping => (mapping._2, mapping._1))
+          if (invert.contains(method)) {
+            registrations.remove(invert(method))
+          }
+        }
+      })
+    })
+  }
 }

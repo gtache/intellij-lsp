@@ -1,5 +1,8 @@
 package com.github.gtache.lsp.client;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 public enum Methods {
     DID_CHANGE_CONFIGURATION("workspace/didChangeConfiguration"),
     DID_CHANGE_WATCHED_FILES("workspace/didChangeWatchedFiles"),
@@ -29,6 +32,10 @@ public enum Methods {
 
     public String getName() {
         return name;
+    }
+
+    public static Methods forName(final String name) {
+        return Arrays.stream(Methods.values()).filter(n -> n.getName().equals(name)).collect(Collectors.toList()).get(0);
     }
 
 }
