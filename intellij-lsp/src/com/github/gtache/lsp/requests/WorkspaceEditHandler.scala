@@ -15,7 +15,7 @@ import org.eclipse.lsp4j.{TextEdit, WorkspaceEdit}
   */
 object WorkspaceEditHandler {
 
-  import com.github.gtache.lsp.utils.Utils.{computableWriteAction, invokeLater, writeAction}
+  import com.github.gtache.lsp.utils.ApplicationUtils._
 
   private val LOG: Logger = Logger.getInstance(WorkspaceEditHandler.getClass)
 

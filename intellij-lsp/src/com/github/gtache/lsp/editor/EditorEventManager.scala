@@ -107,7 +107,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   import EditorEventManager._
   import GUIUtils.createAndShowHint
-  import Utils._
+  import com.github.gtache.lsp.utils.ApplicationUtils._
   import com.github.gtache.lsp.requests.Timeout._
 
   import scala.collection.JavaConverters._
@@ -250,7 +250,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val doc = newEditor.getDocument
         val name = doc.getText(new TextRange(startOffset, endOffset))
         fileEditorManager.closeFile(file)
-        (startOffset, endOffset, name, Utils.getLine(newEditor, startOffset, endOffset))
+        (startOffset, endOffset, name, Utils.getLineText(newEditor, startOffset, endOffset))
       })
     }
 
@@ -291,7 +291,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             startOffset = Utils.LSPPosToOffset(m.editor, start)
             endOffset = Utils.LSPPosToOffset(m.editor, end)
             name = m.editor.getDocument.getText(new TextRange(startOffset, endOffset))
-            sample = Utils.getLine(m.editor, startOffset, endOffset)
+            sample = Utils.getLineText(m.editor, startOffset, endOffset)
           } catch {
             case e: RuntimeException =>
               LOG.warn(e)
@@ -301,7 +301,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           manageUnopenedEditor()
       }
 
-      (l.getUri, startOffset, endOffset, sample.replace(name, "<b>" + name + "</b>"))
+      (l.getUri, startOffset, endOffset, sample)
     }).toArray
 
     val caretPoint = editor.logicalPositionToXY(editor.getCaretModel.getCurrentCaret.getLogicalPosition)
@@ -695,7 +695,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   //TODO Manual
   def willSave(): Unit = {
-    if (wrapper.isWillSaveWaitUntil) willSaveWaitUntil() else pool(() => {
+    if (wrapper.isWillSaveWaitUntil && !needSave) willSaveWaitUntil() else pool(() => {
       requestManager.willSave(new WillSaveTextDocumentParams(identifier, TextDocumentSaveReason.Manual))
     })
   }
@@ -703,7 +703,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private def willSaveWaitUntil(): Unit = {
     if (wrapper.isWillSaveWaitUntil) {
       pool(() => {
-        needSave = false
         val params = new WillSaveTextDocumentParams(identifier, TextDocumentSaveReason.Manual)
         val future = requestManager.willSaveWaitUntil(params)
         if (future != null) {

@@ -2,14 +2,12 @@ package com.github.gtache.lsp.utils
 
 import java.io.File
 import java.net.{MalformedURLException, URI, URL}
-import java.util.concurrent.{Callable, Future}
 
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Document, Editor, LogicalPosition}
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileTypes.FileType
-import com.intellij.openapi.util.{Computable, TextRange}
+import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
 import org.eclipse.lsp4j.{Position, TextDocumentIdentifier}
 
@@ -25,19 +23,22 @@ object Utils {
 
 
   /**
-    * Gets the line at the given offset given an editor
+    * Gets the line at the given offset given an editor and boldens the text between the given offsets
     *
     * @param editor      The editor
     * @param startOffset The starting offset
     * @param endOffset   The ending offset
     * @return The document line
     */
-  def getLine(editor: Editor, startOffset: Int, endOffset: Int): String = {
+  def getLineText(editor: Editor, startOffset: Int, endOffset: Int): String = {
     val doc = editor.getDocument
     val lineIdx = doc.getLineNumber(startOffset)
     val lineStartOff = doc.getLineStartOffset(lineIdx)
     val lineEndOff = doc.getLineEndOffset(lineIdx)
-    doc.getText(new TextRange(lineStartOff, lineEndOff))
+    val line = doc.getText(new TextRange(lineStartOff, lineEndOff))
+    val startOffsetInLine = startOffset - lineStartOff
+    val endOffsetInLine = endOffset - lineStartOff
+    line.substring(0, startOffsetInLine) + "<b>" + line.substring(startOffsetInLine, endOffsetInLine) + "</b>" + line.substring(endOffsetInLine)
   }
 
   /**
@@ -201,32 +202,8 @@ object Utils {
     sanitizeURI(new File(path).toURI.toString)
   }
 
-  def documentToUri(document: Document) : String = {
+  def documentToUri(document: Document): String = {
     sanitizeURI(VFSToURIString(FileDocumentManager.getInstance().getFile(document)))
-  }
-
-  def invokeLater(runnable: Runnable): Unit = {
-    ApplicationManager.getApplication.invokeLater(runnable)
-  }
-
-  def pool(runnable: Runnable): Unit = {
-    ApplicationManager.getApplication.executeOnPooledThread(runnable)
-  }
-
-  def callablePool[T](callable: Callable[T]): Future[T] = {
-    ApplicationManager.getApplication.executeOnPooledThread(callable)
-  }
-
-  def computableReadAction[T](computable: Computable[T]): T = {
-    ApplicationManager.getApplication.runReadAction(computable)
-  }
-
-  def writeAction(runnable: Runnable): Unit = {
-    ApplicationManager.getApplication.runWriteAction(runnable)
-  }
-
-  def computableWriteAction[T](computable: Computable[T]): T = {
-    ApplicationManager.getApplication.runWriteAction(computable)
   }
 
   /**

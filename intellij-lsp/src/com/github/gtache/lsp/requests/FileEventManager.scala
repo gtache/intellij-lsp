@@ -3,7 +3,7 @@ package com.github.gtache.lsp.requests
 import com.github.gtache.lsp.PluginMain
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.editor.EditorEventManager
-import com.github.gtache.lsp.utils.Utils
+import com.github.gtache.lsp.utils.{ApplicationUtils, Utils}
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.vfs.VirtualFile
@@ -92,7 +92,7 @@ object FileEventManager {
 
   private def changedConfiguration(uri: String, typ: FileChangeType, wrapper: LanguageServerWrapper = null): Unit = {
     import scala.collection.JavaConverters._
-    Utils.pool(() => {
+    ApplicationUtils.pool(() => {
       val event = new FileEvent(uri, FileChangeType.Changed)
       val params = new DidChangeWatchedFilesParams(Seq(event).asJava)
       PluginMain.getAllServerWrappers.foreach(w => if (w != wrapper) w.getRequestManager.didChangeWatchedFiles(params))

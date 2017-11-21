@@ -6,9 +6,9 @@ import java.util.concurrent.CompletableFuture
 import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.intellij.openapi.editor.Editor
-import org.eclipse.lsp4j.{RegistrationParams, ServerCapabilities, UnregistrationParams}
 import org.eclipse.lsp4j.jsonrpc.messages.Message
 import org.eclipse.lsp4j.services.LanguageServer
+import org.eclipse.lsp4j.{RegistrationParams, ServerCapabilities, UnregistrationParams}
 import org.jetbrains.annotations.Nullable
 
 /**
@@ -17,9 +17,21 @@ import org.jetbrains.annotations.Nullable
 trait LanguageServerWrapper {
 
 
+  /**
+    * Register a capability for the language server
+    *
+    * @param params The registration params
+    * @return
+    */
   def registerCapability(params: RegistrationParams): CompletableFuture[Void]
 
-  def unregisterCapability(params: UnregistrationParams) : CompletableFuture[Void]
+  /**
+    * Unregister a capability for the language server
+    *
+    * @param params The unregistration params
+    * @return
+    */
+  def unregisterCapability(params: UnregistrationParams): CompletableFuture[Void]
 
   /**
     * Returns the EditorEventManager for a given uri

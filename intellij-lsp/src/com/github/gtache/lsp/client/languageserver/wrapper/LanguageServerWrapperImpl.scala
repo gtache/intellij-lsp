@@ -10,7 +10,7 @@ import com.github.gtache.lsp.client.connection.StreamConnectionProvider
 import com.github.gtache.lsp.client.languageserver.ServerOptions
 import com.github.gtache.lsp.client.languageserver.requestmanager.{RequestManager, SimpleRequestManager}
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
-import com.github.gtache.lsp.client.{LanguageClientImpl, Methods}
+import com.github.gtache.lsp.client.{LanguageClientImpl, DynamicRegistrationMethods}
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.lsp.requests.Timeout
@@ -70,7 +70,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private var capabilitiesAlreadyRequested = false
   private var initializeStartTime = 0L
   private var started: Boolean = false
-  private var registrations: mutable.Map[String, Methods] = mutable.HashMap()
+  private var registrations: mutable.Map[String, DynamicRegistrationMethods] = mutable.HashMap()
 
   /**
     * @return if the server supports willSaveWaitUntil
@@ -304,7 +304,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       import scala.collection.JavaConverters._
       params.getRegistrations.asScala.foreach(r => {
         val id = r.getId
-        val method = Methods.forName(method)
+        val method = DynamicRegistrationMethods.forName(r.getMethod)
         val options = r.getRegisterOptions
         registrations.put(id, method)
       })
@@ -316,7 +316,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       import scala.collection.JavaConverters._
       params.getUnregisterations.asScala.foreach(r => {
         val id = r.getId
-        val method = Methods.forName(method)
+        val method = DynamicRegistrationMethods.forName(r.getMethod)
         if (registrations.contains(id)) {
           registrations.remove(id)
         } else {

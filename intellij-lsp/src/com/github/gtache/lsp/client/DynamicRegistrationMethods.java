@@ -3,7 +3,10 @@ package com.github.gtache.lsp.client;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-public enum Methods {
+/**
+ * Enum for methods which may support DynamicRegistration
+ */
+public enum DynamicRegistrationMethods {
     DID_CHANGE_CONFIGURATION("workspace/didChangeConfiguration"),
     DID_CHANGE_WATCHED_FILES("workspace/didChangeWatchedFiles"),
     SYMBOL("workspace/symbol"),
@@ -26,7 +29,7 @@ public enum Methods {
 
     private final String name;
 
-    Methods(final String name) {
+    DynamicRegistrationMethods(final String name) {
         this.name = name;
     }
 
@@ -34,8 +37,8 @@ public enum Methods {
         return name;
     }
 
-    public static Methods forName(final String name) {
-        return Arrays.stream(Methods.values()).filter(n -> n.getName().equals(name)).collect(Collectors.toList()).get(0);
+    public static DynamicRegistrationMethods forName(final String name) {
+        return Arrays.stream(DynamicRegistrationMethods.values()).filter(n -> n.getName().equals(name)).collect(Collectors.toList()).get(0);
     }
 
 }
