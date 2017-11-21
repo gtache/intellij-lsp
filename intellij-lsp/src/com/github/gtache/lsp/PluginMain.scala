@@ -7,7 +7,6 @@ import com.github.gtache.lsp.client.MessageDialog
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.client.languageserver.wrapper.{LanguageServerWrapper, LanguageServerWrapperImpl}
 import com.github.gtache.lsp.contributors.LSPNavigationItem
-import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.{EditorListener, FileDocumentManagerListenerImpl, VFSListener}
 import com.github.gtache.lsp.requests.Timeout
 import com.github.gtache.lsp.settings.LSPState
@@ -18,7 +17,6 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.ApplicationComponent
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, EditorFactory}
-import com.intellij.openapi.extensions.Extensions
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
@@ -42,6 +40,7 @@ object PluginMain {
   def getAllServerWrappers: Set[LanguageServerWrapper] = {
     projectToLanguageWrappers.values.flatten.toSet
   }
+
   /**
     * @param ext An extension
     * @return True if there is a LanguageServer supporting this extension, false otherwise

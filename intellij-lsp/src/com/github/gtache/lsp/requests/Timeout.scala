@@ -14,6 +14,7 @@ object Timeout {
   val DEFINITION_TIMEOUT: Int = 2000
   val WILLSAVE_TIMEOUT: Int = 2000
   val FORMATTING_TIMEOUT: Int = 2000
+  val CODEACTION_TIMEOUT: Int = 2000
   val IMMEDIATELY: Int = 0
 
 }

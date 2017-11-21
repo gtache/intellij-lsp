@@ -68,6 +68,16 @@ object FileEventManager {
     }
   }
 
+  private def changedConfiguration(uri: String, typ: FileChangeType, wrapper: LanguageServerWrapper = null): Unit = {
+    import scala.collection.JavaConverters._
+    ApplicationUtils.pool(() => {
+      val event = new FileEvent(uri, FileChangeType.Changed)
+      val params = new DidChangeWatchedFilesParams(Seq(event).asJava)
+      val wrappers = PluginMain.getAllServerWrappers
+      if (wrappers != null) wrappers.foreach(w => if (w != wrapper) w.getRequestManager.didChangeWatchedFiles(params))
+    })
+  }
+
   /**
     * Called when a file is renamed. Notifies the server if this file was watched.
     *
@@ -88,15 +98,6 @@ object FileEventManager {
     if (uri != null) {
       changedConfiguration(uri, FileChangeType.Created)
     }
-  }
-
-  private def changedConfiguration(uri: String, typ: FileChangeType, wrapper: LanguageServerWrapper = null): Unit = {
-    import scala.collection.JavaConverters._
-    ApplicationUtils.pool(() => {
-      val event = new FileEvent(uri, FileChangeType.Changed)
-      val params = new DidChangeWatchedFilesParams(Seq(event).asJava)
-      PluginMain.getAllServerWrappers.foreach(w => if (w != wrapper) w.getRequestManager.didChangeWatchedFiles(params))
-    })
   }
 
 }

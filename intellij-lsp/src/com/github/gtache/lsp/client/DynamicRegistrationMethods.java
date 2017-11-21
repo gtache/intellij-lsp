@@ -33,12 +33,12 @@ public enum DynamicRegistrationMethods {
         this.name = name;
     }
 
-    public String getName() {
-        return name;
-    }
-
     public static DynamicRegistrationMethods forName(final String name) {
         return Arrays.stream(DynamicRegistrationMethods.values()).filter(n -> n.getName().equals(name)).collect(Collectors.toList()).get(0);
+    }
+
+    public String getName() {
+        return name;
     }
 
 }

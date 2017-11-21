@@ -3,12 +3,16 @@ package com.github.gtache.lsp.contributors.psi
 import javax.swing.Icon
 
 import com.intellij.lang.{ASTNode, Language}
+import com.intellij.openapi.fileTypes.PlainTextLanguage
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.{Key, TextRange}
 import com.intellij.psi._
 import com.intellij.psi.scope.PsiScopeProcessor
 import com.intellij.psi.search.{GlobalSearchScope, SearchScope}
 import com.intellij.util.IncorrectOperationException
+import com.intellij.util.concurrency.AtomicFieldUpdater
+import com.intellij.util.keyFMap.KeyFMap
+import org.jetbrains.annotations.Nullable
 
 /**
   * A simple PsiElement for LSP
@@ -18,7 +22,15 @@ import com.intellij.util.IncorrectOperationException
   * @param start   The offset in the editor where the element starts
   * @param end     The offset where it ends
   */
-case class LSPPsiElement(var name: String, project: Project, start: Int, end: Int) extends PsiNameIdentifierOwner {
+case class LSPPsiElement(var name: String, project: Project, start: Int, end: Int, file: PsiFile, manager: PsiManager) extends PsiNameIdentifierOwner {
+
+  private val COPYABLE_USER_MAP_KEY: Key[KeyFMap] = Key.create("COPYABLE_USER_MAP_KEY")
+  private val updater = AtomicFieldUpdater.forFieldOfType(classOf[LSPPsiElement], classOf[KeyFMap])
+  /**
+    * Concurrent writes to this field are via CASes only, using the {@link #updater}
+    */
+  @volatile private var myUserMap: KeyFMap = KeyFMap.EMPTY_MAP
+
   /**
     * Returns the project to which the PSI element belongs.
     *
@@ -33,14 +45,14 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     *
     * @return the language instance.
     */
-  override def getLanguage: Language = null
+  override def getLanguage: Language = PlainTextLanguage.INSTANCE
 
   /**
     * Returns the PSI manager for the project to which the PSI element belongs.
     *
     * @return the PSI manager instance.
     */
-  override def getManager: PsiManager = null
+  override def getManager: PsiManager = manager
 
   /**
     * Returns the array of children for the PSI element.
@@ -55,7 +67,17 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     *
     * @return the parent of the element, or null if the element has no parent.
     */
-  override def getParent: PsiElement = null
+  override def getParent: PsiElement = getContainingFile
+
+  /**
+    * Returns the file containing the PSI element.
+    *
+    * @return the file instance, or null if the PSI element is not contained in a file (for example,
+    *         the element represents a package or directory).
+    * @throws PsiInvalidElementAccessException
+    * if this element is invalid
+    */
+  override def getContainingFile: PsiFile = file
 
   /**
     * Returns the first child of the PSI element.
@@ -84,16 +106,6 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     * @return the previous sibling, or null if the node is the first in the list of siblings.
     */
   override def getPrevSibling: PsiElement = null
-
-  /**
-    * Returns the file containing the PSI element.
-    *
-    * @return the file instance, or null if the PSI element is not contained in a file (for example,
-    *         the element represents a package or directory).
-    * @throws PsiInvalidElementAccessException
-    * if this element is invalid
-    */
-  override def getContainingFile: PsiFile = null
 
   /**
     * Returns the text range in the document occupied by the PSI element.
@@ -149,6 +161,8 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     */
   override def textToCharArray: Array[Char] = name.toCharArray
 
+  //Q: get rid of these methods?
+
   /**
     * Returns the PSI element which should be used as a navigation target
     * when navigation to this PSI element is requested. The method can either
@@ -179,8 +193,6 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     * @return true if the text is equal, false otherwise.
     */
   override def textMatches(text: CharSequence): Boolean = getText == text
-
-  //Q: get rid of these methods?
 
   /**
     * Returns the text of the PSI element.
@@ -409,25 +421,6 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
   override def getReferences: Array[PsiReference] = null
 
   /**
-    * Returns a copyable user data object attached to this element.
-    *
-    * @param key the key for accessing the user data object.
-    * @return the user data object, or null if no such object is found in the current element.
-    * @see #putCopyableUserData(Key, Object)
-    */
-  override def getCopyableUserData[T](key: Key[T]): T = throw new Error
-
-  /**
-    * Attaches a copyable user data object to this element. Copyable user data objects are copied
-    * when the PSI elements are copied.
-    *
-    * @param key   the key for accessing the user data object.
-    * @param value the user data object to attach.
-    * @see #getCopyableUserData(Key)
-    */
-  override def putCopyableUserData[T](key: Key[T], value: T): Unit = {}
-
-  /**
     * Passes the declarations contained in this PSI element and its children
     * for processing to the specified scope processor.
     *
@@ -497,12 +490,10 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     */
   override def isEquivalentTo(another: PsiElement): Boolean = this == another
 
-
-  override def putUserData[T](key: Key[T], value: T): Unit = {}
-
-  override def getUserData[T](key: Key[T]): T = throw new Error
-
   override def getIcon(flags: Int): Icon = null
+
+  import com.intellij.openapi.util.{KeyWithDefaultValue, UserDataHolderBase}
+  import com.intellij.util.keyFMap.KeyFMap
 
   override def getNameIdentifier: PsiElement = this
 
@@ -512,4 +503,92 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     this.name = name
     this
   }
+
+  override def putUserData[T](key: Key[T], @Nullable value: T): Unit = {
+    import scala.util.control.Breaks._
+    breakable {
+      while ( {
+        true
+      }) {
+        val map = getUserMap
+        val newMap = if (value == null) map.minus(key)
+        else map.plus(key, value)
+        if ((newMap eq map) || changeUserMap(map, newMap)) break //todo: break is not supported
+
+      }
+    }
+  }
+
+  def getCopyableUserData[T](key: Key[T]): T = {
+    val map = getUserData(COPYABLE_USER_MAP_KEY)
+    //noinspection unchecked,ConstantConditions
+    if (map == null) null.asInstanceOf[T]
+    else map.get(key)
+  }
+
+  def putCopyableUserData[T](key: Key[T], value: T): Unit = {
+    while ( {
+      true
+    }) {
+      val map = getUserMap
+      var copyableMap = map.get(COPYABLE_USER_MAP_KEY)
+      if (copyableMap == null) copyableMap = KeyFMap.EMPTY_MAP
+      val newCopyableMap = if (value == null) copyableMap.minus(key)
+      else copyableMap.plus(key, value)
+      val newMap = if (newCopyableMap.isEmpty) map.minus(COPYABLE_USER_MAP_KEY)
+      else map.plus(COPYABLE_USER_MAP_KEY, newCopyableMap)
+      if ((newMap eq map) || changeUserMap(map, newMap)) return
+    }
+  }
+
+  def replace[T](key: Key[T], @Nullable oldValue: T, @Nullable newValue: T): Boolean = {
+    while ( {
+      true
+    }) {
+      val map = getUserMap
+      if (map.get(key) != oldValue) return false
+      val newMap = if (newValue == null) map.minus(key) else map.plus(key, newValue)
+      if ((newMap == map) || changeUserMap(map, newMap)) return true
+    }
+    false
+  }
+
+  def copyCopyableDataTo(clone: UserDataHolderBase): Unit = {
+    clone.putUserData(COPYABLE_USER_MAP_KEY, getUserData(COPYABLE_USER_MAP_KEY))
+  }
+
+  def getUserData[T](key: Key[T]): T = {
+    var t = getUserMap.get(key)
+    if (t == null && key.isInstanceOf[KeyWithDefaultValue[_]]) t = putUserDataIfAbsent(key, key.asInstanceOf[KeyWithDefaultValue[T]].getDefaultValue)
+    t
+  }
+
+  def putUserDataIfAbsent[T](key: Key[T], value: T): T = {
+    while ( {
+      true
+    }) {
+      val map = getUserMap
+      val oldValue = map.get(key)
+      if (oldValue != null) return oldValue
+      val newMap = map.plus(key, value)
+      if ((newMap eq map) || changeUserMap(map, newMap)) return value
+    }
+    null.asInstanceOf[T]
+  }
+
+  protected def getUserMap: KeyFMap = myUserMap
+
+  protected def changeUserMap(oldMap: KeyFMap, newMap: KeyFMap): Boolean = updater.compareAndSet(this, oldMap, newMap)
+
+  def isUserDataEmpty: Boolean = getUserMap.isEmpty
+
+  protected def clearUserData(): Unit = {
+    setUserMap(KeyFMap.EMPTY_MAP)
+  }
+
+  protected def setUserMap(map: KeyFMap): Unit = {
+    myUserMap = map
+  }
+
+
 }

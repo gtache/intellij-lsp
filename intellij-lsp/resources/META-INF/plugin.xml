@@ -35,6 +35,7 @@
         <typedHandler implementation="com.github.gtache.lsp.editor.listeners.LSPTypedHandler" id="LSPTypedHandler"/>
         <completion.contributor implementationClass="com.github.gtache.lsp.contributors.LSPCompletionContributor"
                                 id="LSPCompletionContributor" language="any"/>
+        <inspectionToolProvider implementation="com.github.gtache.lsp.contributors.LSPInspectionProvider" id="LSPInspectionProvider"/>
         <fileDocumentSynchronizationVetoer implementation="com.github.gtache.lsp.editor.listeners.LSPFileDocumentSynchronizationVetoer" id="LSPFileDocumentSynchronizationVetoer" />
     </extensions>
 

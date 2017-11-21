@@ -12,6 +12,7 @@ import com.github.gtache.lsp.client.languageserver.ServerOptions
 import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapperImpl
 import com.github.gtache.lsp.contributors.icon.LSPIconProvider
+import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.requests.{HoverHandler, WorkspaceEditHandler}
 import com.github.gtache.lsp.utils.{GUIUtils, Utils}
 import com.intellij.codeInsight.CodeInsightSettings
@@ -107,8 +108,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   import EditorEventManager._
   import GUIUtils.createAndShowHint
-  import com.github.gtache.lsp.utils.ApplicationUtils._
   import com.github.gtache.lsp.requests.Timeout._
+  import com.github.gtache.lsp.utils.ApplicationUtils._
 
   import scala.collection.JavaConverters._
 
@@ -137,6 +138,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     version += 1
     version - 1
   }, editor.getDocument.getText))))
+
+  def getDiagnostics: mutable.Set[DiagnosticRangeHighlighter] = {
+    diagnosticsHighlights.clone()
+  }
 
   /**
     * Adds all the listeners
@@ -735,49 +740,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
-    * Applies the given edits to the document
-    *
-    * @param version The version of the edits (will be discarded if older than current version)
-    * @param edits   The edits to apply
-    * @param name    The name of the edits (Rename, for example)
-    * @return True if the edits were applied, false otherwise
-    */
-  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Boolean = {
-    if (version >= this.version) {
-      invokeLater(() => {
-        val document = editor.getDocument
-        if (document.isWritable) {
-          val runnable = new Runnable {
-            override def run(): Unit = {
-              edits.foreach(edit => {
-                val text = edit.getNewText
-                val range = edit.getRange
-                val start = Utils.LSPPosToOffset(editor, range.getStart)
-                val end = Utils.LSPPosToOffset(editor, range.getEnd)
-                if (text == "" || text == null) {
-                  document.deleteString(start, end)
-                } else if (end - start <= 0) {
-                  document.insertString(start, text)
-                } else {
-                  document.replaceString(start, end, text)
-                }
-              })
-              FileDocumentManager.getInstance().saveDocument(document)
-            }
-          }
-          writeAction(() => CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, name, "LSPPlugin", document))
-        } else {
-          LOG.warn("Document is not writable")
-        }
-      })
-      true
-    } else {
-      LOG.warn("Version " + version + " is older than " + this.version)
-      false
-    }
-  }
-
-  /**
     * Returns the references given the position of the word to search for
     *
     * @param pos A logical position
@@ -850,7 +812,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           diagnosticsHighlights
             .add(DiagnosticRangeHighlighter(markupModel.addRangeHighlighter(start, end, layer,
               new TextAttributes(colorScheme.getDefaultForeground, colorScheme.getDefaultBackground, effectColor, effectType, Font.PLAIN), HighlighterTargetArea.EXACT_RANGE),
-              message, source, code))
+              diagnostic))
         })
       }
     })
@@ -902,6 +864,49 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       val request = requestManager.rangeFormatting(params)
       if (request != null) request.thenAccept(formatting => applyEdit(edits = formatting.asScala, name = "Reformat selection"))
     })
+  }
+
+  /**
+    * Applies the given edits to the document
+    *
+    * @param version The version of the edits (will be discarded if older than current version)
+    * @param edits   The edits to apply
+    * @param name    The name of the edits (Rename, for example)
+    * @return True if the edits were applied, false otherwise
+    */
+  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Boolean = {
+    if (version >= this.version) {
+      invokeLater(() => {
+        val document = editor.getDocument
+        if (document.isWritable) {
+          val runnable = new Runnable {
+            override def run(): Unit = {
+              edits.foreach(edit => {
+                val text = edit.getNewText
+                val range = edit.getRange
+                val start = Utils.LSPPosToOffset(editor, range.getStart)
+                val end = Utils.LSPPosToOffset(editor, range.getEnd)
+                if (text == "" || text == null) {
+                  document.deleteString(start, end)
+                } else if (end - start <= 0) {
+                  document.insertString(start, text)
+                } else {
+                  document.replaceString(start, end, text)
+                }
+              })
+              FileDocumentManager.getInstance().saveDocument(document)
+            }
+          }
+          writeAction(() => CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, name, "LSPPlugin", document))
+        } else {
+          LOG.warn("Document is not writable")
+        }
+      })
+      true
+    } else {
+      LOG.warn("Version " + version + " is older than " + this.version)
+      false
+    }
   }
 
   /**
@@ -973,6 +978,32 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     })
   }
 
+  def codeAction(element: LSPPsiElement): Unit = {
+    pool(() => {
+      val params = new CodeActionParams()
+      params.setTextDocument(identifier)
+      params.setRange(computableReadAction(() => new Range(Utils.offsetToLSPPos(editor, element.start), Utils.offsetToLSPPos(editor, element.end))))
+      val context = new CodeActionContext(diagnosticsHighlights.map(_.diagnostic).toList.asJava)
+      params.setContext(context)
+      val future = requestManager.codeAction(params)
+      if (future != null) {
+        try {
+          val commands = future.get(CODEACTION_TIMEOUT, TimeUnit.MILLISECONDS)
+          if (commands != null) {
+            commands.asScala.foreach(command => {
+              val args = command.getArguments.asScala
+              val title = command.getTitle
+              val meth = command.getCommand
+              //TODO
+            })
+          }
+        } catch {
+          case e: TimeoutException => LOG.warn(e)
+        }
+      }
+    })
+  }
+
   private def getPos(e: EditorMouseEvent): LogicalPosition = {
     val mousePos = e.getMouseEvent.getPoint
     val editorPos = editor.xyToLogicalPosition(mousePos)
@@ -1006,9 +1037,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                   .toList.sortBy(diag => diag.rangeHighlighter.getLayer)
                 if (inHighlights.nonEmpty && !isCtrlDown) {
                   val first = inHighlights.head
-                  val message = first.message
-                  val code = first.code
-                  val source = first.source
+                  val diagnostic = first.diagnostic
+                  val message = diagnostic.getMessage
+                  val code = diagnostic.getCode
+                  val source = diagnostic.getSource
                   invokeLater(() => currentHint = createAndShowHint(editor, if (source != "" && source != null) source + " : " + message else message, point))
                 } else {
                   requestAndShowDoc(curTime, editorPos, point)

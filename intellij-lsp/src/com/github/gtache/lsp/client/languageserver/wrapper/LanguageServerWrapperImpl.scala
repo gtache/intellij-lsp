@@ -10,7 +10,7 @@ import com.github.gtache.lsp.client.connection.StreamConnectionProvider
 import com.github.gtache.lsp.client.languageserver.ServerOptions
 import com.github.gtache.lsp.client.languageserver.requestmanager.{RequestManager, SimpleRequestManager}
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
-import com.github.gtache.lsp.client.{LanguageClientImpl, DynamicRegistrationMethods}
+import com.github.gtache.lsp.client.{DynamicRegistrationMethods, LanguageClientImpl}
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.lsp.requests.Timeout
