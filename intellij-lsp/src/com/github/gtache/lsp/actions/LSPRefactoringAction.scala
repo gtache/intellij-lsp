@@ -1,7 +1,6 @@
 package com.github.gtache.lsp.actions
 
 import com.github.gtache.lsp.editor.EditorEventManager
-import com.intellij.lang.LanguageRefactoringSupport
 import com.intellij.openapi.actionSystem.{AnActionEvent, CommonDataKeys}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.DumbAwareAction
@@ -16,14 +15,13 @@ class LSPRefactoringAction extends DumbAwareAction {
   override def actionPerformed(e: AnActionEvent): Unit = {
     val editor = e.getData(CommonDataKeys.EDITOR)
     val psiFile = e.getData(CommonDataKeys.PSI_FILE)
-    val supported = LanguageRefactoringSupport.INSTANCE.allForLanguage(psiFile.getLanguage)
-    if (supported.isEmpty) {
+    /*if (LanguageRefactoringSupport.INSTANCE.allForLanguage(psiFile.getLanguage).isEmpty) {*/
       EditorEventManager.forEditor(editor) match {
         case Some(manager) =>
           val renameTo = Messages.showInputDialog(e.getProject, "Enter new name: ", "Rename", Messages.getQuestionIcon, "", new NonEmptyInputValidator())
           if (renameTo != null && renameTo != "") manager.rename(renameTo)
         case None =>
-      }
+        /*}*/
     } //else pass to default refactoring
   }
 }

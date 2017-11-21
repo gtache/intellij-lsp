@@ -21,4 +21,5 @@ class LSPQuickFix(uri: String, commands: Iterable[Command]) extends LocalQuickFi
   }
 
   override def getFamilyName: String = "LSP Fix"
+
 }

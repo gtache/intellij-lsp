@@ -17,7 +17,7 @@ class LSPReferencesAction extends DumbAwareAction {
     val editor = e.getData(CommonDataKeys.EDITOR)
     if (editor != null) {
       val file = PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument)
-      if (LanguageFindUsages.INSTANCE.allForLanguage(file.getLanguage).isEmpty && PluginMain.isExtensionSupported(file.getVirtualFile.getExtension)) {
+      if (/*LanguageFindUsages.INSTANCE.allForLanguage(file.getLanguage).isEmpty && */PluginMain.isExtensionSupported(file.getVirtualFile.getExtension)) {
         EditorEventManager.forEditor(editor).foreach(manager => manager.getReferences())
       }
     }
