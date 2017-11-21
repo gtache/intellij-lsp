@@ -526,6 +526,29 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     else map.get(key)
   }
 
+  def getUserData[T](key: Key[T]): T = {
+    var t = getUserMap.get(key)
+    if (t == null && key.isInstanceOf[KeyWithDefaultValue[_]]) t = putUserDataIfAbsent(key, key.asInstanceOf[KeyWithDefaultValue[T]].getDefaultValue)
+    t
+  }
+
+  def putUserDataIfAbsent[T](key: Key[T], value: T): T = {
+    while ( {
+      true
+    }) {
+      val map = getUserMap
+      val oldValue = map.get(key)
+      if (oldValue != null) return oldValue
+      val newMap = map.plus(key, value)
+      if ((newMap eq map) || changeUserMap(map, newMap)) return value
+    }
+    null.asInstanceOf[T]
+  }
+
+  protected def changeUserMap(oldMap: KeyFMap, newMap: KeyFMap): Boolean = updater.compareAndSet(this, oldMap, newMap)
+
+  protected def getUserMap: KeyFMap = myUserMap
+
   def putCopyableUserData[T](key: Key[T], value: T): Unit = {
     while ( {
       true
@@ -556,29 +579,6 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
   def copyCopyableDataTo(clone: UserDataHolderBase): Unit = {
     clone.putUserData(COPYABLE_USER_MAP_KEY, getUserData(COPYABLE_USER_MAP_KEY))
   }
-
-  def getUserData[T](key: Key[T]): T = {
-    var t = getUserMap.get(key)
-    if (t == null && key.isInstanceOf[KeyWithDefaultValue[_]]) t = putUserDataIfAbsent(key, key.asInstanceOf[KeyWithDefaultValue[T]].getDefaultValue)
-    t
-  }
-
-  def putUserDataIfAbsent[T](key: Key[T], value: T): T = {
-    while ( {
-      true
-    }) {
-      val map = getUserMap
-      val oldValue = map.get(key)
-      if (oldValue != null) return oldValue
-      val newMap = map.plus(key, value)
-      if ((newMap eq map) || changeUserMap(map, newMap)) return value
-    }
-    null.asInstanceOf[T]
-  }
-
-  protected def getUserMap: KeyFMap = myUserMap
-
-  protected def changeUserMap(oldMap: KeyFMap, newMap: KeyFMap): Boolean = updater.compareAndSet(this, oldMap, newMap)
 
   def isUserDataEmpty: Boolean = getUserMap.isEmpty
 

@@ -12,6 +12,9 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.{PsiFile, PsiManager}
 import org.eclipse.lsp4j.DiagnosticSeverity
 
+/**
+  * The inspection tool for LSP
+  */
 class LSPInspection extends LocalInspectionTool {
   private var bool: Boolean = false
 
@@ -26,13 +29,15 @@ class LSPInspection extends LocalInspectionTool {
           val start = rangeHighlighter.getStartOffset
           val end = rangeHighlighter.getEndOffset
           val name = m.editor.getDocument.getText(new TextRange(start, end))
-          val severity = diagnostic.getSeverity match {
+          val severity = (diagnostic.getSeverity: @unchecked) match {
             case DiagnosticSeverity.Error => ProblemHighlightType.ERROR
             case DiagnosticSeverity.Warning => ProblemHighlightType.GENERIC_ERROR_OR_WARNING
             case DiagnosticSeverity.Information => ProblemHighlightType.INFORMATION
           }
           val element = LSPPsiElement(name, m.editor.getProject, start, end, file, PsiManager.getInstance(m.editor.getProject))
-          manager.createProblemDescriptor(element, null.asInstanceOf[TextRange], diagnostic.getMessage, severity, isOnTheFly, new LSPQuickFix(uri))
+          val commands = m.codeAction(element)
+          manager.createProblemDescriptor(element, null.asInstanceOf[TextRange], diagnostic.getMessage, severity, isOnTheFly,
+            if (commands != null) new LSPQuickFix(uri, commands) else null)
         }.toArray
       }
 
@@ -50,7 +55,7 @@ class LSPInspection extends LocalInspectionTool {
               case None => super.checkFile(file, manager, isOnTheFly)
             }*/
             //TODO need dispatch thread
-            null
+            super.checkFile(file, manager, isOnTheFly)
           }
       }
     } else super.checkFile(file, manager, isOnTheFly)

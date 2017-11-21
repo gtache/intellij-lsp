@@ -74,7 +74,7 @@ object FileEventManager {
       val event = new FileEvent(uri, FileChangeType.Changed)
       val params = new DidChangeWatchedFilesParams(Seq(event).asJava)
       val wrappers = PluginMain.getAllServerWrappers
-      if (wrappers != null) wrappers.foreach(w => if (w != wrapper) w.getRequestManager.didChangeWatchedFiles(params))
+      if (wrappers != null) wrappers.foreach(w => if (w != wrapper && w.getRequestManager != null) w.getRequestManager.didChangeWatchedFiles(params))
     })
   }
 

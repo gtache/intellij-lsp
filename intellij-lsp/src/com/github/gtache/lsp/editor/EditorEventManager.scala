@@ -139,6 +139,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     version - 1
   }, editor.getDocument.getText))))
 
+  /**
+    * @return The current diagnostics highlights
+    */
   def getDiagnostics: mutable.Set[DiagnosticRangeHighlighter] = {
     diagnosticsHighlights.clone()
   }
@@ -440,20 +443,57 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
-  /**
-    * Immediately requests the server for documentation at the current editor position
-    *
-    * @param editor The editor
-    */
-  def quickDoc(editor: Editor): Unit = {
-    if (editor == this.editor) {
-      val caretPos = editor.getCaretModel.getLogicalPosition
-      val pointPos = editor.logicalPositionToXY(caretPos)
-      val currentTime = System.nanoTime()
-      pool(() => requestAndShowDoc(currentTime, caretPos, pointPos))
-      predTime = currentTime
+  private def getPos(e: EditorMouseEvent): LogicalPosition = {
+    val mousePos = e.getMouseEvent.getPoint
+    val editorPos = editor.xyToLogicalPosition(mousePos)
+    val doc = e.getEditor.getDocument
+    val maxLines = doc.getLineCount
+    if (editorPos.line >= maxLines) {
+      null
     } else {
-      LOG.warn("Not same editor!")
+      val minY = doc.getLineStartOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
+      val maxY = doc.getLineEndOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
+      if (editorPos.column < minY || editorPos.column > maxY) {
+        null
+      } else {
+        editorPos
+      }
+    }
+  }
+
+  private def scheduleDocumentation(time: Long, editorPos: LogicalPosition, point: Point): Unit = {
+    if (editorPos != null) {
+      if (time - predTime > SCHEDULE_THRES) {
+        try {
+          hoverThread.schedule(new TimerTask {
+            override def run(): Unit = {
+              val curTime = System.nanoTime()
+              if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && (!isKeyPressed || isCtrlDown)) {
+                val editorOffset = computableReadAction[Int](() => editor.logicalPositionToOffset(editorPos))
+                val inHighlights = diagnosticsHighlights.filter(diag =>
+                  diag.rangeHighlighter.getStartOffset <= editorOffset &&
+                    editorOffset <= diag.rangeHighlighter.getEndOffset)
+                  .toList.sortBy(diag => diag.rangeHighlighter.getLayer)
+                if (inHighlights.nonEmpty && !isCtrlDown) {
+                  val first = inHighlights.head
+                  val diagnostic = first.diagnostic
+                  val message = diagnostic.getMessage
+                  val code = diagnostic.getCode
+                  val source = diagnostic.getSource
+                  invokeLater(() => currentHint = createAndShowHint(editor, if (source != "" && source != null) source + " : " + message else message, point))
+                } else {
+                  requestAndShowDoc(curTime, editorPos, point)
+                }
+              }
+            }
+          }, POPUP_THRES)
+        } catch {
+          case e: Exception =>
+            hoverThread = new Timer("Hover", true)
+            LOG.warn(e)
+            LOG.warn("Hover timer reset")
+        }
+      }
     }
   }
 
@@ -513,6 +553,23 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       }
     } else {
       null
+    }
+  }
+
+  /**
+    * Immediately requests the server for documentation at the current editor position
+    *
+    * @param editor The editor
+    */
+  def quickDoc(editor: Editor): Unit = {
+    if (editor == this.editor) {
+      val caretPos = editor.getCaretModel.getLogicalPosition
+      val pointPos = editor.logicalPositionToXY(caretPos)
+      val currentTime = System.nanoTime()
+      pool(() => requestAndShowDoc(currentTime, caretPos, pointPos))
+      predTime = currentTime
+    } else {
+      LOG.warn("Not same editor!")
     }
   }
 
@@ -847,26 +904,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
-    * Reformat the text currently selected in the editor
-    */
-  def reformatSelection(): Unit = {
-    pool(() => {
-      val params = new DocumentRangeFormattingParams()
-      params.setTextDocument(identifier)
-      val selectionModel = editor.getSelectionModel
-      val start = selectionModel.getSelectionStart
-      val end = selectionModel.getSelectionEnd
-      val startingPos = Utils.offsetToLSPPos(editor, start)
-      val endPos = Utils.offsetToLSPPos(editor, end)
-      params.setRange(new Range(startingPos, endPos))
-      val options = new FormattingOptions() //TODO
-      params.setOptions(options)
-      val request = requestManager.rangeFormatting(params)
-      if (request != null) request.thenAccept(formatting => applyEdit(edits = formatting.asScala, name = "Reformat selection"))
-    })
-  }
-
-  /**
     * Applies the given edits to the document
     *
     * @param version The version of the edits (will be discarded if older than current version)
@@ -907,6 +944,26 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       LOG.warn("Version " + version + " is older than " + this.version)
       false
     }
+  }
+
+  /**
+    * Reformat the text currently selected in the editor
+    */
+  def reformatSelection(): Unit = {
+    pool(() => {
+      val params = new DocumentRangeFormattingParams()
+      params.setTextDocument(identifier)
+      val selectionModel = editor.getSelectionModel
+      val start = selectionModel.getSelectionStart
+      val end = selectionModel.getSelectionEnd
+      val startingPos = Utils.offsetToLSPPos(editor, start)
+      val endPos = Utils.offsetToLSPPos(editor, end)
+      params.setRange(new Range(startingPos, endPos))
+      val options = new FormattingOptions() //TODO
+      params.setOptions(options)
+      val request = requestManager.rangeFormatting(params)
+      if (request != null) request.thenAccept(formatting => applyEdit(edits = formatting.asScala, name = "Reformat selection"))
+    })
   }
 
   /**
@@ -978,83 +1035,29 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     })
   }
 
-  def codeAction(element: LSPPsiElement): Unit = {
-    pool(() => {
-      val params = new CodeActionParams()
-      params.setTextDocument(identifier)
-      params.setRange(computableReadAction(() => new Range(Utils.offsetToLSPPos(editor, element.start), Utils.offsetToLSPPos(editor, element.end))))
-      val context = new CodeActionContext(diagnosticsHighlights.map(_.diagnostic).toList.asJava)
-      params.setContext(context)
-      val future = requestManager.codeAction(params)
-      if (future != null) {
-        try {
-          val commands = future.get(CODEACTION_TIMEOUT, TimeUnit.MILLISECONDS)
-          if (commands != null) {
-            commands.asScala.foreach(command => {
-              val args = command.getArguments.asScala
-              val title = command.getTitle
-              val meth = command.getCommand
-              //TODO
-            })
-          }
-        } catch {
-          case e: TimeoutException => LOG.warn(e)
-        }
+  /**
+    * Retrieves the commands needed to apply a CodeAction
+    *
+    * @param element The element which needs the CodeAction
+    * @return The list of commands, or null if none are given / the request times out
+    */
+  def codeAction(element: LSPPsiElement): Iterable[Command] = {
+    val params = new CodeActionParams()
+    params.setTextDocument(identifier)
+    params.setRange(computableReadAction(() => new Range(Utils.offsetToLSPPos(editor, element.start), Utils.offsetToLSPPos(editor, element.end))))
+    val context = new CodeActionContext(diagnosticsHighlights.map(_.diagnostic).toList.asJava)
+    params.setContext(context)
+    val future = requestManager.codeAction(params)
+    if (future != null) {
+      try {
+        future.get(CODEACTION_TIMEOUT, TimeUnit.MILLISECONDS).asScala
+      } catch {
+        case e: TimeoutException =>
+          LOG.warn(e)
+          null
       }
-    })
-  }
-
-  private def getPos(e: EditorMouseEvent): LogicalPosition = {
-    val mousePos = e.getMouseEvent.getPoint
-    val editorPos = editor.xyToLogicalPosition(mousePos)
-    val doc = e.getEditor.getDocument
-    val maxLines = doc.getLineCount
-    if (editorPos.line >= maxLines) {
-      null
     } else {
-      val minY = doc.getLineStartOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
-      val maxY = doc.getLineEndOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
-      if (editorPos.column < minY || editorPos.column > maxY) {
-        null
-      } else {
-        editorPos
-      }
-    }
-  }
-
-  private def scheduleDocumentation(time: Long, editorPos: LogicalPosition, point: Point): Unit = {
-    if (editorPos != null) {
-      if (time - predTime > SCHEDULE_THRES) {
-        try {
-          hoverThread.schedule(new TimerTask {
-            override def run(): Unit = {
-              val curTime = System.nanoTime()
-              if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && (!isKeyPressed || isCtrlDown)) {
-                val editorOffset = computableReadAction[Int](() => editor.logicalPositionToOffset(editorPos))
-                val inHighlights = diagnosticsHighlights.filter(diag =>
-                  diag.rangeHighlighter.getStartOffset <= editorOffset &&
-                    editorOffset <= diag.rangeHighlighter.getEndOffset)
-                  .toList.sortBy(diag => diag.rangeHighlighter.getLayer)
-                if (inHighlights.nonEmpty && !isCtrlDown) {
-                  val first = inHighlights.head
-                  val diagnostic = first.diagnostic
-                  val message = diagnostic.getMessage
-                  val code = diagnostic.getCode
-                  val source = diagnostic.getSource
-                  invokeLater(() => currentHint = createAndShowHint(editor, if (source != "" && source != null) source + " : " + message else message, point))
-                } else {
-                  requestAndShowDoc(curTime, editorPos, point)
-                }
-              }
-            }
-          }, POPUP_THRES)
-        } catch {
-          case e: Exception =>
-            hoverThread = new Timer("Hover", true)
-            LOG.warn(e)
-            LOG.warn("Hover timer reset")
-        }
-      }
+      null
     }
   }
 }
