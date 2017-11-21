@@ -18,7 +18,6 @@ import scala.collection.mutable
 class LanguageClientImpl extends LanguageClient {
   private val LOG: Logger = Logger.getInstance(classOf[LanguageClientImpl])
   private var server: LanguageServer = _
-  private val ids : mutable.Map[String, String]
 
   /**
     * Connects the LanguageClient to the server
