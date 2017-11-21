@@ -13,6 +13,7 @@ object Timeout {
   val SHUTDOWN_TIMEOUT: Int = 5000
   val DEFINITION_TIMEOUT: Int = 2000
   val WILLSAVE_TIMEOUT: Int = 2000
+  val FORMATTING_TIMEOUT: Int = 2000
   val IMMEDIATELY: Int = 0
 
 }

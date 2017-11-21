@@ -120,6 +120,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private val syncKind = serverOptions.syncKind
   private val completionTriggers = if (serverOptions.completionOptions != null) serverOptions.completionOptions.getTriggerCharacters.asScala.toSet.filter(s => s != ".") else Set[String]()
   private val signatureTriggers = if (serverOptions.signatureHelpOptions != null) serverOptions.signatureHelpOptions.getTriggerCharacters.asScala.toSet else Set[String]()
+  private val onTypeFormattingTriggers = if (serverOptions.documentOnTypeFormattingOptions != null)
+    (serverOptions.documentOnTypeFormattingOptions.getMoreTriggerCharacter.asScala +: serverOptions.documentOnTypeFormattingOptions.getFirstTriggerCharacter).toSet else Set[String]()
   @volatile var needSave = false
   private var hoverThread = new Timer("Hover", true)
   private var version: Int = -1
@@ -433,59 +435,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
-  private def getPos(e: EditorMouseEvent): LogicalPosition = {
-    val mousePos = e.getMouseEvent.getPoint
-    val editorPos = editor.xyToLogicalPosition(mousePos)
-    val doc = e.getEditor.getDocument
-    val maxLines = doc.getLineCount
-    if (editorPos.line >= maxLines) {
-      null
-    } else {
-      val minY = doc.getLineStartOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
-      val maxY = doc.getLineEndOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
-      if (editorPos.column < minY || editorPos.column > maxY) {
-        null
-      } else {
-        editorPos
-      }
-    }
-  }
-
-  private def scheduleDocumentation(time: Long, editorPos: LogicalPosition, point: Point): Unit = {
-    if (editorPos != null) {
-      if (time - predTime > SCHEDULE_THRES) {
-        try {
-          hoverThread.schedule(new TimerTask {
-            override def run(): Unit = {
-              val curTime = System.nanoTime()
-              if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && (!isKeyPressed || isCtrlDown)) {
-                val editorOffset = computableReadAction[Int](() => editor.logicalPositionToOffset(editorPos))
-                val inHighlights = diagnosticsHighlights.filter(diag =>
-                  diag.rangeHighlighter.getStartOffset <= editorOffset &&
-                    editorOffset <= diag.rangeHighlighter.getEndOffset)
-                  .toList.sortBy(diag => diag.rangeHighlighter.getLayer)
-                if (inHighlights.nonEmpty && !isCtrlDown) {
-                  val first = inHighlights.head
-                  val message = first.message
-                  val code = first.code
-                  val source = first.source
-                  invokeLater(() => currentHint = createAndShowHint(editor, if (source != "" && source != null) source + " : " + message else message, point))
-                } else {
-                  requestAndShowDoc(curTime, editorPos, point)
-                }
-              }
-            }
-          }, POPUP_THRES)
-        } catch {
-          case e: Exception =>
-            hoverThread = new Timer("Hover", true)
-            LOG.warn(e)
-            LOG.warn("Hover timer reset")
-        }
-      }
-    }
-  }
-
   /**
     * Immediately requests the server for documentation at the current editor position
     *
@@ -787,6 +736,49 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
+    * Applies the given edits to the document
+    *
+    * @param version The version of the edits (will be discarded if older than current version)
+    * @param edits   The edits to apply
+    * @param name    The name of the edits (Rename, for example)
+    * @return True if the edits were applied, false otherwise
+    */
+  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Boolean = {
+    if (version >= this.version) {
+      invokeLater(() => {
+        val document = editor.getDocument
+        if (document.isWritable) {
+          val runnable = new Runnable {
+            override def run(): Unit = {
+              edits.foreach(edit => {
+                val text = edit.getNewText
+                val range = edit.getRange
+                val start = Utils.LSPPosToOffset(editor, range.getStart)
+                val end = Utils.LSPPosToOffset(editor, range.getEnd)
+                if (text == "" || text == null) {
+                  document.deleteString(start, end)
+                } else if (end - start <= 0) {
+                  document.insertString(start, text)
+                } else {
+                  document.replaceString(start, end, text)
+                }
+              })
+              FileDocumentManager.getInstance().saveDocument(document)
+            }
+          }
+          writeAction(() => CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, name, "LSPPlugin", document))
+        } else {
+          LOG.warn("Document is not writable")
+        }
+      })
+      true
+    } else {
+      LOG.warn("Version " + version + " is older than " + this.version)
+      false
+    }
+  }
+
+  /**
     * Returns the references given the position of the word to search for
     *
     * @param pos A logical position
@@ -894,49 +886,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
-    * Applies the given edits to the document
-    *
-    * @param version The version of the edits (will be discarded if older than current version)
-    * @param edits   The edits to apply
-    * @param name    The name of the edits (Rename, for example)
-    * @return True if the edits were applied, false otherwise
-    */
-  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Boolean = {
-    if (version >= this.version) {
-      invokeLater(() => {
-        val document = editor.getDocument
-        if (document.isWritable) {
-          val runnable = new Runnable {
-            override def run(): Unit = {
-              edits.foreach(edit => {
-                val text = edit.getNewText
-                val range = edit.getRange
-                val start = Utils.LSPPosToOffset(editor, range.getStart)
-                val end = Utils.LSPPosToOffset(editor, range.getEnd)
-                if (text == "" || text == null) {
-                  document.deleteString(start, end)
-                } else if (end - start <= 0) {
-                  document.insertString(start, text)
-                } else {
-                  document.replaceString(start, end, text)
-                }
-              })
-              FileDocumentManager.getInstance().saveDocument(document)
-            }
-          }
-          writeAction(() => CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, name, "LSPPlugin", document))
-        } else {
-          LOG.warn("Document is not writable")
-        }
-      })
-      true
-    } else {
-      LOG.warn("Version " + version + " is older than " + this.version)
-      false
-    }
-  }
-
-  /**
     * Reformat the text currently selected in the editor
     */
   def reformatSelection(): Unit = {
@@ -949,7 +898,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       val startingPos = Utils.offsetToLSPPos(editor, start)
       val endPos = Utils.offsetToLSPPos(editor, end)
       params.setRange(new Range(startingPos, endPos))
-      val options = new FormattingOptions()
+      val options = new FormattingOptions() //TODO
       params.setOptions(options)
       val request = requestManager.rangeFormatting(params)
       if (request != null) request.thenAccept(formatting => applyEdit(edits = formatting.asScala, name = "Reformat selection"))
@@ -966,7 +915,28 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       //completion(Utils.offsetToLSPPos(editor,editor.getCaretModel.getCurrentCaret.getOffset))
     } else if (signatureTriggers.contains(c.toString)) {
       signatureHelp()
+    } else if (onTypeFormattingTriggers.contains(c.toString)) {
+      onTypeFormatting(c.toString)
     }
+  }
+
+  private def onTypeFormatting(c: String): Unit = {
+    pool(() => {
+      val params = new DocumentOnTypeFormattingParams()
+      params.setCh(c)
+      params.setPosition(computableReadAction(() => Utils.logicalToLSPPos(editor.getCaretModel.getCurrentCaret.getLogicalPosition)))
+      params.setTextDocument(identifier)
+      params.setOptions(new FormattingOptions())
+      val future = requestManager.onTypeFormatting(params)
+      if (future != null) {
+        try {
+          val edits = future.get(FORMATTING_TIMEOUT, TimeUnit.MILLISECONDS)
+          applyEdit(edits = edits.asScala, name = "On type formatting")
+        } catch {
+          case e: TimeoutException => LOG.warn(e)
+        }
+      }
+    })
   }
 
   /**
@@ -1002,5 +972,58 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         }
       }
     })
+  }
+
+  private def getPos(e: EditorMouseEvent): LogicalPosition = {
+    val mousePos = e.getMouseEvent.getPoint
+    val editorPos = editor.xyToLogicalPosition(mousePos)
+    val doc = e.getEditor.getDocument
+    val maxLines = doc.getLineCount
+    if (editorPos.line >= maxLines) {
+      null
+    } else {
+      val minY = doc.getLineStartOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
+      val maxY = doc.getLineEndOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
+      if (editorPos.column < minY || editorPos.column > maxY) {
+        null
+      } else {
+        editorPos
+      }
+    }
+  }
+
+  private def scheduleDocumentation(time: Long, editorPos: LogicalPosition, point: Point): Unit = {
+    if (editorPos != null) {
+      if (time - predTime > SCHEDULE_THRES) {
+        try {
+          hoverThread.schedule(new TimerTask {
+            override def run(): Unit = {
+              val curTime = System.nanoTime()
+              if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && (!isKeyPressed || isCtrlDown)) {
+                val editorOffset = computableReadAction[Int](() => editor.logicalPositionToOffset(editorPos))
+                val inHighlights = diagnosticsHighlights.filter(diag =>
+                  diag.rangeHighlighter.getStartOffset <= editorOffset &&
+                    editorOffset <= diag.rangeHighlighter.getEndOffset)
+                  .toList.sortBy(diag => diag.rangeHighlighter.getLayer)
+                if (inHighlights.nonEmpty && !isCtrlDown) {
+                  val first = inHighlights.head
+                  val message = first.message
+                  val code = first.code
+                  val source = first.source
+                  invokeLater(() => currentHint = createAndShowHint(editor, if (source != "" && source != null) source + " : " + message else message, point))
+                } else {
+                  requestAndShowDoc(curTime, editorPos, point)
+                }
+              }
+            }
+          }, POPUP_THRES)
+        } catch {
+          case e: Exception =>
+            hoverThread = new Timer("Hover", true)
+            LOG.warn(e)
+            LOG.warn("Hover timer reset")
+        }
+      }
+    }
   }
 }

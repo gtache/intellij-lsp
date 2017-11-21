@@ -9,6 +9,7 @@ import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.services.{LanguageClient, LanguageServer}
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 
 /**
@@ -17,6 +18,7 @@ import scala.collection.JavaConverters._
 class LanguageClientImpl extends LanguageClient {
   private val LOG: Logger = Logger.getInstance(classOf[LanguageClientImpl])
   private var server: LanguageServer = _
+  private val ids : mutable.Map[String, String]
 
   /**
     * Connects the LanguageClient to the server
