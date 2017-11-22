@@ -37,6 +37,9 @@ object PluginMain {
   private var extToServerDefinition: Map[String, LanguageServerDefinition] = HashMap()
   private var loadedExtensions: Boolean = false
 
+  /**
+    * @return All instantiated ServerWrappers
+    */
   def getAllServerWrappers: Set[LanguageServerWrapper] = {
     projectToLanguageWrappers.values.flatten.toSet
   }

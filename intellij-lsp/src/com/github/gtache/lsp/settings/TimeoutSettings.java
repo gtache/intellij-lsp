@@ -9,6 +9,9 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 
+/**
+ * Settings for the Timeouts
+ */
 public class TimeoutSettings implements Configurable {
 
     private static final Logger LOG = Logger.getInstance(TimeoutSettings.class);

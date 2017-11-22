@@ -7,7 +7,7 @@ import com.intellij.openapi.diagnostic.Logger
 import scala.collection.mutable
 
 /**
-  * Class representing a row in the settings window
+  * Class representing a row in the server settings window
   *
   * @param panel  The row as a JPanel
   * @param typ    The typ of the row

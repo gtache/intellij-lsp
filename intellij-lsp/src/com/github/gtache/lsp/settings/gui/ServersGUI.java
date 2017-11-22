@@ -20,8 +20,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * The GUI for the LSP settings
- */
+ * The GUI for the LSP ServerDefinition settings
+ */ //TODO improve
 public class ServersGUI {
 
     private static final String EXT_LABEL = "Extension";
@@ -82,8 +82,9 @@ public class ServersGUI {
         final Set<String> distinct = new ArrayList<>(extensions).stream().distinct().collect(Collectors.toSet());
         distinct.forEach(s -> extensions.remove(s));
         if (!extensions.isEmpty()) {
-            Messages.showWarningDialog(extensions.stream().reduce((f, s) -> f + '\n' + s).orElse("Error while getting extensions") + '\n' + "Unexpected behavior may occur", "Duplicate Extensions");
+            Messages.showWarningDialog(extensions.stream().reduce((f, s) -> "Duplicate : " + f + '\n' + s).orElse("Error while getting extensions") + '\n' + "Unexpected behavior may occur", "Duplicate Extensions");
         }
+        //TODO manage without restarting
         MessageDialog.main("The changes will be applied after restarting the IDE.");
         serverDefinitions.clear();
         for (final ServersGUIRow row : rows) {
@@ -170,7 +171,7 @@ public class ServersGUI {
         });
         return removeRowButton;
     }
-    
+
     private JPanel createRow(final List<JComponent> labelFields, final String selectedItem) {
         final JPanel panel = new JPanel();
         int colIdx = 0;

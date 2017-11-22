@@ -19,6 +19,9 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * GUI for the Timeouts settings
+ */
 public class TimeoutGUI {
     private static final String FIELD_TOOLTIP = "Time in milliseconds";
     private static final Logger LOG = Logger.getInstance(TimeoutGUI.class);
