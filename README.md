@@ -26,18 +26,18 @@ I will probably add settings later to choose which plugin will be prioritized.
 
 Concretely, what you can do with IntelliJ at the moment :     
 -Hover to get documentation (you can also use (by default) Ctrl+Q)    
-![Hover](https://github.com/gtache/intellij-lsp/tree/master/doc/images/hover.gif "HoverGif")
+![Hover](https://github.com/gtache/intellij-lsp/blob/master/doc/images/hover.gif "HoverGif")
 -Use Goto file/class/symbol (Ctrl(+Shift+Alt)+N by default)    
-![Goto](https://github.com/gtache/intellij-lsp/tree/master/doc/images/goto.gif "GotoGif")
+![Goto](https://github.com/gtache/intellij-lsp/blob/master/doc/images/goto.gif "GotoGif")
 -See which symbols are the same as the one selected   
-![Selection](https://github.com/gtache/intellij-lsp/tree/master/doc/images/selection.gif "SelectionGif")
+![Selection](https://github.com/gtache/intellij-lsp/blob/master/doc/images/selection.gif "SelectionGif")
 -Rename a symbol with Shift+Alt+F6 (seems to make IntelliJ consider Ctrl pressed until pressing it, will look into it)     
-![Rename](https://github.com/gtache/intellij-lsp/tree/master/doc/images/rename.gif "RenameGif")
+![Rename](https://github.com/gtache/intellij-lsp/blob/master/doc/images/rename.gif "RenameGif")
 -Go to definition of a symbol, using Ctrl+Click (may need several tries)    
 -See usages / references of a symbol, using Shift+Alt+F7 on it or Ctrl+Click on its definition, and go to these locations by clicking on them in the generated window (may need several tries to make Ctrl-click work, will look into it)     
-![CtrlClick](https://github.com/gtache/intellij-lsp/tree/master/doc/images/ctrlClick.gif "CtrlClickGif")
+![CtrlClick](https://github.com/gtache/intellij-lsp/blob/master/doc/images/ctrlClick.gif "CtrlClickGif")
 -See diagnostics (error, warnings) and hover over them to see the message    
-![Diagnostic](https://github.com/gtache/intellij-lsp/tree/master/doc/images/diagnostic.gif "DiagnosticGif")    
+![Diagnostic](https://github.com/gtache/intellij-lsp/blob/master/doc/images/diagnostic.gif "DiagnosticGif")    
 -Format a document / a selection (Ctrl+Alt(+Shift)+L by default) - untested     
 -Get the signature help when typing - untested     
 
@@ -47,7 +47,7 @@ To add a supported language server, you can either create a plugin (see intellij
 Note that the settings will always override a possible LSP plugin for the same file extension.    
 You can also configure the timeouts for the requests (if you see timeouts warning in the log for example), depending on your computer.    
 Settings:    
-![Settings](https://github.com/gtache/intellij-lsp/tree/master/doc/images/settings.gif "SettingsGif")
+![Settings](https://github.com/gtache/intellij-lsp/blob/master/doc/images/settings.gif "SettingsGif")
 
 Via a plugin (example with concrete subclass instantation):
 ```
