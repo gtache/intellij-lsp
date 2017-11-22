@@ -3,7 +3,8 @@ package com.github.gtache.lsp.client.languageserver.serverdefinition
 import com.intellij.openapi.diagnostic.Logger
 
 /**
-  * Class representing server definitions corresponding to an exe file
+  * Class representing server definitions corresponding to an executable file
+  * This class is basically a more convenient way to write a RawCommand
   *
   * @param ext  The extension
   * @param path The path to the exe file
