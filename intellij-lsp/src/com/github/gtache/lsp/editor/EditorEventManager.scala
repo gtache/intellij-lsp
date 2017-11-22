@@ -14,7 +14,7 @@ import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.contributors.icon.LSPIconProvider
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.requests.{HoverHandler, WorkspaceEditHandler}
-import com.github.gtache.lsp.utils.{GUIUtils, Utils}
+import com.github.gtache.lsp.utils.{DocumentUtils, FileUtils, GUIUtils, Utils}
 import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.codeInsight.completion.InsertionContext
 import com.intellij.codeInsight.hint.HintManager
@@ -113,7 +113,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   import scala.collection.JavaConverters._
 
-  private val identifier: TextDocumentIdentifier = new TextDocumentIdentifier(Utils.editorToURIString(editor))
+  private val identifier: TextDocumentIdentifier = new TextDocumentIdentifier(FileUtils.editorToURIString(editor))
   private val LOG: Logger = Logger.getInstance(classOf[EditorEventManager])
   private val changesParams = new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(), Collections.singletonList(new TextDocumentContentChangeEvent()))
   private val selectedSymbHighlights: mutable.Set[RangeHighlighter] = mutable.HashSet()
@@ -131,7 +131,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private var mouseInEditor: Boolean = true
   private var currentHint: Hint = _
 
-  uriToManager.put(Utils.editorToURIString(editor), this)
+  uriToManager.put(FileUtils.editorToURIString(editor), this)
   editorToManager.put(editor, this)
   changesParams.getTextDocument.setUri(identifier.getUri)
   pool(() => requestManager.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(identifier.getUri, wrapper.serverDefinition.id, {
@@ -192,16 +192,16 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       val loc = ctrlRange.loc
       invokeLater(() => {
         val offset = editor.logicalPositionToOffset(editor.xyToLogicalPosition(e.getMouseEvent.getPoint))
-        if (identifier.getUri == loc.getUri && Utils.LSPPosToOffset(editor, loc.getRange.getStart) <= offset && offset <= Utils.LSPPosToOffset(editor, loc.getRange.getEnd)) {
+        if (identifier.getUri == loc.getUri && DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) <= offset && offset <= DocumentUtils.LSPPosToOffset(editor, loc.getRange.getEnd)) {
           getReferences(offset)
         } else {
           val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(loc.getUri).getPath))
           val descriptor = new OpenFileDescriptor(editor.getProject, file)
           writeAction(() => {
             val newEditor = FileEditorManager.getInstance(editor.getProject).openTextEditor(descriptor, true)
-            val startOffset = Utils.LSPPosToOffset(newEditor, loc.getRange.getStart)
+            val startOffset = DocumentUtils.LSPPosToOffset(newEditor, loc.getRange.getStart)
             newEditor.getCaretModel.getCurrentCaret.moveToOffset(startOffset)
-            newEditor.getSelectionModel.setSelection(startOffset, Utils.LSPPosToOffset(newEditor, loc.getRange.getEnd))
+            newEditor.getSelectionModel.setSelection(startOffset, DocumentUtils.LSPPosToOffset(newEditor, loc.getRange.getEnd))
           })
         }
         ctrlRange.dispose()
@@ -231,7 +231,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       val params = new ReferenceParams(context)
       params.setTextDocument(identifier)
       val serverPos = computableReadAction(() => {
-        Utils.logicalToLSPPos(editor.getCaretModel.getCurrentCaret.getLogicalPosition)
+        DocumentUtils.logicalToLSPPos(editor.getCaretModel.getCurrentCaret.getLogicalPosition)
       })
       params.setPosition(serverPos)
       val future = requestManager.references(params)
@@ -253,12 +253,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       val descriptor = new OpenFileDescriptor(editor.getProject, file)
       computableWriteAction(() => {
         val newEditor = fileEditorManager.openTextEditor(descriptor, false)
-        val startOffset = Utils.LSPPosToOffset(newEditor, start)
-        val endOffset = Utils.LSPPosToOffset(newEditor, end)
+        val startOffset = DocumentUtils.LSPPosToOffset(newEditor, start)
+        val endOffset = DocumentUtils.LSPPosToOffset(newEditor, end)
         val doc = newEditor.getDocument
         val name = doc.getText(new TextRange(startOffset, endOffset))
         fileEditorManager.closeFile(file)
-        (startOffset, endOffset, name, Utils.getLineText(newEditor, startOffset, endOffset))
+        (startOffset, endOffset, name, DocumentUtils.getLineText(newEditor, startOffset, endOffset))
       })
     }
 
@@ -281,8 +281,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             name = n
             sample = sa
           } else {
-            startOffset = Utils.LSPPosToOffset(editors.head, start)
-            endOffset = Utils.LSPPosToOffset(editors.head, end)
+            startOffset = DocumentUtils.LSPPosToOffset(editors.head, start)
+            endOffset = DocumentUtils.LSPPosToOffset(editors.head, end)
           }
         } else {
           val (s, e, n, sa) = openEditorAndGetOffsetsAndName(file, fileEditorManager, start, end)
@@ -296,10 +296,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       EditorEventManager.forUri(l.getUri) match {
         case Some(m) =>
           try {
-            startOffset = Utils.LSPPosToOffset(m.editor, start)
-            endOffset = Utils.LSPPosToOffset(m.editor, end)
+            startOffset = DocumentUtils.LSPPosToOffset(m.editor, start)
+            endOffset = DocumentUtils.LSPPosToOffset(m.editor, end)
             name = m.editor.getDocument.getText(new TextRange(startOffset, endOffset))
-            sample = Utils.getLineText(m.editor, startOffset, endOffset)
+            sample = DocumentUtils.getLineText(m.editor, startOffset, endOffset)
           } catch {
             case e: RuntimeException =>
               LOG.warn(e)
@@ -377,7 +377,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         selectedSymbHighlights.clear()
         if (editor.getSelectionModel.hasSelection) {
           val ideRange = e.getNewRange
-          val LSPPos = Utils.offsetToLSPPos(editor, ideRange.getStartOffset)
+          val LSPPos = DocumentUtils.offsetToLSPPos(editor, ideRange.getStartOffset)
           val request = requestManager.documentHighlight(new TextDocumentPositionParams(identifier, LSPPos))
           if (request != null) {
             pool(() => {
@@ -386,8 +386,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 invokeLater(() => resp.foreach(dh => {
                   val range = dh.getRange
                   val kind = dh.getKind
-                  val startOffset = Utils.LSPPosToOffset(editor, range.getStart)
-                  val endOffset = Utils.LSPPosToOffset(editor, range.getEnd)
+                  val startOffset = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+                  val endOffset = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
                   val colorScheme = editor.getColorsScheme
                   val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION - 1, colorScheme.getAttributes(EditorColors.IDENTIFIER_UNDER_CARET_ATTRIBUTES), HighlighterTargetArea.EXACT_RANGE)
                   selectedSymbHighlights.add(highlight)
@@ -498,13 +498,13 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   private def requestAndShowDoc(curTime: Long, editorPos: LogicalPosition, point: Point): Unit = {
-    val serverPos = Utils.logicalToLSPPos(editorPos)
+    val serverPos = DocumentUtils.logicalToLSPPos(editorPos)
     val request = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
     if (request != null) {
       try {
         val hover = request.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
         if (hover != null) {
-          val range = if (hover.getRange == null) new Range(Utils.logicalToLSPPos(editorPos), Utils.logicalToLSPPos(editorPos)) else hover.getRange
+          val range = if (hover.getRange == null) new Range(DocumentUtils.logicalToLSPPos(editorPos), DocumentUtils.logicalToLSPPos(editorPos)) else hover.getRange
           val string = HoverHandler.getHoverString(hover)
           if (string != null && string != "") {
             if (isCtrlDown) {
@@ -512,8 +512,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               val loc = requestDefinition(serverPos)
               if (loc != null) {
                 invokeLater(() => {
-                  val startOffset = Utils.LSPPosToOffset(editor, range.getStart)
-                  val endOffset = Utils.LSPPosToOffset(editor, range.getEnd)
+                  val startOffset = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+                  val endOffset = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
                   ctrlRange = CtrlRangeMarker(loc, editor, editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.HYPERLINK, editor.getColorsScheme.getAttributes(EditorColors.REFERENCE_HYPERLINK_COLOR), HighlighterTargetArea.EXACT_RANGE))
                 })
               }
@@ -582,7 +582,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def requestDoc(editor: Editor, offset: Int): String = {
     if (editor == this.editor) {
-      val serverPos = Utils.logicalToLSPPos(editor.offsetToLogicalPosition(offset))
+      val serverPos = DocumentUtils.logicalToLSPPos(editor.offsetToLogicalPosition(offset))
       val request = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
       if (request != null) {
         try {
@@ -621,7 +621,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             val newText = event.getNewFragment
             val offset = event.getOffset
             val length = event.getNewLength
-            val range = computableReadAction(() => new Range(Utils.offsetToLSPPos(editor, offset), Utils.offsetToLSPPos(editor, offset + length)))
+            val range = computableReadAction(() => new Range(DocumentUtils.offsetToLSPPos(editor, offset), DocumentUtils.offsetToLSPPos(editor, offset + length)))
             changeEvent.setRange(range)
             changeEvent.setRangeLength(length)
             changeEvent.setText(newText.toString)
@@ -654,7 +654,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         requestManager.didClose(new DidCloseTextDocumentParams(identifier))
         isOpen = false
         editorToManager.remove(editor)
-        uriToManager.remove(Utils.editorToURIString(editor))
+        uriToManager.remove(FileUtils.editorToURIString(editor))
       } else {
         LOG.warn("Editor " + editor + " was already closed")
       }
@@ -803,7 +803,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @return An array of PsiReference
     */
   def references(pos: LogicalPosition): Array[PsiReference] = {
-    /*    val lspPos = Utils.logicalToLSPPos(pos)
+    /*    val lspPos = DocumentUtils.logicalToLSPPos(pos)
         val params = new ReferenceParams(new ReferenceContext(false))
         params.setPosition(lspPos)
         params.setTextDocument(identifier)
@@ -817,8 +817,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                   res.asScala.map(l => {
                     val start = l.getRange.getStart
                     val end = l.getRange.getEnd
-                    val logicalStart = Utils.LSPPosToOffset(editor, start)
-                    val logicalEnd = Utils.LSPPosToOffset(editor, end)
+                    val logicalStart = DocumentUtils.LSPPosToOffset(editor, start)
+                    val logicalEnd = DocumentUtils.LSPPosToOffset(editor, end)
                     val name = editor.getDocument.getText(new TextRange(logicalStart, logicalEnd))
                     LSPPsiElement(name, editor.getProject, logicalStart, logicalEnd).getReference
                   }).toArray
@@ -853,7 +853,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val source = diagnostic.getSource
         val range = diagnostic.getRange
         val severity = diagnostic.getSeverity
-        val (start, end) = computableReadAction(() => (Utils.LSPPosToOffset(editor, range.getStart), Utils.LSPPosToOffset(editor, range.getEnd)))
+        val (start, end) = computableReadAction(() => (DocumentUtils.LSPPosToOffset(editor, range.getStart), DocumentUtils.LSPPosToOffset(editor, range.getEnd)))
 
         val markupModel = editor.getMarkupModel
         val colorScheme = editor.getColorsScheme
@@ -881,7 +881,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param renameTo The new name
     */
   def rename(renameTo: String): Unit = {
-    val servPos = Utils.logicalToLSPPos(editor.offsetToLogicalPosition(editor.getCaretModel.getCurrentCaret.getOffset))
+    val servPos = DocumentUtils.logicalToLSPPos(editor.offsetToLogicalPosition(editor.getCaretModel.getCurrentCaret.getOffset))
     pool(() => {
       val params = new RenameParams(identifier, servPos, renameTo)
       val request = requestManager.rename(params)
@@ -921,8 +921,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               edits.foreach(edit => {
                 val text = edit.getNewText
                 val range = edit.getRange
-                val start = Utils.LSPPosToOffset(editor, range.getStart)
-                val end = Utils.LSPPosToOffset(editor, range.getEnd)
+                val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+                val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
                 if (text == "" || text == null) {
                   document.deleteString(start, end)
                 } else if (end - start <= 0) {
@@ -956,8 +956,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       val selectionModel = editor.getSelectionModel
       val start = selectionModel.getSelectionStart
       val end = selectionModel.getSelectionEnd
-      val startingPos = Utils.offsetToLSPPos(editor, start)
-      val endPos = Utils.offsetToLSPPos(editor, end)
+      val startingPos = DocumentUtils.offsetToLSPPos(editor, start)
+      val endPos = DocumentUtils.offsetToLSPPos(editor, end)
       params.setRange(new Range(startingPos, endPos))
       val options = new FormattingOptions() //TODO
       params.setOptions(options)
@@ -973,7 +973,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def characterTyped(c: Char): Unit = {
     if (completionTriggers.contains(c.toString)) {
-      //completion(Utils.offsetToLSPPos(editor,editor.getCaretModel.getCurrentCaret.getOffset))
+      //completion(DocumentUtils.offsetToLSPPos(editor,editor.getCaretModel.getCurrentCaret.getOffset))
     } else if (signatureTriggers.contains(c.toString)) {
       signatureHelp()
     } else if (onTypeFormattingTriggers.contains(c.toString)) {
@@ -985,7 +985,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     pool(() => {
       val params = new DocumentOnTypeFormattingParams()
       params.setCh(c)
-      params.setPosition(computableReadAction(() => Utils.logicalToLSPPos(editor.getCaretModel.getCurrentCaret.getLogicalPosition)))
+      params.setPosition(computableReadAction(() => DocumentUtils.logicalToLSPPos(editor.getCaretModel.getCurrentCaret.getLogicalPosition)))
       params.setTextDocument(identifier)
       params.setOptions(new FormattingOptions())
       val future = requestManager.onTypeFormatting(params)
@@ -1006,7 +1006,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def signatureHelp(): Unit = {
     val lPos = editor.getCaretModel.getCurrentCaret.getLogicalPosition
     val point = editor.logicalPositionToXY(lPos)
-    val params = new TextDocumentPositionParams(identifier, Utils.logicalToLSPPos(lPos))
+    val params = new TextDocumentPositionParams(identifier, DocumentUtils.logicalToLSPPos(lPos))
     pool(() => {
       val future = requestManager.signatureHelp(params)
       if (future != null) {
@@ -1044,7 +1044,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def codeAction(element: LSPPsiElement): Iterable[Command] = {
     val params = new CodeActionParams()
     params.setTextDocument(identifier)
-    params.setRange(computableReadAction(() => new Range(Utils.offsetToLSPPos(editor, element.start), Utils.offsetToLSPPos(editor, element.end))))
+    params.setRange(computableReadAction(() => new Range(DocumentUtils.offsetToLSPPos(editor, element.start), DocumentUtils.offsetToLSPPos(editor, element.end))))
     val context = new CodeActionContext(diagnosticsHighlights.map(_.diagnostic).toList.asJava)
     params.setContext(context)
     val future = requestManager.codeAction(params)

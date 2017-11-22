@@ -2,7 +2,7 @@ package com.github.gtache.lsp.requests
 
 import com.github.gtache.lsp.PluginMain
 import com.github.gtache.lsp.editor.EditorEventManager
-import com.github.gtache.lsp.utils.Utils
+import com.github.gtache.lsp.utils.{FileUtils, Utils}
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.{FileEditorManager, OpenFileDescriptor}
@@ -48,7 +48,7 @@ object ReformatHandler {
     */
   def reformatFile(file: VirtualFile, project: Project): Unit = {
     if (PluginMain.isExtensionSupported(file.getExtension)) {
-      val uri = Utils.VFSToURIString(file)
+      val uri = FileUtils.VFSToURIString(file)
       EditorEventManager.forUri(uri) match {
         case Some(manager) =>
           manager.reformat()

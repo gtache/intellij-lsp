@@ -3,7 +3,7 @@ package com.github.gtache.lsp.requests
 import com.github.gtache.lsp.PluginMain
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.editor.EditorEventManager
-import com.github.gtache.lsp.utils.{ApplicationUtils, Utils}
+import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils, Utils}
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.vfs.VirtualFile
@@ -20,7 +20,7 @@ object FileEventManager {
     * @param doc The document
     */
   def willSave(doc: Document): Unit = {
-    val uri = Utils.VFSToURIString(FileDocumentManager.getInstance().getFile(doc))
+    val uri = FileUtils.VFSToURIString(FileDocumentManager.getInstance().getFile(doc))
     EditorEventManager.forUri(uri).foreach(e => e.willSave())
   }
 
@@ -37,7 +37,7 @@ object FileEventManager {
     * @param file The file
     */
   def fileChanged(file: VirtualFile): Unit = {
-    val uri: String = Utils.VFSToURIString(file)
+    val uri: String = FileUtils.VFSToURIString(file)
     if (uri != null) {
       EditorEventManager.forUri(uri) match {
         case Some(m) => m.documentSaved()
@@ -62,7 +62,7 @@ object FileEventManager {
     * @param file The file
     */
   def fileDeleted(file: VirtualFile): Unit = {
-    val uri = Utils.VFSToURIString(file)
+    val uri = FileUtils.VFSToURIString(file)
     if (uri != null) {
       changedConfiguration(uri, FileChangeType.Deleted)
     }
@@ -94,7 +94,7 @@ object FileEventManager {
     * @param file The file
     */
   def fileCreated(file: VirtualFile): Unit = {
-    val uri = Utils.VFSToURIString(file)
+    val uri = FileUtils.VFSToURIString(file)
     if (uri != null) {
       changedConfiguration(uri, FileChangeType.Created)
     }

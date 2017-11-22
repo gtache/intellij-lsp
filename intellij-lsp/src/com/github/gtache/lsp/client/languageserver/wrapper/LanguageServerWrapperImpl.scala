@@ -14,7 +14,7 @@ import com.github.gtache.lsp.client.{DynamicRegistrationMethods, LanguageClientI
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.lsp.requests.Timeout
-import com.github.gtache.lsp.utils.Utils
+import com.github.gtache.lsp.utils.{FileUtils, Utils}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import org.eclipse.lsp4j._
@@ -110,7 +110,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       val (inputStream, outputStream) = serverDefinition.start()
       client = serverDefinition.createLanguageClient
       val initParams = new InitializeParams
-      initParams.setRootUri(Utils.pathToUri(rootPath))
+      initParams.setRootUri(FileUtils.pathToUri(rootPath))
       val launcher = LSPLauncher.createClientLauncher(client, inputStream, outputStream)
 
       this.languageServer = launcher.getRemoteProxy
@@ -165,7 +165,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     */
   @throws[IOException]
   def connect(editor: Editor): Unit = {
-    val uri = Utils.editorToURIString(editor)
+    val uri = FileUtils.editorToURIString(editor)
     uriToLanguageServerWrapper.put(uri, this)
     editorToLanguageServerWrapper.put(editor, this)
     if (!this.connectedEditors.contains(uri)) {

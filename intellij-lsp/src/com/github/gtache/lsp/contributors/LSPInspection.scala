@@ -5,7 +5,7 @@ import javax.swing.JComponent
 import com.github.gtache.lsp.PluginMain
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.editor.{DiagnosticRangeHighlighter, EditorEventManager}
-import com.github.gtache.lsp.utils.Utils
+import com.github.gtache.lsp.utils.{FileUtils, Utils}
 import com.intellij.codeInspection._
 import com.intellij.codeInspection.ui.SingleCheckboxOptionsPanel
 import com.intellij.openapi.util.TextRange
@@ -21,7 +21,7 @@ class LSPInspection extends LocalInspectionTool {
   override def checkFile(file: PsiFile, manager: InspectionManager, isOnTheFly: Boolean): Array[ProblemDescriptor] = {
     val virtualFile = file.getVirtualFile
     if (PluginMain.isExtensionSupported(virtualFile.getExtension)) {
-      val uri = Utils.VFSToURIString(virtualFile)
+      val uri = FileUtils.VFSToURIString(virtualFile)
 
       def descriptorsForManager(m: EditorEventManager): Array[ProblemDescriptor] = {
         val diagnostics = m.getDiagnostics
