@@ -2,7 +2,7 @@ package com.github.gtache.lsp.requests
 
 import com.github.gtache.lsp.PluginMain
 import com.github.gtache.lsp.editor.EditorEventManager
-import com.github.gtache.lsp.utils.{FileUtils, Utils}
+import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.{FileEditorManager, OpenFileDescriptor}

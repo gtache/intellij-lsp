@@ -5,11 +5,11 @@ import javax.swing.JComponent
 import com.github.gtache.lsp.PluginMain
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.editor.{DiagnosticRangeHighlighter, EditorEventManager}
-import com.github.gtache.lsp.utils.{FileUtils, Utils}
+import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.codeInspection._
 import com.intellij.codeInspection.ui.SingleCheckboxOptionsPanel
 import com.intellij.openapi.util.TextRange
-import com.intellij.psi.{PsiFile, PsiManager}
+import com.intellij.psi.PsiFile
 import org.eclipse.lsp4j.DiagnosticSeverity
 
 /**
@@ -28,17 +28,19 @@ class LSPInspection extends LocalInspectionTool {
         diagnostics.collect { case DiagnosticRangeHighlighter(rangeHighlighter, diagnostic) if diagnostic.getSeverity != DiagnosticSeverity.Hint =>
           val start = rangeHighlighter.getStartOffset
           val end = rangeHighlighter.getEndOffset
-          val name = m.editor.getDocument.getText(new TextRange(start, end))
-          val severity = (diagnostic.getSeverity: @unchecked) match {
-            case DiagnosticSeverity.Error => ProblemHighlightType.ERROR
-            case DiagnosticSeverity.Warning => ProblemHighlightType.GENERIC_ERROR_OR_WARNING
-            case DiagnosticSeverity.Information => ProblemHighlightType.INFORMATION
-          }
-          val element = LSPPsiElement(name, m.editor.getProject, start, end, file, PsiManager.getInstance(m.editor.getProject))
-          val commands = m.codeAction(element)
-          manager.createProblemDescriptor(element, null.asInstanceOf[TextRange], diagnostic.getMessage, severity, isOnTheFly,
-            if (commands != null) new LSPQuickFix(uri, commands) else null)
-        }.toArray
+          if (start < end) {
+            val name = m.editor.getDocument.getText(new TextRange(start, end))
+            val severity = (diagnostic.getSeverity: @unchecked) match {
+              case DiagnosticSeverity.Error => ProblemHighlightType.ERROR
+              case DiagnosticSeverity.Warning => ProblemHighlightType.GENERIC_ERROR_OR_WARNING
+              case DiagnosticSeverity.Information => ProblemHighlightType.INFORMATION
+            }
+            val element = LSPPsiElement(name, m.editor.getProject, start, end, file)
+            val commands = m.codeAction(element)
+            manager.createProblemDescriptor(element, null.asInstanceOf[TextRange], diagnostic.getMessage, severity, isOnTheFly,
+              if (commands != null) new LSPQuickFix(uri, commands) else null)
+          } else null
+        }.toArray.filter(d => d != null)
       }
 
       EditorEventManager.forUri(uri) match {

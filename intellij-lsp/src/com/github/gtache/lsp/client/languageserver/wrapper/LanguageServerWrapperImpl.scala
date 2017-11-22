@@ -14,7 +14,7 @@ import com.github.gtache.lsp.client.{DynamicRegistrationMethods, LanguageClientI
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.lsp.requests.Timeout
-import com.github.gtache.lsp.utils.{FileUtils, Utils}
+import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import org.eclipse.lsp4j._

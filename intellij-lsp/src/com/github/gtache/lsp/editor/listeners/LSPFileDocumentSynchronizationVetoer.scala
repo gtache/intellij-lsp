@@ -1,7 +1,7 @@
 package com.github.gtache.lsp.editor.listeners
 
 import com.github.gtache.lsp.editor.EditorEventManager
-import com.github.gtache.lsp.utils.{FileUtils, Utils}
+import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentSynchronizationVetoer
 

@@ -19,8 +19,8 @@ public enum Timeouts {
 
     private final int defaultTimeout;
 
-    Timeouts(final int defaultTimeout){
-        this.defaultTimeout=defaultTimeout;
+    Timeouts(final int defaultTimeout) {
+        this.defaultTimeout = defaultTimeout;
     }
 
     public int getDefaultTimeout() {

@@ -22,10 +22,11 @@ import org.jetbrains.annotations.Nullable
   * @param start   The offset in the editor where the element starts
   * @param end     The offset where it ends
   */
-case class LSPPsiElement(var name: String, project: Project, start: Int, end: Int, file: PsiFile, manager: PsiManager) extends PsiNameIdentifierOwner {
+case class LSPPsiElement(var name: String, project: Project, start: Int, end: Int, file: PsiFile) extends PsiNameIdentifierOwner {
 
   private val COPYABLE_USER_MAP_KEY: Key[KeyFMap] = Key.create("COPYABLE_USER_MAP_KEY")
   private val updater = AtomicFieldUpdater.forFieldOfType(classOf[LSPPsiElement], classOf[KeyFMap])
+  private val manager = PsiManager.getInstance(project)
   /**
     * Concurrent writes to this field are via CASes only, using the {@link #updater}
     */
@@ -505,25 +506,18 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
   }
 
   override def putUserData[T](key: Key[T], @Nullable value: T): Unit = {
-    import scala.util.control.Breaks._
-    breakable {
-      while ( {
-        true
-      }) {
-        val map = getUserMap
-        val newMap = if (value == null) map.minus(key)
-        else map.plus(key, value)
-        if ((newMap eq map) || changeUserMap(map, newMap)) break //todo: break is not supported
-
-      }
+    var control = true
+    while (control) {
+      val map = getUserMap
+      val newMap = if (value == null) map.minus(key)
+      else map.plus(key, value)
+      if ((newMap eq map) || changeUserMap(map, newMap)) control = false
     }
   }
 
   def getCopyableUserData[T](key: Key[T]): T = {
     val map = getUserData(COPYABLE_USER_MAP_KEY)
-    //noinspection unchecked,ConstantConditions
-    if (map == null) null.asInstanceOf[T]
-    else map.get(key)
+    if (map == null) null.asInstanceOf[T] else map.get(key)
   }
 
   def getUserData[T](key: Key[T]): T = {
@@ -545,33 +539,32 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     null.asInstanceOf[T]
   }
 
+  def putCopyableUserData[T](key: Key[T], value: T): Unit = {
+    var control = true
+    while (control) {
+      val map = getUserMap
+      var copyableMap = map.get(COPYABLE_USER_MAP_KEY)
+      if (copyableMap == null) copyableMap = KeyFMap.EMPTY_MAP
+      val newCopyableMap = if (value == null) copyableMap.minus(key) else copyableMap.plus(key, value)
+      val newMap = if (newCopyableMap.isEmpty) map.minus(COPYABLE_USER_MAP_KEY) else map.plus(COPYABLE_USER_MAP_KEY, newCopyableMap)
+      if ((newMap eq map) || changeUserMap(map, newMap)) control = false
+    }
+  }
+
   protected def changeUserMap(oldMap: KeyFMap, newMap: KeyFMap): Boolean = updater.compareAndSet(this, oldMap, newMap)
 
   protected def getUserMap: KeyFMap = myUserMap
 
-  def putCopyableUserData[T](key: Key[T], value: T): Unit = {
-    while ( {
-      true
-    }) {
-      val map = getUserMap
-      var copyableMap = map.get(COPYABLE_USER_MAP_KEY)
-      if (copyableMap == null) copyableMap = KeyFMap.EMPTY_MAP
-      val newCopyableMap = if (value == null) copyableMap.minus(key)
-      else copyableMap.plus(key, value)
-      val newMap = if (newCopyableMap.isEmpty) map.minus(COPYABLE_USER_MAP_KEY)
-      else map.plus(COPYABLE_USER_MAP_KEY, newCopyableMap)
-      if ((newMap eq map) || changeUserMap(map, newMap)) return
-    }
-  }
-
   def replace[T](key: Key[T], @Nullable oldValue: T, @Nullable newValue: T): Boolean = {
-    while ( {
-      true
-    }) {
+    while (true) {
       val map = getUserMap
-      if (map.get(key) != oldValue) return false
-      val newMap = if (newValue == null) map.minus(key) else map.plus(key, newValue)
-      if ((newMap == map) || changeUserMap(map, newMap)) return true
+      if (map.get(key) != oldValue) {
+        false
+      }
+      else {
+        val newMap = if (newValue == null) map.minus(key) else map.plus(key, newValue)
+        (newMap == map) || changeUserMap(map, newMap)
+      }
     }
     false
   }

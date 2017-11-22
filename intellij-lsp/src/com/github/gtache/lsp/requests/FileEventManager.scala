@@ -3,7 +3,7 @@ package com.github.gtache.lsp.requests
 import com.github.gtache.lsp.PluginMain
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.editor.EditorEventManager
-import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils, Utils}
+import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils}
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.vfs.VirtualFile
@@ -68,16 +68,6 @@ object FileEventManager {
     }
   }
 
-  private def changedConfiguration(uri: String, typ: FileChangeType, wrapper: LanguageServerWrapper = null): Unit = {
-    import scala.collection.JavaConverters._
-    ApplicationUtils.pool(() => {
-      val event = new FileEvent(uri, FileChangeType.Changed)
-      val params = new DidChangeWatchedFilesParams(Seq(event).asJava)
-      val wrappers = PluginMain.getAllServerWrappers
-      if (wrappers != null) wrappers.foreach(w => if (w != wrapper && w.getRequestManager != null) w.getRequestManager.didChangeWatchedFiles(params))
-    })
-  }
-
   /**
     * Called when a file is renamed. Notifies the server if this file was watched.
     *
@@ -98,6 +88,16 @@ object FileEventManager {
     if (uri != null) {
       changedConfiguration(uri, FileChangeType.Created)
     }
+  }
+
+  private def changedConfiguration(uri: String, typ: FileChangeType, wrapper: LanguageServerWrapper = null): Unit = {
+    import scala.collection.JavaConverters._
+    ApplicationUtils.pool(() => {
+      val event = new FileEvent(uri, FileChangeType.Changed)
+      val params = new DidChangeWatchedFilesParams(Seq(event).asJava)
+      val wrappers = PluginMain.getAllServerWrappers
+      if (wrappers != null) wrappers.foreach(w => if (w != wrapper && w.getRequestManager != null) w.getRequestManager.didChangeWatchedFiles(params))
+    })
   }
 
 }

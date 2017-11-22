@@ -1,7 +1,7 @@
 package com.github.gtache.lsp.contributors
 
 import com.github.gtache.lsp.editor.EditorEventManager
-import com.github.gtache.lsp.utils.{DocumentUtils, Utils}
+import com.github.gtache.lsp.utils.DocumentUtils
 import com.intellij.codeInsight.completion.{CompletionContributor, CompletionParameters, CompletionResultSet}
 import com.intellij.openapi.diagnostic.Logger
 
