@@ -43,7 +43,8 @@ Concretely, what you can do with IntelliJ at the moment :
 ## Add a Language Server
 This plugin supports communicating with multiple and different language servers at the same time.    
 To add a supported language server, you can either create a plugin (see intellij-lsp-dotty) which extends this plugin and extend LanguageServerDefinition or instantiate a concrete subclass of it and register it, or simply go to IntelliJ/file/settings/Languages & Frameworks/Language Server Protocol and fill the required informations.    
-Note that the settings will always override a possible LSP plugin for the same file extension.
+Note that the settings will always override a possible LSP plugin for the same file extension.    
+You can also configure the timeouts for the requests (if you see timeouts warning in the log for example), depending on your computer.    
 Settings:    
 ![Settings](https://github.com/gtache/intellij-lsp/blob/first_release/doc/images/settings.gif "SettingsGif")
 
