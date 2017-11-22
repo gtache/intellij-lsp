@@ -3,7 +3,7 @@ package com.github.gtache.lsp.settings;
 import com.github.gtache.lsp.PluginMain;
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition;
 import com.github.gtache.lsp.client.languageserver.serverdefinition.UserConfigurableServerDefinition;
-import com.github.gtache.lsp.settings.gui.LSPGUI;
+import com.github.gtache.lsp.settings.gui.ServersGUI;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.options.Configurable;
 import org.jetbrains.annotations.Nls;
@@ -15,19 +15,19 @@ import java.util.Map;
 /**
  * Class used to manage the settings related to the LSP
  */
-public final class LSPSettings implements Configurable {
+public final class ServersSettings implements Configurable {
 
-    private static final Logger LOG = Logger.getInstance(LSPSettings.class);
+    private static final Logger LOG = Logger.getInstance(ServersSettings.class);
     @Nullable
-    private static LSPGUI lspGUI;
-    private static LSPSettings instance;
+    private static ServersGUI lspGUI;
+    private static ServersSettings instance;
 
-    private LSPSettings() {
+    private ServersSettings() {
     }
 
-    public static LSPSettings getInstance() {
+    public static ServersSettings getInstance() {
         if (instance == null) {
-            instance = new LSPSettings();
+            instance = new ServersSettings();
         }
         return instance;
     }
@@ -40,12 +40,12 @@ public final class LSPSettings implements Configurable {
 
     @Override
     public String getHelpTopic() {
-        return "com.github.gtache.LSPSettings";
+        return "com.github.gtache.lsp.settings.ServersSettings";
     }
 
     @Override
     public JComponent createComponent() {
-        lspGUI = new LSPGUI();
+        lspGUI = new ServersGUI();
         setGUIFields(PluginMain.getExtToServerDefinitionJava());
         return lspGUI.getRootPanel();
     }

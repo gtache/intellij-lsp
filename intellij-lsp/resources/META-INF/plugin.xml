@@ -18,13 +18,15 @@
     <depends>com.intellij.modules.lang</depends>
 
     <extensionPoints>
-        <extensionPoint interface="com.github.gtache.lsp.contributors.icon.LSPIconProvider" name="LSPIconProvider" area="IDEA_APPLICATION"/>
+        <extensionPoint interface="com.github.gtache.lsp.contributors.icon.LSPIconProvider" name="LSPIconProvider"/>
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Add your extensions here -->
         <applicationConfigurable groupId="language" displayName="Language Server Protocol"
-                                 instance="com.github.gtache.lsp.settings.LSPSettings" id="LSPSettings"/>
+                                 instance="com.github.gtache.lsp.settings.ServersSettings" id="LSPSettings"/>
+        <applicationConfigurable parentId="LSPSettings" id="TimeoutSettings" displayName="Timeouts"
+                                 instance="com.github.gtache.lsp.settings.TimeoutSettings"/>
         <applicationService id="LSPState"
                             serviceInterface="com.github.gtache.lsp.settings.LSPState"
                             serviceImplementation="com.github.gtache.lsp.settings.LSPState"/>
@@ -35,12 +37,16 @@
         <typedHandler implementation="com.github.gtache.lsp.editor.listeners.LSPTypedHandler" id="LSPTypedHandler"/>
         <completion.contributor implementationClass="com.github.gtache.lsp.contributors.LSPCompletionContributor"
                                 id="LSPCompletionContributor" language="any"/>
-        <inspectionToolProvider implementation="com.github.gtache.lsp.contributors.LSPInspectionProvider" id="LSPInspectionProvider"/>
-        <fileDocumentSynchronizationVetoer implementation="com.github.gtache.lsp.editor.listeners.LSPFileDocumentSynchronizationVetoer" id="LSPFileDocumentSynchronizationVetoer" />
+        <inspectionToolProvider implementation="com.github.gtache.lsp.contributors.LSPInspectionProvider"
+                                id="LSPInspectionProvider"/>
+        <fileDocumentSynchronizationVetoer
+                implementation="com.github.gtache.lsp.editor.listeners.LSPFileDocumentSynchronizationVetoer"
+                id="LSPFileDocumentSynchronizationVetoer"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.github.gtache.lsp">
-        <LSPIconProvider implementation="com.github.gtache.lsp.contributors.icon.LSPDefaultIconProvider" id="LSPDefaultIconProvider" />
+        <LSPIconProvider implementation="com.github.gtache.lsp.contributors.icon.LSPDefaultIconProvider"
+                         id="LSPDefaultIconProvider"/>
     </extensions>
 
     <actions>
@@ -50,7 +56,8 @@
                 overrides="true"/>
         <action class="com.github.gtache.lsp.actions.LSPShowReformatDialogAction" id="ShowReformatFileDialog"
                 use-shortcut-of="ShowReformatFileDialog" overrides="true"/>
-        <action class="com.github.gtache.lsp.actions.LSPReferencesAction" id="LSPFindUsages"> <!-- FIXME overrides default find usages -->
+        <action class="com.github.gtache.lsp.actions.LSPReferencesAction"
+                id="LSPFindUsages"> <!-- FIXME overrides default find usages -->
             <keyboard-shortcut first-keystroke="shift alt F7" keymap="$default"/>
         </action>
         <action class="com.github.gtache.lsp.actions.LSPRefactoringAction" id="LSPRefactoringAction">

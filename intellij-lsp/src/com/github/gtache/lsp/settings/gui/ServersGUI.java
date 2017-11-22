@@ -6,6 +6,7 @@ import com.github.gtache.lsp.settings.LSPState;
 import com.github.gtache.lsp.utils.Utils;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.ui.ComboBox;
+import com.intellij.openapi.ui.Messages;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
@@ -21,7 +22,7 @@ import java.util.stream.Collectors;
 /**
  * The GUI for the LSP settings
  */
-public class LSPGUI {
+public class ServersGUI {
 
     private static final String EXT_LABEL = "Extension";
     private static final String EXT_TOOLTIP = "e.g. scala, java, c, js, ...";
@@ -31,13 +32,13 @@ public class LSPGUI {
     private static final String PACKGE = "packge";
     private static final String COMMAND = "command";
     private static final String PATH = "path";
-    private static final Logger LOG = Logger.getInstance(LSPGUI.class);
+    private static final Logger LOG = Logger.getInstance(ServersGUI.class);
     private final LSPState state;
     private final JPanel rootPanel;
-    private final List<LSPGUIRow> rows = new ArrayList<>();
+    private final List<ServersGUIRow> rows = new ArrayList<>();
     private final Map<String, UserConfigurableServerDefinition> serverDefinitions = new LinkedHashMap<>();
 
-    public LSPGUI() {
+    public ServersGUI() {
         state = LSPState.getInstance();
         rootPanel = new JPanel();
         rootPanel.setLayout(new BoxLayout(rootPanel, BoxLayout.Y_AXIS));
@@ -48,7 +49,7 @@ public class LSPGUI {
         return rootPanel;
     }
 
-    public Collection<LSPGUIRow> getRows() {
+    public Collection<ServersGUIRow> getRows() {
         return rows;
     }
 
@@ -77,9 +78,15 @@ public class LSPGUI {
     }
 
     public void apply() {
+        final List<String> extensions = rows.stream().map(row -> row.getText(EXT)).collect(Collectors.toList());
+        final Set<String> distinct = new ArrayList<>(extensions).stream().distinct().collect(Collectors.toSet());
+        distinct.forEach(s -> extensions.remove(s));
+        if (!extensions.isEmpty()) {
+            Messages.showWarningDialog(extensions.stream().reduce((f, s) -> f + '\n' + s).orElse("Error while getting extensions") + '\n' + "Unexpected behavior may occur", "Duplicate Extensions");
+        }
         MessageDialog.main("The changes will be applied after restarting the IDE.");
         serverDefinitions.clear();
-        for (final LSPGUIRow row : rows) {
+        for (final ServersGUIRow row : rows) {
             final String[] arr = row.toStringArray();
             final String ext = row.getText(EXT);
             final UserConfigurableServerDefinition serverDefinition = UserConfigurableServerDefinition$.MODULE$.fromArray(arr);
@@ -92,7 +99,7 @@ public class LSPGUI {
 
     public boolean isModified() {
         if (serverDefinitions.size() == rows.stream().filter(row -> Arrays.stream(row.toStringArray()).skip(1).anyMatch(s -> s != null && !s.isEmpty())).collect(Collectors.toList()).size()) {
-            for (final LSPGUIRow row : rows) {
+            for (final ServersGUIRow row : rows) {
                 final UserConfigurableServerDefinition stateDef = serverDefinitions.get(row.getText(EXT));
                 final UserConfigurableServerDefinition rowDef = UserConfigurableServerDefinition$.MODULE$.fromArray(row.toStringArray());
                 if (rowDef != null && !rowDef.equals(stateDef)) {
@@ -163,7 +170,7 @@ public class LSPGUI {
         });
         return removeRowButton;
     }
-
+    
     private JPanel createRow(final List<JComponent> labelFields, final String selectedItem) {
         final JPanel panel = new JPanel();
         int colIdx = 0;
@@ -221,7 +228,7 @@ public class LSPGUI {
         map.put(PACKGE, packgeField);
         map.put(MAINCLASS, mainClassField);
         map.put(ARGS, argsField);
-        rows.add(new LSPGUIRow(panel, ArtifactLanguageServerDefinition$.MODULE$.typ(), map));
+        rows.add(new ServersGUIRow(panel, ArtifactLanguageServerDefinition$.MODULE$.typ(), map));
         return panel;
     }
 
@@ -245,7 +252,7 @@ public class LSPGUI {
         map.put(EXT, extField);
         map.put(PATH, pathField);
         map.put(ARGS, argsField);
-        rows.add(new LSPGUIRow(panel, ExeLanguageServerDefinition$.MODULE$.typ(), map));
+        rows.add(new ServersGUIRow(panel, ExeLanguageServerDefinition$.MODULE$.typ(), map));
         return panel;
     }
 
@@ -264,7 +271,7 @@ public class LSPGUI {
         final scala.collection.mutable.LinkedHashMap<String, JComponent> map = new scala.collection.mutable.LinkedHashMap<>();
         map.put(EXT, extField);
         map.put(COMMAND, commandField);
-        rows.add(new LSPGUIRow(panel, RawCommandServerDefinition$.MODULE$.typ(), map));
+        rows.add(new ServersGUIRow(panel, RawCommandServerDefinition$.MODULE$.typ(), map));
         return panel;
     }
 
