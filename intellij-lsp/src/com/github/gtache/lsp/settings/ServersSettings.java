@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Class used to manage the settings related to the LSP
@@ -51,13 +52,13 @@ public final class ServersSettings implements Configurable {
     }
 
     private void setGUIFields(final Map<String, LanguageServerDefinition> map) {
-        if (!map.isEmpty()) {
+        final Map<String, UserConfigurableServerDefinition> filtered = map.entrySet().stream().filter(e -> e.getValue() instanceof UserConfigurableServerDefinition)
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> (UserConfigurableServerDefinition) e.getValue()));
+        if (!filtered.isEmpty()) {
             lspGUI.clear();
         }
-        for (final Map.Entry<String, LanguageServerDefinition> entry : map.entrySet()) {
-            if (entry instanceof UserConfigurableServerDefinition) {
-                lspGUI.addServerDefinition((UserConfigurableServerDefinition) entry);
-            }
+        for (final UserConfigurableServerDefinition definition : filtered.values()) {
+            lspGUI.addServerDefinition(definition);
         }
     }
 
