@@ -16,12 +16,12 @@ class LSPRefactoringAction extends DumbAwareAction {
     val editor = e.getData(CommonDataKeys.EDITOR)
     val psiFile = e.getData(CommonDataKeys.PSI_FILE)
     /*if (LanguageRefactoringSupport.INSTANCE.allForLanguage(psiFile.getLanguage).isEmpty) {*/
-      EditorEventManager.forEditor(editor) match {
-        case Some(manager) =>
-          val renameTo = Messages.showInputDialog(e.getProject, "Enter new name: ", "Rename", Messages.getQuestionIcon, "", new NonEmptyInputValidator())
-          if (renameTo != null && renameTo != "") manager.rename(renameTo)
-        case None =>
-        /*}*/
+    EditorEventManager.forEditor(editor) match {
+      case Some(manager) =>
+        val renameTo = Messages.showInputDialog(e.getProject, "Enter new name: ", "Rename", Messages.getQuestionIcon, "", new NonEmptyInputValidator())
+        if (renameTo != null && renameTo != "") manager.rename(renameTo)
+      case None =>
+      /*}*/
     } //else pass to default refactoring
   }
 }

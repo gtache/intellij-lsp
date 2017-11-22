@@ -10,7 +10,7 @@ import com.github.gtache.lsp.contributors.LSPNavigationItem
 import com.github.gtache.lsp.editor.listeners.{EditorListener, FileDocumentManagerListenerImpl, VFSListener}
 import com.github.gtache.lsp.requests.Timeout
 import com.github.gtache.lsp.settings.LSPState
-import com.github.gtache.lsp.utils.Utils
+import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.AppTopics
 import com.intellij.navigation.NavigationItem
 import com.intellij.openapi.application.ApplicationManager
@@ -37,6 +37,9 @@ object PluginMain {
   private var extToServerDefinition: Map[String, LanguageServerDefinition] = HashMap()
   private var loadedExtensions: Boolean = false
 
+  /**
+    * @return All instantiated ServerWrappers
+    */
   def getAllServerWrappers: Set[LanguageServerWrapper] = {
     projectToLanguageWrappers.values.flatten.toSet
   }
@@ -105,8 +108,8 @@ object PluginMain {
       ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
         override def run(): Unit = {
           val ext: String = file.getExtension
-          val rootPath: String = Utils.editorToProjectFolderPath(editor)
-          val rootUri: String = Utils.pathToUri(rootPath)
+          val rootPath: String = FileUtils.editorToProjectFolderPath(editor)
+          val rootUri: String = FileUtils.pathToUri(rootPath)
           LOG.info("Opened " + file.getName)
           extToServerDefinition.get(ext).foreach(s => {
             extToLanguageWrapper.synchronized {
@@ -165,7 +168,7 @@ object PluginMain {
       val ext: String = file.getExtension
       extToServerDefinition.get(ext) match {
         case Some(_) =>
-          val uri = Utils.editorToURIString(editor)
+          val uri = FileUtils.editorToURIString(editor)
           ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
             override def run(): Unit = LanguageServerWrapperImpl.forUri(uri).foreach(l => {
               LOG.info("Disconnecting " + uri)
@@ -192,7 +195,7 @@ object PluginMain {
     * @return An array of NavigationItem
     */
   def workspaceSymbols(name: String, pattern: String, project: Project, includeNonProjectItems: Boolean = false, onlyKind: Set[SymbolKind] = Set()): Array[NavigationItem] = {
-    projectToLanguageWrappers.get(Utils.pathToUri(project.getBasePath)) match {
+    projectToLanguageWrappers.get(FileUtils.pathToUri(project.getBasePath)) match {
       case Some(set) =>
         val params: WorkspaceSymbolParams = new WorkspaceSymbolParams(name)
         val res = set.map(f => f.getRequestManager.symbol(params)).toSet
@@ -202,7 +205,7 @@ object PluginMain {
             val arr = res.flatMap(r => r.get(Timeout.SYMBOLS_TIMEOUT, TimeUnit.MILLISECONDS).asInstanceOf[java.util.List[SymbolInformation]].asScala.toSet)
             arr.filter(s => if (onlyKind.isEmpty) true else onlyKind.contains(s.getKind)).map(f => {
               val start = f.getLocation.getRange.getStart
-              val uri = Utils.URIToVFS(f.getLocation.getUri)
+              val uri = FileUtils.URIToVFS(f.getLocation.getUri)
               LSPNavigationItem(f.getName, f.getContainerName, project, uri, start.getLine, start.getCharacter)
             }).toArray.asInstanceOf[Array[NavigationItem]]
           } catch {

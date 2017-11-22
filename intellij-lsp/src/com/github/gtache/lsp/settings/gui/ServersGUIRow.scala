@@ -7,14 +7,14 @@ import com.intellij.openapi.diagnostic.Logger
 import scala.collection.mutable
 
 /**
-  * Class representing a row in the settings window
+  * Class representing a row in the server settings window
   *
   * @param panel  The row as a JPanel
   * @param typ    The typ of the row
   * @param fields The fields of the row
   */
-case class LSPGUIRow(panel: JPanel, typ: String, fields: mutable.LinkedHashMap[String, JComponent]) {
-  private val LOG: Logger = Logger.getInstance(classOf[LSPGUIRow])
+case class ServersGUIRow(panel: JPanel, typ: String, fields: mutable.LinkedHashMap[String, JComponent]) {
+  private val LOG: Logger = Logger.getInstance(classOf[ServersGUIRow])
 
   /**
     * @return the type of the row (Artifact, exe or command)
@@ -27,7 +27,7 @@ case class LSPGUIRow(panel: JPanel, typ: String, fields: mutable.LinkedHashMap[S
     */
   def getText(label: String): String = {
     fields.get(label).fold("") {
-      case t: JTextField => t.getText()
+      case t: JTextField => t.getText().trim
       case b: JComboBox[String@unchecked] => b.getSelectedItem.asInstanceOf[String]
       case u: JComponent => LOG.error("Unknown JComponent : " + u)
         ""
@@ -39,7 +39,7 @@ case class LSPGUIRow(panel: JPanel, typ: String, fields: mutable.LinkedHashMap[S
     */
   def toStringArray: Array[String] = {
     Array(typ) ++ fields.values.map {
-      case t: JTextField => t.getText()
+      case t: JTextField => t.getText().trim
       case b: JComboBox[String@unchecked] => b.getSelectedItem.asInstanceOf[String]
       case u: JComponent => LOG.error("Unknown JComponent : " + u)
         ""

@@ -1,4 +1,4 @@
-package com.github.gtache.lsp.contributors
+package com.github.gtache.lsp.contributors.inspection
 
 import com.intellij.codeInspection.InspectionToolProvider
 

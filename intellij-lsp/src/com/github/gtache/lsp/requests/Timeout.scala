@@ -4,17 +4,47 @@ package com.github.gtache.lsp.requests
   * An object containing the Timeout for the various requests
   */
 object Timeout {
-  val SIGNATURE_TIMEOUT: Int = 1000
-  val SYMBOLS_TIMEOUT: Int = 2000
-  val HOVER_TIMEOUT: Int = 1000
-  val COMPLETION_TIMEOUT: Int = 1000
-  val DOC_HIGHLIGHT_TIMEOUT: Int = 1000
-  val REFERENCES_TIMEOUT: Int = 2000
-  val SHUTDOWN_TIMEOUT: Int = 5000
-  val DEFINITION_TIMEOUT: Int = 2000
-  val WILLSAVE_TIMEOUT: Int = 2000
-  val FORMATTING_TIMEOUT: Int = 2000
-  val CODEACTION_TIMEOUT: Int = 2000
-  val IMMEDIATELY: Int = 0
 
+  import Timeouts._
+
+  private var timeouts: Map[Timeouts, Int] = Timeouts.values().map(t => t -> t.getDefaultTimeout).toMap
+
+
+  def getTimeoutsJava(): java.util.Map[Timeouts, Integer] = {
+    import scala.collection.JavaConverters._
+    timeouts.map(t => (t._1, t._2.asInstanceOf[Integer])).asJava
+  }
+
+  def setTimeouts(timeouts: Map[Timeouts, Int]): Unit = {
+    this.timeouts = timeouts
+  }
+
+  def setTimeouts(timeouts: java.util.Map[Timeouts, Integer]): Unit = {
+    import scala.collection.JavaConverters._
+    this.timeouts = timeouts.asScala.map(entry => (entry._1, entry._2.toInt)).toMap
+  }
+
+  def CODEACTION_TIMEOUT: Int = timeouts(CODEACTION)
+
+  def CODELENS_TIMEOUT: Int = timeouts(CODELENS)
+
+  def COMPLETION_TIMEOUT: Int = timeouts(COMPLETION)
+
+  def DEFINITION_TIMEOUT: Int = timeouts(DEFINITION)
+
+  def DOC_HIGHLIGHT_TIMEOUT: Int = timeouts(DOC_HIGHLIGHT)
+
+  def FORMATTING_TIMEOUT: Int = timeouts(FORMATTING)
+
+  def HOVER_TIMEOUT: Int = timeouts(HOVER)
+
+  def REFERENCES_TIMEOUT: Int = timeouts(REFERENCES)
+
+  def SIGNATURE_TIMEOUT: Int = timeouts(SIGNATURE)
+
+  def SHUTDOWN_TIMEOUT: Int = timeouts(SHUTDOWN)
+
+  def SYMBOLS_TIMEOUT: Int = timeouts(SYMBOLS)
+
+  def WILLSAVE_TIMEOUT: Int = timeouts(WILLSAVE)
 }

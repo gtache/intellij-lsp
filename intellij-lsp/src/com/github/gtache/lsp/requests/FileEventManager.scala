@@ -3,7 +3,7 @@ package com.github.gtache.lsp.requests
 import com.github.gtache.lsp.PluginMain
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.editor.EditorEventManager
-import com.github.gtache.lsp.utils.{ApplicationUtils, Utils}
+import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils}
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.vfs.VirtualFile
@@ -20,7 +20,7 @@ object FileEventManager {
     * @param doc The document
     */
   def willSave(doc: Document): Unit = {
-    val uri = Utils.VFSToURIString(FileDocumentManager.getInstance().getFile(doc))
+    val uri = FileUtils.VFSToURIString(FileDocumentManager.getInstance().getFile(doc))
     EditorEventManager.forUri(uri).foreach(e => e.willSave())
   }
 
@@ -37,7 +37,7 @@ object FileEventManager {
     * @param file The file
     */
   def fileChanged(file: VirtualFile): Unit = {
-    val uri: String = Utils.VFSToURIString(file)
+    val uri: String = FileUtils.VFSToURIString(file)
     if (uri != null) {
       EditorEventManager.forUri(uri) match {
         case Some(m) => m.documentSaved()
@@ -62,20 +62,10 @@ object FileEventManager {
     * @param file The file
     */
   def fileDeleted(file: VirtualFile): Unit = {
-    val uri = Utils.VFSToURIString(file)
+    val uri = FileUtils.VFSToURIString(file)
     if (uri != null) {
       changedConfiguration(uri, FileChangeType.Deleted)
     }
-  }
-
-  private def changedConfiguration(uri: String, typ: FileChangeType, wrapper: LanguageServerWrapper = null): Unit = {
-    import scala.collection.JavaConverters._
-    ApplicationUtils.pool(() => {
-      val event = new FileEvent(uri, FileChangeType.Changed)
-      val params = new DidChangeWatchedFilesParams(Seq(event).asJava)
-      val wrappers = PluginMain.getAllServerWrappers
-      if (wrappers != null) wrappers.foreach(w => if (w != wrapper && w.getRequestManager != null) w.getRequestManager.didChangeWatchedFiles(params))
-    })
   }
 
   /**
@@ -94,10 +84,20 @@ object FileEventManager {
     * @param file The file
     */
   def fileCreated(file: VirtualFile): Unit = {
-    val uri = Utils.VFSToURIString(file)
+    val uri = FileUtils.VFSToURIString(file)
     if (uri != null) {
       changedConfiguration(uri, FileChangeType.Created)
     }
+  }
+
+  private def changedConfiguration(uri: String, typ: FileChangeType, wrapper: LanguageServerWrapper = null): Unit = {
+    import scala.collection.JavaConverters._
+    ApplicationUtils.pool(() => {
+      val event = new FileEvent(uri, FileChangeType.Changed)
+      val params = new DidChangeWatchedFilesParams(Seq(event).asJava)
+      val wrappers = PluginMain.getAllServerWrappers
+      if (wrappers != null) wrappers.foreach(w => if (w != wrapper && w.getRequestManager != null) w.getRequestManager.didChangeWatchedFiles(params))
+    })
   }
 
 }
