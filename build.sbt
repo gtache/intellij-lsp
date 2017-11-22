@@ -11,7 +11,7 @@ lazy val commonSettings = Seq(
   resourceDirectory in Compile  := baseDirectory.value / "resources",
   resourceDirectory in Test     := baseDirectory.value / "test-resources",
 
-  scalaVersion := "2.12.3",
+  scalaVersion := "2.12.4",
   scalacOptions ++= Seq(
     "-deprecation",
     "-feature",
