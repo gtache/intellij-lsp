@@ -1,8 +1,9 @@
-package com.github.gtache.lsp.contributors
+package com.github.gtache.lsp.contributors.inspection
 
 import javax.swing.JComponent
 
 import com.github.gtache.lsp.PluginMain
+import com.github.gtache.lsp.contributors.LSPQuickFix
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.editor.{DiagnosticRangeHighlighter, EditorEventManager}
 import com.github.gtache.lsp.utils.FileUtils
@@ -16,7 +17,6 @@ import org.eclipse.lsp4j.DiagnosticSeverity
   * The inspection tool for LSP
   */
 class LSPInspection extends LocalInspectionTool {
-  private var bool: Boolean = false
 
   override def checkFile(file: PsiFile, manager: InspectionManager, isOnTheFly: Boolean): Array[ProblemDescriptor] = {
     val virtualFile = file.getVirtualFile
@@ -68,7 +68,7 @@ class LSPInspection extends LocalInspectionTool {
   override def getShortName: String = "LSP"
 
   override def createOptionsPanel(): JComponent = {
-    new SingleCheckboxOptionsPanel(getShortName, this, "bool")
+    new LSPInspectionPanel(getShortName, this)
   }
 
   override def getID: String = "LSP"

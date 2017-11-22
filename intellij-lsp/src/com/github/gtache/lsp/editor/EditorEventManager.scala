@@ -634,8 +634,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           val label = item.getLabel
           val textEdit = item.getTextEdit
           val sortText = item.getSortText
-          val presentableText = if (label != null && label != "") label
-          else if (insertText != null) insertText else ""
+          val presentableText = if (label != null && label != "") label else if (insertText != null) insertText else ""
           val tailText = if (detail != null) detail else ""
           val iconProviders = try {
             LSPIconProvider.EP_NAME.getExtensions()
@@ -661,18 +660,18 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             if (addTextEdits != null) {
               lookupElementBuilder.withInsertHandler((context: InsertionContext, item: LookupElement) => {
                 context.commitDocument()
-                applyEdit(edits = addTextEdits.asScala :+ textEdit, name = "Completion : " + label)
+                invokeLater(() => applyEdit(edits = addTextEdits.asScala :+ textEdit, name = "Completion : " + label))
               })
             } else {
               lookupElementBuilder.withInsertHandler((context: InsertionContext, item: LookupElement) => {
                 context.commitDocument()
-                applyEdit(edits = Seq(textEdit), name = "Completion : " + label)
+                invokeLater(() => applyEdit(edits = Seq(textEdit), name = "Completion : " + label))
               })
             }
           } else if (addTextEdits != null) {
             lookupElementBuilder.withInsertHandler((context: InsertionContext, item: LookupElement) => {
               context.commitDocument()
-              applyEdit(edits = addTextEdits.asScala, name = "Completion : " + label)
+              invokeLater(() => applyEdit(edits = addTextEdits.asScala, name = "Completion : " + label))
             })
           } else {
             lookupElementBuilder.withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT)
@@ -717,7 +716,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           try {
             val edits = future.get(WILLSAVE_TIMEOUT, TimeUnit.MILLISECONDS)
             if (edits != null) {
-              applyEdit(edits = edits.asScala, name = "WaitUntil edits")
+              invokeLater(() => applyEdit(edits = edits.asScala, name = "WaitUntil edits"))
             }
           } catch {
             case e: TimeoutException =>
@@ -845,7 +844,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       val options = new FormattingOptions()
       params.setOptions(options)
       val request = requestManager.formatting(params)
-      if (request != null) request.thenAccept(formatting => applyEdit(edits = formatting.asScala, name = "Reformat document"))
+      if (request != null) request.thenAccept(formatting => invokeLater(() => applyEdit(edits = formatting.asScala, name = "Reformat document")))
     })
   }
 
@@ -865,51 +864,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       val options = new FormattingOptions() //TODO
       params.setOptions(options)
       val request = requestManager.rangeFormatting(params)
-      if (request != null) request.thenAccept(formatting => applyEdit(edits = formatting.asScala, name = "Reformat selection"))
+      if (request != null) request.thenAccept(formatting => invokeLater(() => applyEdit(edits = formatting.asScala, name = "Reformat selection")))
     })
-  }
-
-  /**
-    * Applies the given edits to the document
-    *
-    * @param version The version of the edits (will be discarded if older than current version)
-    * @param edits   The edits to apply
-    * @param name    The name of the edits (Rename, for example)
-    * @return True if the edits were applied, false otherwise
-    */
-  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Boolean = {
-    if (version >= this.version) {
-      invokeLater(() => {
-        val document = editor.getDocument
-        if (document.isWritable) {
-          val runnable = new Runnable {
-            override def run(): Unit = {
-              edits.foreach(edit => {
-                val text = edit.getNewText
-                val range = edit.getRange
-                val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
-                val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
-                if (text == "" || text == null) {
-                  document.deleteString(start, end)
-                } else if (end - start <= 0) {
-                  document.insertString(start, text)
-                } else {
-                  document.replaceString(start, end, text)
-                }
-              })
-              FileDocumentManager.getInstance().saveDocument(document)
-            }
-          }
-          writeAction(() => CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, name, "LSPPlugin", document))
-        } else {
-          LOG.warn("Document is not writable")
-        }
-      })
-      true
-    } else {
-      LOG.warn("Version " + version + " is older than " + this.version)
-      false
-    }
   }
 
   /**
@@ -938,12 +894,83 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       if (future != null) {
         try {
           val edits = future.get(FORMATTING_TIMEOUT, TimeUnit.MILLISECONDS)
-          applyEdit(edits = edits.asScala, name = "On type formatting")
+          invokeLater(() => applyEdit(edits = edits.asScala, name = "On type formatting"))
         } catch {
           case e: TimeoutException => LOG.warn(e)
         }
       }
     })
+  }
+
+  def getEditsRunnable(version: Int = Int.MaxValue, edits : Iterable[TextEdit], name: String = "Apply LSP edits"): Runnable = {
+    if (version >= this.version) {
+      val document = editor.getDocument
+      if (document.isWritable) {
+        () => {
+          edits.foreach(edit => {
+            val text = edit.getNewText
+            val range = edit.getRange
+            val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+            val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+            if (text == "" || text == null) {
+              document.deleteString(start, end)
+            } else if (end - start <= 0) {
+              document.insertString(start, text)
+            } else {
+              document.replaceString(start, end, text)
+            }
+          })
+          FileDocumentManager.getInstance().saveDocument(document)
+        }
+      } else {
+        LOG.warn("Document is not writable")
+        null
+      }
+    } else {
+      LOG.warn("Version " + version + " is older than " + this.version)
+      null
+    }
+  }
+
+  /**
+    * Applies the given edits to the document
+    *
+    * @param version The version of the edits (will be discarded if older than current version)
+    * @param edits   The edits to apply
+    * @param name    The name of the edits (Rename, for example)
+    * @return True if the edits were applied, false otherwise
+    */
+  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Boolean = {
+    if (version >= this.version) {
+      val document = editor.getDocument
+      if (document.isWritable) {
+        val runnable = new Runnable {
+          override def run(): Unit = {
+            edits.foreach(edit => {
+              val text = edit.getNewText
+              val range = edit.getRange
+              val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+              val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+              if (text == "" || text == null) {
+                document.deleteString(start, end)
+              } else if (end - start <= 0) {
+                document.insertString(start, text)
+              } else {
+                document.replaceString(start, end, text)
+              }
+            })
+            FileDocumentManager.getInstance().saveDocument(document)
+          }
+        }
+        writeAction(() => CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, name, "LSPPlugin", document))
+      } else {
+        LOG.warn("Document is not writable")
+      }
+      true
+    } else {
+      LOG.warn("Version " + version + " is older than " + this.version)
+      false
+    }
   }
 
   /**
