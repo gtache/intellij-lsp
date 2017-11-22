@@ -11,7 +11,7 @@ lazy val commonSettings = Seq(
   resourceDirectory in Compile  := baseDirectory.value / "resources",
   resourceDirectory in Test     := baseDirectory.value / "test-resources",
 
-  scalaVersion := "2.12.3",
+  scalaVersion := "2.12.4",
   scalacOptions ++= Seq(
     "-deprecation",
     "-feature",
@@ -53,10 +53,11 @@ lazy val `intellij-lsp-dotty` = (project in file("intellij-lsp-dotty")).
     description := "Dotty Language Server plugin for IntelliJ IDEA",
     version := "0.1.0-SNAPSHOT",
 
-	libraryDependencies ++= Seq(
-		"org.scalameta" %% "scalameta" % "1.8.0",
-		"org.scalastyle" %% "scalastyle" % "1.0.0",
-	),
+    libraryDependencies ++= Seq(
+      scalaOrganization.value % "scala-reflect" % scalaVersion.value,
+      "org.scalameta" %% "scalameta" % "1.8.0",
+      "org.scalastyle" %% "scalastyle" % "1.0.0",
+    ),
     mainClass in (Compile, run) := Some("com.intellij.idea.Main"),
     // Add tools.jar, from https://stackoverflow.com/a/12508163/348497
     unmanagedJars in Compile ~= {uj =>
