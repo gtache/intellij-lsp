@@ -5,21 +5,21 @@ This plugin should be compatible with any JetBrains IDE (tested successfully on 
 ## Features
 What is working (or should be but isn't tested) :      
 Requests to the server:     
--hover     
--documentHighlight     
--completion     
--workspaceSymbol     
--rename     
--definition     
--references     
--codeAction     
--formatting, rangeFormatting, onTypeFormatting    
--willSave, willSaveWaitUntil, didSave, didClose, didOpen, didChange, didChangeWatchedFiles       
+- hover     
+- documentHighlight     
+- completion     
+- workspaceSymbol     
+- rename     
+- definition     
+- references     
+- codeAction     
+- formatting, rangeFormatting, onTypeFormatting    
+- willSave, willSaveWaitUntil, didSave, didClose, didOpen, didChange, didChangeWatchedFiles       
 Client :      
--showMessage     
--logMessage    
--applyEdit    
--publishDiagnostics
+- showMessage     
+- logMessage    
+- applyEdit    
+- publishDiagnostics
 
 The plugin should integrate seamlessly with another plugin supporting a same language (e.g. Scala language server and Scala plugin). The plugin will simply delegate to the Scala plugin any features it already supports (for example, if the Scala plugin supports formatting, the LSP plugin won't ask the language server to format.) The reason is that the current specific plugins are much more powerful than the current language servers at the moment.    
 I will probably add settings later to choose which plugin will be prioritized.
