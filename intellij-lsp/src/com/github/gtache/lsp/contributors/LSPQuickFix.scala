@@ -1,9 +1,10 @@
 package com.github.gtache.lsp.contributors
 
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
+import com.github.gtache.lsp.editor.EditorEventManager
 import com.intellij.codeInspection.{LocalQuickFix, ProblemDescriptor}
 import com.intellij.openapi.project.Project
-import org.eclipse.lsp4j.Command
+import org.eclipse.lsp4j.{Command, ExecuteCommandParams}
 
 /**
   * The Quickfix for LSP
@@ -16,6 +17,7 @@ class LSPQuickFix(uri: String, commands: Iterable[Command]) extends LocalQuickFi
     descriptor.getPsiElement match {
       case element: LSPPsiElement =>
       //TODO send commands to server
+        EditorEventManager.forUri(uri).foreach(m => m.executeCommand(commands))
       case _ =>
     }
   }

@@ -34,6 +34,8 @@ object Timeout {
 
   def DOC_HIGHLIGHT_TIMEOUT: Int = timeouts(DOC_HIGHLIGHT)
 
+  def EXECUTE_COMMAND_TIMEOUT: Int = timeouts(EXECUTE_COMMAND)
+
   def FORMATTING_TIMEOUT: Int = timeouts(FORMATTING)
 
   def HOVER_TIMEOUT: Int = timeouts(HOVER)
