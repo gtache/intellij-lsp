@@ -25,7 +25,7 @@ import com.intellij.openapi.editor.colors.EditorColors
 import com.intellij.openapi.editor.event._
 import com.intellij.openapi.editor.ex.EditorSettingsExternalizable
 import com.intellij.openapi.editor.markup._
-import com.intellij.openapi.editor.{Document, Editor, LogicalPosition}
+import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, OpenFileDescriptor, TextEditor}
 import com.intellij.openapi.fileTypes.PlainTextLanguage
 import com.intellij.openapi.util.TextRange
@@ -411,13 +411,15 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               try {
                 val resp = request.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS).asScala
                 invokeLater(() => resp.foreach(dh => {
-                  val range = dh.getRange
-                  val kind = dh.getKind
-                  val startOffset = DocumentUtils.LSPPosToOffset(editor, range.getStart)
-                  val endOffset = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
-                  val colorScheme = editor.getColorsScheme
-                  val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION - 1, colorScheme.getAttributes(EditorColors.IDENTIFIER_UNDER_CARET_ATTRIBUTES), HighlighterTargetArea.EXACT_RANGE)
-                  selectedSymbHighlights.add(highlight)
+                  if (!editor.isDisposed) {
+                    val range = dh.getRange
+                    val kind = dh.getKind
+                    val startOffset = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+                    val endOffset = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+                    val colorScheme = editor.getColorsScheme
+                    val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION - 1, colorScheme.getAttributes(EditorColors.IDENTIFIER_UNDER_CARET_ATTRIBUTES), HighlighterTargetArea.EXACT_RANGE)
+                    selectedSymbHighlights.add(highlight)
+                  }
                 }))
               } catch {
                 case e: TimeoutException =>
@@ -717,6 +719,46 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
+    * Indicates that the document will be saved
+    */
+  //TODO Manual
+  def willSave(): Unit = {
+    if (wrapper.isWillSaveWaitUntil && !needSave) willSaveWaitUntil() else pool(() => {
+      requestManager.willSave(new WillSaveTextDocumentParams(identifier, TextDocumentSaveReason.Manual))
+    })
+  }
+
+  private def willSaveWaitUntil(): Unit = {
+    if (wrapper.isWillSaveWaitUntil) {
+      pool(() => {
+        val params = new WillSaveTextDocumentParams(identifier, TextDocumentSaveReason.Manual)
+        val future = requestManager.willSaveWaitUntil(params)
+        if (future != null) {
+          try {
+            val edits = future.get(WILLSAVE_TIMEOUT, TimeUnit.MILLISECONDS)
+            if (edits != null) {
+              invokeLater(() => applyEdit(edits = edits.asScala, name = "WaitUntil edits"))
+            }
+          } catch {
+            case e: TimeoutException =>
+              LOG.warn(e)
+          } finally {
+            needSave = true
+            saveDocument()
+          }
+        } else {
+          needSave = true
+          saveDocument()
+        }
+      })
+    } else {
+      LOG.error("Server doesn't support WillSaveWaitUntil")
+      needSave = true
+      saveDocument()
+    }
+  }
+
+  /**
     * Applies the given edits to the document
     *
     * @param version The version of the edits (will be discarded if older than current version)
@@ -760,46 +802,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     } else {
       LOG.warn("Version " + version + " is older than " + this.version)
       false
-    }
-  }
-
-  /**
-    * Indicates that the document will be saved
-    */
-  //TODO Manual
-  def willSave(): Unit = {
-    if (wrapper.isWillSaveWaitUntil && !needSave) willSaveWaitUntil() else pool(() => {
-      requestManager.willSave(new WillSaveTextDocumentParams(identifier, TextDocumentSaveReason.Manual))
-    })
-  }
-
-  private def willSaveWaitUntil(): Unit = {
-    if (wrapper.isWillSaveWaitUntil) {
-      pool(() => {
-        val params = new WillSaveTextDocumentParams(identifier, TextDocumentSaveReason.Manual)
-        val future = requestManager.willSaveWaitUntil(params)
-        if (future != null) {
-          try {
-            val edits = future.get(WILLSAVE_TIMEOUT, TimeUnit.MILLISECONDS)
-            if (edits != null) {
-              invokeLater(() => applyEdit(edits = edits.asScala, name = "WaitUntil edits"))
-            }
-          } catch {
-            case e: TimeoutException =>
-              LOG.warn(e)
-          } finally {
-            needSave = true
-            saveDocument()
-          }
-        } else {
-          needSave = true
-          saveDocument()
-        }
-      })
-    } else {
-      LOG.error("Server doesn't support WillSaveWaitUntil")
-      needSave = true
-      saveDocument()
     }
   }
 
@@ -1006,11 +1008,11 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     })
   }
 
-  def getEditsRunnable(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): (Runnable, Document) = {
+  def getEditsRunnable(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Runnable = {
     if (version >= this.version) {
       val document = editor.getDocument
       if (document.isWritable) {
-        (() => {
+        () => {
           edits.foreach(edit => {
             val text = edit.getNewText
             val range = edit.getRange
@@ -1024,7 +1026,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               document.replaceString(start, end, text)
             }
           })
-        }, document)
+          FileDocumentManager.getInstance().saveDocument(document)
+        }
       } else {
         LOG.warn("Document is not writable")
         null
@@ -1093,12 +1096,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                     editorOffset <= diag.rangeHighlighter.getEndOffset)
                   .toList.sortBy(diag => diag.rangeHighlighter.getLayer)
                 if (inHighlights.nonEmpty && !isCtrlDown) {
-/*                  val first = inHighlights.head //TODO should be already managed by LSPInspection
-                  val diagnostic = first.diagnostic
-                  val message = diagnostic.getMessage
-                  val code = diagnostic.getCode
-                  val source = diagnostic.getSource
-                  invokeLater(() => currentHint = createAndShowHint(editor, if (source != "" && source != null) source + " : " + message else message, point))*/
+                  /*                  val first = inHighlights.head //TODO should be already managed by LSPInspection
+                                    val diagnostic = first.diagnostic
+                                    val message = diagnostic.getMessage
+                                    val code = diagnostic.getCode
+                                    val source = diagnostic.getSource
+                                    invokeLater(() => currentHint = createAndShowHint(editor, if (source != "" && source != null) source + " : " + message else message, point))*/
                 } else {
                   requestAndShowDoc(curTime, editorPos, point)
                 }
