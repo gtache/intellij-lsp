@@ -22,6 +22,12 @@ class LSPInspection extends LocalInspectionTool {
     if (PluginMain.isExtensionSupported(virtualFile.getExtension)) {
       val uri = FileUtils.VFSToURIString(virtualFile)
 
+      /**
+        * Get all the ProblemDescriptor given an EditorEventManager
+        * Look at the DiagnosticHighlights, create dummy PsiElement for each, create descriptor using it
+        * @param m The manager
+        * @return The ProblemDescriptors
+        */
       def descriptorsForManager(m: EditorEventManager): Array[ProblemDescriptor] = {
         val diagnostics = m.getDiagnostics
         diagnostics.collect { case DiagnosticRangeHighlighter(rangeHighlighter, diagnostic) =>
