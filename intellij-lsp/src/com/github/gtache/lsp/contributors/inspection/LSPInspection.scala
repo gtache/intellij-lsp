@@ -8,7 +8,6 @@ import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.editor.{DiagnosticRangeHighlighter, EditorEventManager}
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.codeInspection._
-import com.intellij.codeInspection.ui.SingleCheckboxOptionsPanel
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiFile
 import org.eclipse.lsp4j.DiagnosticSeverity
@@ -25,15 +24,16 @@ class LSPInspection extends LocalInspectionTool {
 
       def descriptorsForManager(m: EditorEventManager): Array[ProblemDescriptor] = {
         val diagnostics = m.getDiagnostics
-        diagnostics.collect { case DiagnosticRangeHighlighter(rangeHighlighter, diagnostic) if diagnostic.getSeverity != DiagnosticSeverity.Hint =>
+        diagnostics.collect { case DiagnosticRangeHighlighter(rangeHighlighter, diagnostic) =>
           val start = rangeHighlighter.getStartOffset
           val end = rangeHighlighter.getEndOffset
           if (start < end) {
             val name = m.editor.getDocument.getText(new TextRange(start, end))
-            val severity = (diagnostic.getSeverity: @unchecked) match {
+            val severity = diagnostic.getSeverity match {
               case DiagnosticSeverity.Error => ProblemHighlightType.ERROR
               case DiagnosticSeverity.Warning => ProblemHighlightType.GENERIC_ERROR_OR_WARNING
               case DiagnosticSeverity.Information => ProblemHighlightType.INFORMATION
+              case DiagnosticSeverity.Hint => ProblemHighlightType.INFORMATION
             }
             val element = LSPPsiElement(name, m.editor.getProject, start, end, file)
             val commands = m.codeAction(element)
@@ -65,11 +65,11 @@ class LSPInspection extends LocalInspectionTool {
 
   override def getDisplayName: String = getShortName
 
-  override def getShortName: String = "LSP"
-
   override def createOptionsPanel(): JComponent = {
     new LSPInspectionPanel(getShortName, this)
   }
+
+  override def getShortName: String = "LSP"
 
   override def getID: String = "LSP"
 

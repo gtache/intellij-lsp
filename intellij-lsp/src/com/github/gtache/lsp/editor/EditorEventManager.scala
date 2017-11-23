@@ -1094,12 +1094,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                     editorOffset <= diag.rangeHighlighter.getEndOffset)
                   .toList.sortBy(diag => diag.rangeHighlighter.getLayer)
                 if (inHighlights.nonEmpty && !isCtrlDown) {
-                  val first = inHighlights.head
+/*                  val first = inHighlights.head //TODO should be already managed by LSPInspection
                   val diagnostic = first.diagnostic
                   val message = diagnostic.getMessage
                   val code = diagnostic.getCode
                   val source = diagnostic.getSource
-                  invokeLater(() => currentHint = createAndShowHint(editor, if (source != "" && source != null) source + " : " + message else message, point))
+                  invokeLater(() => currentHint = createAndShowHint(editor, if (source != "" && source != null) source + " : " + message else message, point))*/
                 } else {
                   requestAndShowDoc(curTime, editorPos, point)
                 }
