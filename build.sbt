@@ -31,7 +31,7 @@ lazy val `intellij-lsp` = (project in file("intellij-lsp")).
   settings(
     name := "intellij-lsp",
     description := "Language Server Protocol plugin for IntelliJ IDEA",
-    version := "0.1.0-SNAPSHOT",
+    version := "1.1",
 
     ideaInternalPlugins := Seq(
       "IntelliLang",
