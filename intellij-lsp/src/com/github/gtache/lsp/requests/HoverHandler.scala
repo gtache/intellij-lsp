@@ -1,5 +1,8 @@
 package com.github.gtache.lsp.requests
 
+import com.vladsch.flexmark.html.HtmlRenderer
+import com.vladsch.flexmark.parser.Parser
+import com.vladsch.flexmark.util.options.MutableDataSet
 import org.eclipse.lsp4j.Hover
 import org.eclipse.lsp4j.jsonrpc.validation.NonNull
 
@@ -13,18 +16,22 @@ object HoverHandler {
     *
     * @param hover The Hover
     * @return The string response
-    */ //TODO markdown to html
+    */
   def getHoverString(@NonNull hover: Hover): String = {
     import scala.collection.JavaConverters._
     val contents = hover.getContents.asScala
     if (contents == null || contents.isEmpty) "" else {
       contents.map(c => {
         if (c.isLeft) c.getLeft else if (c.isRight) {
+          val options = new MutableDataSet()
+          val parser = Parser.builder(options).build()
+          val renderer = HtmlRenderer.builder(options).build()
           val markedString = c.getRight
-          if (markedString.getLanguage != null && !markedString.getLanguage.isEmpty)
+          val string = if (markedString.getLanguage != null && !markedString.getLanguage.isEmpty)
             s"""```${markedString.getLanguage}
 ${markedString.getValue}
 ```""" else markedString.getValue
+          renderer.render(parser.parse(string))
         } else ""
       }).filter(s => !s.isEmpty).reduce((a, b) => a + "\n\n" + b)
     }

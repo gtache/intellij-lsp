@@ -16,8 +16,7 @@ class LSPQuickFix(uri: String, commands: Iterable[Command]) extends LocalQuickFi
   override def applyFix(project: Project, descriptor: ProblemDescriptor): Unit = {
     descriptor.getPsiElement match {
       case element: LSPPsiElement =>
-      //TODO send commands to server
-        EditorEventManager.forUri(uri).foreach(m => m.executeCommand(commands))
+        EditorEventManager.forUri(uri).foreach(m => m.executeCommands(commands))
       case _ =>
     }
   }

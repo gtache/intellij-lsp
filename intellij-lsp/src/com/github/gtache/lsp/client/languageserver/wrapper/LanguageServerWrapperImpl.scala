@@ -121,11 +121,11 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       workspaceClientCapabilities.setApplyEdit(true)
       //workspaceClientCapabilities.setDidChangeConfiguration(new DidChangeConfigurationCapabilities)
       workspaceClientCapabilities.setDidChangeWatchedFiles(new DidChangeWatchedFilesCapabilities)
-      //workspaceClientCapabilities.setExecuteCommand(new ExecuteCommandCapabilities)
+      workspaceClientCapabilities.setExecuteCommand(new ExecuteCommandCapabilities)
       workspaceClientCapabilities.setWorkspaceEdit(new WorkspaceEditCapabilities(true))
       workspaceClientCapabilities.setSymbol(new SymbolCapabilities)
       val textDocumentClientCapabilities = new TextDocumentClientCapabilities
-      //textDocumentClientCapabilities.setCodeAction(new CodeActionCapabilities)
+      textDocumentClientCapabilities.setCodeAction(new CodeActionCapabilities)
       //textDocumentClientCapabilities.setCodeLens(new CodeLensCapabilities)
       textDocumentClientCapabilities.setCompletion(new CompletionCapabilities(new CompletionItemCapabilities(false)))
       textDocumentClientCapabilities.setDefinition(new DefinitionCapabilities)
