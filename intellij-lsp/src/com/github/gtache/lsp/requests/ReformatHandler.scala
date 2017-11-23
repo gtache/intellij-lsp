@@ -46,7 +46,6 @@ object ReformatHandler {
     * @param file    The file
     * @param project The project
     */
-  //TODO fix
   def reformatFile(file: VirtualFile, project: Project): Unit = {
     if (PluginMain.isExtensionSupported(file.getExtension)) {
       val uri = FileUtils.VFSToURIString(file)

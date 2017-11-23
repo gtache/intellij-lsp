@@ -6,8 +6,8 @@ import java.net.URI
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.intellij.openapi.command.{CommandProcessor, UndoConfirmationPolicy}
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.fileEditor.{FileEditorManager, OpenFileDescriptor}
+import com.intellij.openapi.editor.{Document, Editor}
+import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, OpenFileDescriptor}
 import com.intellij.openapi.project.{Project, ProjectManager}
 import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
 import org.eclipse.lsp4j.{TextEdit, WorkspaceEdit}
@@ -37,7 +37,15 @@ object WorkspaceEditHandler {
       var curProject: Project = null
       val openedEditors: scala.collection.mutable.ListBuffer[VirtualFile] = scala.collection.mutable.ListBuffer()
 
-      def manageUnopenedEditor(edits: Iterable[TextEdit], uri: String, version: Int = Int.MaxValue): Runnable = {
+      /**
+        * Opens an editor when needed and gets the Runnable
+        *
+        * @param edits   The text edits
+        * @param uri     The uri of the file
+        * @param version The version of the file
+        * @return The runnable containing the edits
+        */
+      def manageUnopenedEditor(edits: Iterable[TextEdit], uri: String, version: Int = Int.MaxValue): (Runnable, Document) = {
         val project = ProjectManager.getInstance().getOpenProjects()(0)
         val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(uri)))
         val fileEditorManager = FileEditorManager.getInstance(project)
@@ -47,15 +55,16 @@ object WorkspaceEditHandler {
         })
         openedEditors += file
         curProject = editor.getProject
-        var runnable: Runnable = null
+        var ret: (Runnable, Document) = null
         EditorEventManager.forEditor(editor) match {
-          case Some(manager) => runnable = manager.getEditsRunnable(version, edits, name)
+          case Some(manager) => ret = manager.getEditsRunnable(version, edits, name)
           case None =>
         }
-        runnable
+        ret
       }
 
-      val toApply: scala.collection.mutable.ListBuffer[Runnable] = scala.collection.mutable.ListBuffer()
+      //Get the runnable and document for each editor to apply them all in one command and save at the end
+      val toApply: scala.collection.mutable.ListBuffer[(Runnable, Document)] = scala.collection.mutable.ListBuffer()
       if (dChanges != null) {
         dChanges.foreach(edit => {
           val doc = edit.getTextDocument
@@ -86,10 +95,11 @@ object WorkspaceEditHandler {
         didApply = false
       } else {
         val runnable = new Runnable {
-          override def run(): Unit = toApply.foreach(r => r.run())
+          override def run(): Unit = toApply.foreach(r => r._1.run())
         }
         writeAction(() => {
           CommandProcessor.getInstance().executeCommand(curProject, runnable, name, "LSPPlugin", UndoConfirmationPolicy.DEFAULT, false)
+          toApply.foreach(r => FileDocumentManager.getInstance().saveDocument(r._2))
           openedEditors.foreach(f => FileEditorManager.getInstance(curProject).closeFile(f))
         })
       }

@@ -563,6 +563,7 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
         if ((newMap == map) || changeUserMap(map, newMap)) return true
       }
     }
+    false
   }
 
   def copyCopyableDataTo(clone: UserDataHolderBase): Unit = {

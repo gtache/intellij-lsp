@@ -25,7 +25,7 @@ import com.intellij.openapi.editor.colors.EditorColors
 import com.intellij.openapi.editor.event._
 import com.intellij.openapi.editor.ex.EditorSettingsExternalizable
 import com.intellij.openapi.editor.markup._
-import com.intellij.openapi.editor.{Editor, LogicalPosition}
+import com.intellij.openapi.editor.{Document, Editor, LogicalPosition}
 import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, OpenFileDescriptor, TextEditor}
 import com.intellij.openapi.fileTypes.PlainTextLanguage
 import com.intellij.openapi.util.TextRange
@@ -1006,11 +1006,11 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     })
   }
 
-  def getEditsRunnable(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Runnable = {
+  def getEditsRunnable(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): (Runnable, Document) = {
     if (version >= this.version) {
       val document = editor.getDocument
       if (document.isWritable) {
-        () => {
+        (() => {
           edits.foreach(edit => {
             val text = edit.getNewText
             val range = edit.getRange
@@ -1024,8 +1024,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               document.replaceString(start, end, text)
             }
           })
-          FileDocumentManager.getInstance().saveDocument(document)
-        }
+        }, document)
       } else {
         LOG.warn("Document is not writable")
         null

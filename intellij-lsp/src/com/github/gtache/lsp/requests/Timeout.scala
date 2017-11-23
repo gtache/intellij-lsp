@@ -10,7 +10,7 @@ object Timeout {
   private var timeouts: Map[Timeouts, Int] = Timeouts.values().map(t => t -> t.getDefaultTimeout).toMap
 
 
-  def getTimeoutsJava(): java.util.Map[Timeouts, Integer] = {
+  def getTimeoutsJava: java.util.Map[Timeouts, Integer] = {
     import scala.collection.JavaConverters._
     timeouts.map(t => (t._1, t._2.asInstanceOf[Integer])).asJava
   }
