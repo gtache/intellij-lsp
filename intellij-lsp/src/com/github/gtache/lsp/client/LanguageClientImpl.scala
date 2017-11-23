@@ -6,6 +6,8 @@ import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.requests.WorkspaceEditHandler
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.ui.Messages
+import com.intellij.util.ui.UIUtil
 import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.services.{LanguageClient, LanguageServer}
 
@@ -51,15 +53,30 @@ class LanguageClientImpl extends LanguageClient {
   }
 
   override def showMessage(messageParams: MessageParams): Unit = {
-    MessageDialog.main(messageParams.getMessage) //TODO message type
+    val title = "Language Server message"
+    val message = messageParams.getMessage
+    messageParams.getType match {
+      case MessageType.Error => Messages.showErrorDialog(message, title)
+      case MessageType.Warning => Messages.showWarningDialog(message, title)
+      case MessageType.Info => Messages.showInfoMessage(message, title)
+      case MessageType.Log => Messages.showInfoMessage(message, title)
+    }
   }
 
   override def showMessageRequest(showMessageRequestParams: ShowMessageRequestParams): CompletableFuture[MessageActionItem] = {
     val actions = showMessageRequestParams.getActions
-    for (action <- actions.asScala) {
-    } //TODO window with buttons
-    MessageDialog.main(showMessageRequestParams.getMessage)
-    CompletableFuture.completedFuture(new MessageActionItem())
+    val title = "Language Server message"
+    val message = showMessageRequestParams.getMessage
+    val icon = showMessageRequestParams.getType match {
+      case MessageType.Error => UIUtil.getErrorIcon
+      case MessageType.Warning => UIUtil.getWarningIcon
+      case MessageType.Info => UIUtil.getInformationIcon
+      case MessageType.Log => UIUtil.getInformationIcon
+    }
+
+    val exitCode = Messages.showDialog(message, title, actions.asScala.map(a => a.getTitle).toArray, 0, icon)
+
+    CompletableFuture.completedFuture(new MessageActionItem(actions.get(exitCode).getTitle))
   }
 
   override def logMessage(messageParams: MessageParams): Unit = {
