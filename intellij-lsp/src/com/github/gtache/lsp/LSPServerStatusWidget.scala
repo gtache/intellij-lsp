@@ -67,7 +67,13 @@ class LSPServerStatusWidget(wrapper: LanguageServerWrapper) extends StatusBarWid
   }
 
   private def updateWidget(): Unit = {
-    WindowManager.getInstance().getStatusBar(project).updateWidget(ID())
+    val manager = WindowManager.getInstance()
+    if (manager != null && project != null) {
+      val statusBar = manager.getStatusBar(project)
+      if (statusBar != null) {
+        statusBar.updateWidget(ID())
+      }
+    }
   }
 
   override def ID(): String = projectName + "_" + ext
