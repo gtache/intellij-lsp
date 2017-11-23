@@ -32,6 +32,12 @@ object GUIUtils {
     hint
   }
 
+  /**
+    * Returns a suitable LSPIconProvider given a ServerDefinition
+    *
+    * @param serverDefinition The serverDefinition
+    * @return The LSPIconProvider, or LSPDefaultIconProvider if none are found
+    */
   def getIconProviderFor(serverDefinition: LanguageServerDefinition): LSPIconProvider = {
     try {
       val providers = LSPIconProvider.EP_NAME.getExtensions.filter(provider => provider.isSpecificFor(serverDefinition))

@@ -14,7 +14,7 @@ import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.lsp.requests.Timeout
 import com.github.gtache.lsp.utils.FileUtils
-import com.github.gtache.lsp.{LSPServerStatusWidget, PluginMain, ServerStatus}
+import com.github.gtache.lsp.{LSPServerStatusWidget, ServerStatus}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
@@ -50,7 +50,7 @@ object LanguageServerWrapperImpl {
 }
 
 /**
-  * The implementation of a LanguageServerWrapper
+  * The implementation of a LanguageServerWrapper (specific to a serverDefinition and a project)
   *
   * @param serverDefinition The serverDefinition
   * @param project          The project
@@ -305,7 +305,6 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     this.languageServer = null
     started = false
     statusWidget.setStatus(ServerStatus.STOPPED)
-    //PluginMain.languageServerStopped(this)
   }
 
   override def registerCapability(params: RegistrationParams): CompletableFuture[Void] = {

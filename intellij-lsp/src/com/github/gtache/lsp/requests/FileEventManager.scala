@@ -90,10 +90,11 @@ object FileEventManager {
     }
   }
 
+
   private def changedConfiguration(uri: String, typ: FileChangeType, wrapper: LanguageServerWrapper = null): Unit = {
     import scala.collection.JavaConverters._
     ApplicationUtils.pool(() => {
-      val event = new FileEvent(uri, FileChangeType.Changed)
+      val event = new FileEvent(uri, typ)
       val params = new DidChangeWatchedFilesParams(Seq(event).asJava)
       val wrappers = PluginMain.getAllServerWrappers
       if (wrappers != null) wrappers.foreach(w => if (w != wrapper && w.getRequestManager != null) w.getRequestManager.didChangeWatchedFiles(params))

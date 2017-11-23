@@ -218,16 +218,6 @@ object PluginMain {
         Array.empty
     }
   }
-
-  /**
-    * Notifies that a LanguageServer was stopped
-    *
-    * @param wrapper The wrapper of the languageServer
-    */
-  def languageServerStopped(wrapper: LanguageServerWrapper): Unit = {
-    projectToLanguageWrappers.find(p => p._2.contains(wrapper)).foreach(found => projectToLanguageWrappers.remove(found._1))
-    extToLanguageWrapper.find(p => p._2 == wrapper).foreach(found => extToLanguageWrapper.remove(found._1))
-  }
 }
 
 /**

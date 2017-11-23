@@ -14,6 +14,12 @@ object LSPServerStatusWidget {
 
   private var lastWidgetID: String = _
 
+  /**
+    * Creates a widget given a LanguageServerWrapper and adds it to the status bar
+    *
+    * @param wrapper The wrapper
+    * @return The widget
+    */
   def createWidgetFor(wrapper: LanguageServerWrapper): LSPServerStatusWidget = {
     val widget = new LSPServerStatusWidget(wrapper)
     val statusBar = WindowManager.getInstance().getStatusBar(wrapper.getProject)
@@ -24,6 +30,11 @@ object LSPServerStatusWidget {
 
 }
 
+/**
+  * A status bar widget for a server status
+  *
+  * @param wrapper The wrapper corresponding to the server
+  */
 class LSPServerStatusWidget(wrapper: LanguageServerWrapper) extends StatusBarWidget {
 
   private val ext: String = wrapper.getServerDefinition.ext
@@ -45,6 +56,11 @@ class LSPServerStatusWidget(wrapper: LanguageServerWrapper) extends StatusBarWid
 
   override def install(statusBar: StatusBar): Unit = {}
 
+  /**
+    * Sets the status of the server
+    *
+    * @param status The new status
+    */
   def setStatus(status: ServerStatus): Unit = {
     this.status = status
     updateWidget()

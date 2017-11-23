@@ -9,7 +9,7 @@ import org.eclipse.lsp4j.Position
   */
 object DocumentUtils {
   /**
-    * Gets the line at the given offset given an editor and boldens the text between the given offsets
+    * Gets the line at the given offset given an editor and bolds the text between the given offsets
     *
     * @param editor      The editor
     * @param startOffset The starting offset

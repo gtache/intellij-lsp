@@ -47,10 +47,6 @@ public class TimeoutGUI {
         rootPanel = createRootPanel();
     }
 
-    private static int parseInt(final String field) {
-        return Integer.parseInt(field);
-    }
-
     private static GridConstraints createGridConstraints(final int rowIdx, final int colIdx) {
         return createGridConstraints(rowIdx, colIdx, null);
     }
@@ -95,7 +91,7 @@ public class TimeoutGUI {
 
     public void apply() {
         final Map<Timeouts, Integer> newTimeouts = rows.entrySet().stream().map(e ->
-                new AbstractMap.SimpleEntry<>(e.getKey(), parseInt(e.getValue().getText()))).collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue));
+                new AbstractMap.SimpleEntry<>(e.getKey(), Integer.parseInt(e.getValue().getText()))).collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue));
         state.setTimeouts(newTimeouts);
         Timeout.setTimeouts(newTimeouts);
     }
@@ -107,8 +103,11 @@ public class TimeoutGUI {
 
     public boolean isModified() {
         final Map<Timeouts, Integer> currentTimeouts = Timeout.getTimeoutsJava();
-        try {
-            return Arrays.stream(Timeouts.values()).anyMatch(t -> currentTimeouts.get(t) != parseInt(rows.get(t).getText()));
+        try { //Don't allow apply if the value is not valid
+            return Arrays.stream(Timeouts.values()).anyMatch(t -> {
+                final int newValue = Integer.parseInt(rows.get(t).getText());
+                return currentTimeouts.get(t) != newValue && newValue >= 0;
+            });
         } catch (final NumberFormatException e) {
             return false;
         }
