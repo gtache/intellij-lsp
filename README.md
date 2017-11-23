@@ -14,7 +14,8 @@ Requests to the server:
 - references     
 - codeAction     
 - formatting, rangeFormatting, onTypeFormatting    
-- willSave, willSaveWaitUntil, didSave, didClose, didOpen, didChange, didChangeWatchedFiles       
+- willSave, willSaveWaitUntil, didSave, didClose, didOpen, didChange, didChangeWatchedFiles   
+
 Client :      
 - showMessage     
 - logMessage    
