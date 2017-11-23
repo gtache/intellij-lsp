@@ -13,7 +13,7 @@ object HoverHandler {
     *
     * @param hover The Hover
     * @return The string response
-    */
+    */ //TODO markdown to html
   def getHoverString(@NonNull hover: Hover): String = {
     import scala.collection.JavaConverters._
     val contents = hover.getContents.asScala

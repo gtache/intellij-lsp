@@ -825,6 +825,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     *
     * @param renameTo The new name
     */
+  //TODO documenthighlight => in place rename
   def rename(renameTo: String): Unit = {
     val servPos = DocumentUtils.logicalToLSPPos(editor.offsetToLogicalPosition(editor.getCaretModel.getCurrentCaret.getOffset))
     pool(() => {

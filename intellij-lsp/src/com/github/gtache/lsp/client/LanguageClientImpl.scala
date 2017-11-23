@@ -51,13 +51,13 @@ class LanguageClientImpl extends LanguageClient {
   }
 
   override def showMessage(messageParams: MessageParams): Unit = {
-    MessageDialog.main(messageParams.getMessage)
+    MessageDialog.main(messageParams.getMessage) //TODO message type
   }
 
   override def showMessageRequest(showMessageRequestParams: ShowMessageRequestParams): CompletableFuture[MessageActionItem] = {
     val actions = showMessageRequestParams.getActions
     for (action <- actions.asScala) {
-    }
+    } //TODO window with buttons
     MessageDialog.main(showMessageRequestParams.getMessage)
     CompletableFuture.completedFuture(new MessageActionItem())
   }
