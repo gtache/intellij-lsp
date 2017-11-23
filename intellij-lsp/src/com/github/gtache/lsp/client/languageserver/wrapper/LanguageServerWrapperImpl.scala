@@ -5,7 +5,6 @@ import java.io.IOException
 import java.net.URI
 import java.util.concurrent._
 
-import com.github.gtache.lsp.client.connection.StreamConnectionProvider
 import com.github.gtache.lsp.client.languageserver.ServerOptions
 import com.github.gtache.lsp.client.languageserver.requestmanager.{RequestManager, SimpleRequestManager}
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
@@ -60,7 +59,6 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   import LanguageServerWrapperImpl._
 
   private val rootPath = project.getBasePath
-  private val lspStreamProvider: StreamConnectionProvider = serverDefinition.createConnectionProvider(rootPath)
   private val connectedEditors: mutable.Map[String, EditorEventManager] = mutable.HashMap()
   private val LOG: Logger = Logger.getInstance(classOf[LanguageServerWrapperImpl])
   private val statusWidget: LSPServerStatusWidget = LSPServerStatusWidget.createWidgetFor(this)
@@ -150,7 +148,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
       textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, true, true))
       initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilities, textDocumentClientCapabilities, null))
-      initParams.setInitializationOptions(this.lspStreamProvider.getInitializationOptions(URI.create(initParams.getRootUri)))
+      initParams.setInitializationOptions(this.serverDefinition.getInitializationOptions(URI.create(initParams.getRootUri)))
       initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
         status = ServerStatus.STARTED
         statusWidget.setStatus(status)
@@ -303,7 +301,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       this.launcherFuture.cancel(true)
       this.launcherFuture = null
     }
-    if (this.lspStreamProvider != null) this.lspStreamProvider.stop()
+    if (this.serverDefinition != null) this.serverDefinition.stop()
     connectedEditors.foreach(e => disconnect(e._1))
     this.languageServer = null
     started = false

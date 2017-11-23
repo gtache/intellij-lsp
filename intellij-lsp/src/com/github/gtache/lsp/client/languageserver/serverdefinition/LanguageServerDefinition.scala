@@ -1,6 +1,7 @@
 package com.github.gtache.lsp.client.languageserver.serverdefinition
 
 import java.io.{InputStream, OutputStream}
+import java.net.URI
 
 import com.github.gtache.lsp.client.LanguageClientImpl
 import com.github.gtache.lsp.client.connection.StreamConnectionProvider
@@ -103,6 +104,8 @@ trait LanguageServerDefinition {
     * @return the LanguageClient for this LanguageServer
     */
   def createLanguageClient: LanguageClientImpl = new LanguageClientImpl
+
+  def getInitializationOptions(uri: URI): Any = null
 
   override def toString: String = "ServerDefinition for " + ext
 
