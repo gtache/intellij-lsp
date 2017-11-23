@@ -2,7 +2,7 @@ package com.github.gtache.lsp.requests
 
 import com.github.gtache.lsp.PluginMain
 import com.github.gtache.lsp.editor.EditorEventManager
-import com.github.gtache.lsp.utils.FileUtils
+import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils}
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.{FileEditorManager, OpenFileDescriptor}
@@ -54,16 +54,14 @@ object ReformatHandler {
         case Some(manager) =>
           manager.reformat()
         case None =>
-          val fileEditorManager = FileEditorManager.getInstance(project)
-          val descriptor = new OpenFileDescriptor(project, file)
-          ApplicationManager.getApplication.invokeLater(() => ApplicationManager.getApplication.runWriteAction(new Runnable {
-            override def run(): Unit = fileEditorManager.openTextEditor(descriptor, false)
-          }))
-          while (EditorEventManager.forUri(uri).isEmpty) {}
-          EditorEventManager.forUri(uri).get.reformat()
-          ApplicationManager.getApplication.invokeLater(() => ApplicationManager.getApplication.runWriteAction(new Runnable {
-            override def run(): Unit = fileEditorManager.closeFile(file)
-          }))
+          ApplicationUtils.invokeLater(() => {
+            val fileEditorManager = FileEditorManager.getInstance(project)
+            val descriptor = new OpenFileDescriptor(project, file)
+            val editor = ApplicationUtils.computableWriteAction(() => {
+              fileEditorManager.openTextEditor(descriptor, false)
+            })
+            EditorEventManager.forEditor(editor).get.reformat(closeAfter = true)
+          })
       }
     }
   }
