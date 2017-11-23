@@ -4,8 +4,10 @@ import java.io.IOException
 import java.util.concurrent.CompletableFuture
 
 import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
+import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.project.Project
 import org.eclipse.lsp4j.jsonrpc.messages.Message
 import org.eclipse.lsp4j.services.LanguageServer
 import org.eclipse.lsp4j.{RegistrationParams, ServerCapabilities, UnregistrationParams}
@@ -16,7 +18,9 @@ import org.jetbrains.annotations.Nullable
   */
 trait LanguageServerWrapper {
 
+  def getServerDefinition: LanguageServerDefinition
 
+  def getProject: Project
   /**
     * Register a capability for the language server
     *

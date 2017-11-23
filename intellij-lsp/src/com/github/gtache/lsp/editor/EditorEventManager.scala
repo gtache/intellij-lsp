@@ -11,7 +11,6 @@ import javax.swing.{JFrame, JLabel, JPanel}
 import com.github.gtache.lsp.client.languageserver.ServerOptions
 import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapperImpl
-import com.github.gtache.lsp.contributors.icon.LSPIconProvider
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.requests.{HoverHandler, WorkspaceEditHandler}
 import com.github.gtache.lsp.utils.{DocumentUtils, FileUtils, GUIUtils}
@@ -525,6 +524,23 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
+  /**
+    * Immediately requests the server for documentation at the current editor position
+    *
+    * @param editor The editor
+    */
+  def quickDoc(editor: Editor): Unit = {
+    if (editor == this.editor) {
+      val caretPos = editor.getCaretModel.getLogicalPosition
+      val pointPos = editor.logicalPositionToXY(caretPos)
+      val currentTime = System.nanoTime()
+      pool(() => requestAndShowDoc(currentTime, caretPos, pointPos))
+      predTime = currentTime
+    } else {
+      LOG.warn("Not same editor!")
+    }
+  }
+
   private def requestAndShowDoc(curTime: Long, editorPos: LogicalPosition, point: Point): Unit = {
     val serverPos = DocumentUtils.logicalToLSPPos(editorPos)
     val request = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
@@ -581,23 +597,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       }
     } else {
       null
-    }
-  }
-
-  /**
-    * Immediately requests the server for documentation at the current editor position
-    *
-    * @param editor The editor
-    */
-  def quickDoc(editor: Editor): Unit = {
-    if (editor == this.editor) {
-      val caretPos = editor.getCaretModel.getLogicalPosition
-      val pointPos = editor.logicalPositionToXY(caretPos)
-      val currentTime = System.nanoTime()
-      pool(() => requestAndShowDoc(currentTime, caretPos, pointPos))
-      predTime = currentTime
-    } else {
-      LOG.warn("Not same editor!")
     }
   }
 
@@ -718,16 +717,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           val sortText = item.getSortText
           val presentableText = if (label != null && label != "") label else if (insertText != null) insertText else ""
           val tailText = if (detail != null) detail else ""
-          val iconProviders = try {
-            LSPIconProvider.EP_NAME.getExtensions()
-          } catch {
-            case e: IllegalArgumentException => Array[LSPIconProvider]()
-            case e: Exception => throw e
-          }
-          val icon = {
-            val mapped = iconProviders.map(provider => provider.getIcon(kind)).dropWhile(i => i == null)
-            if (mapped.isEmpty) null else mapped.head
-          }
+          val iconProvider = GUIUtils.getIconProviderFor(wrapper.getServerDefinition)
+          val icon = iconProvider.getCompletionIcon(kind)
           val lookupElementBuilder = LookupElementBuilder.create(if (insertText != null && insertText != "") insertText else label)
             .withPresentableText(presentableText).withTailText(tailText, true).withIcon(icon)
           /*            .withRenderer((element: LookupElement, presentation: LookupElementPresentation) => { //TODO later

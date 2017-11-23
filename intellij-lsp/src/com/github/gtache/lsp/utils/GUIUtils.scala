@@ -3,6 +3,8 @@ package com.github.gtache.lsp.utils
 import java.awt.Point
 import javax.swing.JLabel
 
+import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
+import com.github.gtache.lsp.contributors.icon.{LSPDefaultIconProvider, LSPIconProvider}
 import com.intellij.codeInsight.hint.{HintManager, HintManagerImpl}
 import com.intellij.openapi.editor.Editor
 import com.intellij.ui.{Hint, LightweightHint}
@@ -28,5 +30,14 @@ object GUIUtils {
     val p = HintManagerImpl.getHintPosition(hint, editor, editor.xyToLogicalPosition(point), constraint)
     HintManagerImpl.getInstanceImpl.showEditorHint(hint, editor, p, flags, 0, false, HintManagerImpl.createHintHint(editor, p, hint, constraint).setContentActive(false))
     hint
+  }
+
+  def getIconProviderFor(serverDefinition: LanguageServerDefinition): LSPIconProvider = {
+    try {
+      val providers = LSPIconProvider.EP_NAME.getExtensions.filter(provider => provider.isSpecificFor(serverDefinition))
+      if (providers.nonEmpty) providers.head else LSPDefaultIconProvider
+    } catch {
+      case e: IllegalArgumentException => LSPDefaultIconProvider
+    }
   }
 }

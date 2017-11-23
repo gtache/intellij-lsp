@@ -44,11 +44,6 @@
                 id="LSPFileDocumentSynchronizationVetoer"/>
     </extensions>
 
-    <extensions defaultExtensionNs="com.github.gtache.lsp">
-        <LSPIconProvider implementation="com.github.gtache.lsp.contributors.icon.LSPDefaultIconProvider"
-                         id="LSPDefaultIconProvider"/>
-    </extensions>
-
     <actions>
         <action class="com.github.gtache.lsp.actions.LSPQuickDocAction" id="QuickJavaDoc" text="Quick Doc"
                 overrides="true"/> <!-- Overrides quickdoc if possible, otherwise delegates to it -->

@@ -5,7 +5,6 @@ import java.io.IOException
 import java.net.URI
 import java.util.concurrent._
 
-import com.github.gtache.lsp.PluginMain
 import com.github.gtache.lsp.client.connection.StreamConnectionProvider
 import com.github.gtache.lsp.client.languageserver.ServerOptions
 import com.github.gtache.lsp.client.languageserver.requestmanager.{RequestManager, SimpleRequestManager}
@@ -15,8 +14,10 @@ import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.lsp.requests.Timeout
 import com.github.gtache.lsp.utils.FileUtils
+import com.github.gtache.lsp.{LSPServerStatusWidget, PluginMain, ServerStatus}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.project.Project
 import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException
 import org.eclipse.lsp4j.jsonrpc.messages.{Either, Message, ResponseErrorCode, ResponseMessage}
@@ -49,18 +50,20 @@ object LanguageServerWrapperImpl {
 }
 
 /**
-  * The working implementation of a LanguageServerWrapper
+  * The implementation of a LanguageServerWrapper
   *
   * @param serverDefinition The serverDefinition
-  * @param rootPath         The root directory
+  * @param project          The project
   */
-class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, val rootPath: String) extends LanguageServerWrapper {
+class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, val project: Project) extends LanguageServerWrapper {
 
   import LanguageServerWrapperImpl._
 
+  private val rootPath = project.getBasePath
   private val lspStreamProvider: StreamConnectionProvider = serverDefinition.createConnectionProvider(rootPath)
   private val connectedEditors: mutable.Map[String, EditorEventManager] = mutable.HashMap()
   private val LOG: Logger = Logger.getInstance(classOf[LanguageServerWrapperImpl])
+  private val statusWidget: LSPServerStatusWidget = LSPServerStatusWidget.createWidgetFor(this)
   private var languageServer: LanguageServer = _
   private var client: LanguageClientImpl = _
   private var requestManager: RequestManager = _
@@ -71,6 +74,9 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private var initializeStartTime = 0L
   private var started: Boolean = false
   private var registrations: mutable.Map[String, DynamicRegistrationMethods] = mutable.HashMap()
+
+
+  override def getServerDefinition: LanguageServerDefinition = serverDefinition
 
   /**
     * @return if the server supports willSaveWaitUntil
@@ -107,6 +113,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   @throws[IOException]
   def start(): Unit = {
     if (!started) {
+      statusWidget.setStatus(ServerStatus.STARTING)
       val (inputStream, outputStream) = serverDefinition.start()
       client = serverDefinition.createLanguageClient
       val initParams = new InitializeParams
@@ -143,6 +150,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilities, textDocumentClientCapabilities, null))
       initParams.setInitializationOptions(this.lspStreamProvider.getInitializationOptions(URI.create(initParams.getRootUri)))
       initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
+        statusWidget.setStatus(ServerStatus.STARTED)
         initializeResult = res
         LOG.info("Got initializeResult for " + rootPath)
         requestManager = new SimpleRequestManager(languageServer, client, getServerCapabilities)
@@ -296,7 +304,8 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     connectedEditors.foreach(e => disconnect(e._1))
     this.languageServer = null
     started = false
-    PluginMain.languageServerStopped(this)
+    statusWidget.setStatus(ServerStatus.STOPPED)
+    //PluginMain.languageServerStopped(this)
   }
 
   override def registerCapability(params: RegistrationParams): CompletableFuture[Void] = {
@@ -328,4 +337,6 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       })
     })
   }
+
+  override def getProject: Project = project
 }

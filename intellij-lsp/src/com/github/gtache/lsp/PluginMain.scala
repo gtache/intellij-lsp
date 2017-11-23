@@ -10,7 +10,7 @@ import com.github.gtache.lsp.contributors.LSPNavigationItem
 import com.github.gtache.lsp.editor.listeners.{EditorListener, FileDocumentManagerListenerImpl, VFSListener}
 import com.github.gtache.lsp.requests.Timeout
 import com.github.gtache.lsp.settings.LSPState
-import com.github.gtache.lsp.utils.FileUtils
+import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils}
 import com.intellij.AppTopics
 import com.intellij.navigation.NavigationItem
 import com.intellij.openapi.application.ApplicationManager
@@ -108,6 +108,7 @@ object PluginMain {
       ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
         override def run(): Unit = {
           val ext: String = file.getExtension
+          val project: Project = editor.getProject
           val rootPath: String = FileUtils.editorToProjectFolderPath(editor)
           val rootUri: String = FileUtils.pathToUri(rootPath)
           LOG.info("Opened " + file.getName)
@@ -117,7 +118,7 @@ object PluginMain {
               wrapper match {
                 case null =>
                   LOG.info("Instantiating wrapper for " + ext + " : " + rootUri)
-                  wrapper = new LanguageServerWrapperImpl(s, rootPath)
+                  wrapper = new LanguageServerWrapperImpl(s, project)
                   extToLanguageWrapper.put((ext, rootUri), wrapper)
                   projectToLanguageWrappers.get(rootUri) match {
                     case Some(set) =>
@@ -169,8 +170,8 @@ object PluginMain {
       extToServerDefinition.get(ext) match {
         case Some(_) =>
           val uri = FileUtils.editorToURIString(editor)
-          ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
-            override def run(): Unit = LanguageServerWrapperImpl.forUri(uri).foreach(l => {
+          ApplicationUtils.pool(() => {
+            LanguageServerWrapperImpl.forUri(uri).foreach(l => {
               LOG.info("Disconnecting " + uri)
               l.disconnect(uri)
             })
