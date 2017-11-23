@@ -199,7 +199,7 @@ object PluginMain {
     projectToLanguageWrappers.get(FileUtils.pathToUri(project.getBasePath)) match {
       case Some(set) =>
         val params: WorkspaceSymbolParams = new WorkspaceSymbolParams(name)
-        val res = set.map(f => f.getRequestManager.symbol(params)).toSet
+        val res = set.filter(w => w.getStatus == ServerStatus.STARTED && w.getRequestManager != null).map(f => f.getRequestManager.symbol(params)).toSet
         if (!res.contains(null)) {
           try {
             import scala.collection.JavaConverters._

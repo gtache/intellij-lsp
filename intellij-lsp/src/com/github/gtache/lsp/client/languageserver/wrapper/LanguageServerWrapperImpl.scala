@@ -64,6 +64,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private val connectedEditors: mutable.Map[String, EditorEventManager] = mutable.HashMap()
   private val LOG: Logger = Logger.getInstance(classOf[LanguageServerWrapperImpl])
   private val statusWidget: LSPServerStatusWidget = LSPServerStatusWidget.createWidgetFor(this)
+  private var status: ServerStatus = ServerStatus.STOPPED
   private var languageServer: LanguageServer = _
   private var client: LanguageClientImpl = _
   private var requestManager: RequestManager = _
@@ -113,7 +114,8 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   @throws[IOException]
   def start(): Unit = {
     if (!started) {
-      statusWidget.setStatus(ServerStatus.STARTING)
+      status = ServerStatus.STARTING
+      statusWidget.setStatus(status)
       val (inputStream, outputStream) = serverDefinition.start()
       client = serverDefinition.createLanguageClient
       val initParams = new InitializeParams
@@ -150,7 +152,8 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilities, textDocumentClientCapabilities, null))
       initParams.setInitializationOptions(this.lspStreamProvider.getInitializationOptions(URI.create(initParams.getRootUri)))
       initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
-        statusWidget.setStatus(ServerStatus.STARTED)
+        status = ServerStatus.STARTED
+        statusWidget.setStatus(status)
         initializeResult = res
         LOG.info("Got initializeResult for " + rootPath)
         requestManager = new SimpleRequestManager(languageServer, client, getServerCapabilities)
@@ -304,7 +307,8 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     connectedEditors.foreach(e => disconnect(e._1))
     this.languageServer = null
     started = false
-    statusWidget.setStatus(ServerStatus.STOPPED)
+    status = ServerStatus.STOPPED
+    statusWidget.setStatus(status)
   }
 
   override def registerCapability(params: RegistrationParams): CompletableFuture[Void] = {
@@ -338,4 +342,6 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   }
 
   override def getProject: Project = project
+
+  override def getStatus: ServerStatus = status
 }

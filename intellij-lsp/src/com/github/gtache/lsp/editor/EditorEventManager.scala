@@ -146,24 +146,26 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def executeCommands(commands: Iterable[Command]): Unit = {
     pool(() => {
-      commands.map(c => {
-        val params = new ExecuteCommandParams()
-        params.setArguments(c.getArguments)
-        params.setCommand(c.getCommand)
-        requestManager.executeCommand(params)
-      }).foreach(f => {
-        if (f != null) {
-          try {
-            val ret = f.get(EXECUTE_COMMAND_TIMEOUT, TimeUnit.MILLISECONDS)
-            ret match {
-              case e: WorkspaceEdit => WorkspaceEditHandler.applyEdit(e, name = "Execute command")
-              case _ =>
+      if (!editor.isDisposed) {
+        commands.map(c => {
+          val params = new ExecuteCommandParams()
+          params.setArguments(c.getArguments)
+          params.setCommand(c.getCommand)
+          requestManager.executeCommand(params)
+        }).foreach(f => {
+          if (f != null) {
+            try {
+              val ret = f.get(EXECUTE_COMMAND_TIMEOUT, TimeUnit.MILLISECONDS)
+              ret match {
+                case e: WorkspaceEdit => WorkspaceEditHandler.applyEdit(e, name = "Execute command")
+                case _ =>
+              }
+            } catch {
+              case e: TimeoutException => LOG.warn(e)
             }
-          } catch {
-            case e: TimeoutException => LOG.warn(e)
           }
-        }
-      })
+        })
+      }
     })
   }
 
@@ -500,6 +502,67 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
+    * Returns the logical position given a mouse event
+    *
+    * @param e The event
+    * @return The position (or null if out of bounds)
+    */
+  private def getPos(e: EditorMouseEvent): LogicalPosition = {
+    val mousePos = e.getMouseEvent.getPoint
+    val editorPos = editor.xyToLogicalPosition(mousePos)
+    val doc = e.getEditor.getDocument
+    val maxLines = doc.getLineCount
+    if (editorPos.line >= maxLines) {
+      null
+    } else {
+      val minY = doc.getLineStartOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
+      val maxY = doc.getLineEndOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
+      if (editorPos.column < minY || editorPos.column > maxY) {
+        null
+      } else {
+        editorPos
+      }
+    }
+  }
+
+  /**
+    * Schedule the documentation using the Timer
+    *
+    * @param time      The current time
+    * @param editorPos The position in the editor
+    * @param point     The point where to show the doc
+    */
+  private def scheduleDocumentation(time: Long, editorPos: LogicalPosition, point: Point): Unit = {
+    if (editorPos != null) {
+      if (time - predTime > SCHEDULE_THRES) {
+        try {
+          hoverThread.schedule(new TimerTask {
+            override def run(): Unit = {
+              if (!editor.isDisposed) {
+                val curTime = System.nanoTime()
+                if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && (!isKeyPressed || isCtrlDown)) {
+                  val editorOffset = computableReadAction[Int](() => editor.logicalPositionToOffset(editorPos))
+                  val inHighlights = diagnosticsHighlights.filter(diag =>
+                    diag.rangeHighlighter.getStartOffset <= editorOffset &&
+                      editorOffset <= diag.rangeHighlighter.getEndOffset)
+                  if (inHighlights.isEmpty || isCtrlDown) {
+                    requestAndShowDoc(curTime, editorPos, point)
+                  }
+                }
+              }
+            }
+          }, POPUP_THRES)
+        } catch {
+          case e: Exception =>
+            hoverThread = new Timer("Hover", true) //Restart Timer if it crashes
+            LOG.warn(e)
+            LOG.warn("Hover timer reset")
+        }
+      }
+    }
+  }
+
+  /**
     * Immediately requests the server for documentation at the current editor position
     *
     * @param editor The editor
@@ -771,56 +834,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
-    * Applies the given edits to the document
-    *
-    * @param version    The version of the edits (will be discarded if older than current version)
-    * @param edits      The edits to apply
-    * @param name       The name of the edits (Rename, for example)
-    * @param closeAfter will close the file after edits if set to true
-    * @return True if the edits were applied, false otherwise
-    */
-  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
-    if (version >= this.version) {
-      val document = editor.getDocument
-      if (document.isWritable) {
-        val runnable = new Runnable {
-          override def run(): Unit = {
-            if (!editor.isDisposed) {
-              edits.foreach(edit => {
-                val text = edit.getNewText
-                val range = edit.getRange
-                val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
-                val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
-                if (text == "" || text == null) {
-                  document.deleteString(start, end)
-                } else if (end - start <= 0) {
-                  document.insertString(start, text)
-                } else {
-                  document.replaceString(start, end, text)
-                }
-              })
-              FileDocumentManager.getInstance().saveDocument(document)
-            }
-          }
-        }
-        writeAction(() => {
-          CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, name, "LSPPlugin", document)
-          if (closeAfter) {
-            FileEditorManager.getInstance(editor.getProject)
-              .closeFile(PsiDocumentManager.getInstance(editor.getProject).getPsiFile(editor.getDocument).getVirtualFile)
-          }
-        })
-      } else {
-        LOG.warn("Document is not writable")
-      }
-      true
-    } else {
-      LOG.warn("Version " + version + " is older than " + this.version)
-      false
-    }
-  }
-
-  /**
     * Indicates that the document will be saved
     */
   //TODO Manual
@@ -982,6 +995,56 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             applyEdit(edits = formatting.asScala, name = "Reformat document", closeAfter = closeAfter)))
       }
     })
+  }
+
+  /**
+    * Applies the given edits to the document
+    *
+    * @param version    The version of the edits (will be discarded if older than current version)
+    * @param edits      The edits to apply
+    * @param name       The name of the edits (Rename, for example)
+    * @param closeAfter will close the file after edits if set to true
+    * @return True if the edits were applied, false otherwise
+    */
+  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
+    if (version >= this.version) {
+      val document = editor.getDocument
+      if (document.isWritable) {
+        val runnable = new Runnable {
+          override def run(): Unit = {
+            if (!editor.isDisposed) {
+              edits.foreach(edit => {
+                val text = edit.getNewText
+                val range = edit.getRange
+                val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+                val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+                if (text == "" || text == null) {
+                  document.deleteString(start, end)
+                } else if (end - start <= 0) {
+                  document.insertString(start, text)
+                } else {
+                  document.replaceString(start, end, text)
+                }
+              })
+              FileDocumentManager.getInstance().saveDocument(document)
+            }
+          }
+        }
+        writeAction(() => {
+          CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, name, "LSPPlugin", document)
+          if (closeAfter) {
+            FileEditorManager.getInstance(editor.getProject)
+              .closeFile(PsiDocumentManager.getInstance(editor.getProject).getPsiFile(editor.getDocument).getVirtualFile)
+          }
+        })
+      } else {
+        LOG.warn("Document is not writable")
+      }
+      true
+    } else {
+      LOG.warn("Version " + version + " is older than " + this.version)
+      false
+    }
   }
 
   /**
@@ -1150,67 +1213,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       }
     } else {
       null
-    }
-  }
-
-  /**
-    * Returns the logical position given a mouse event
-    *
-    * @param e The event
-    * @return The position (or null if out of bounds)
-    */
-  private def getPos(e: EditorMouseEvent): LogicalPosition = {
-    val mousePos = e.getMouseEvent.getPoint
-    val editorPos = editor.xyToLogicalPosition(mousePos)
-    val doc = e.getEditor.getDocument
-    val maxLines = doc.getLineCount
-    if (editorPos.line >= maxLines) {
-      null
-    } else {
-      val minY = doc.getLineStartOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
-      val maxY = doc.getLineEndOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
-      if (editorPos.column < minY || editorPos.column > maxY) {
-        null
-      } else {
-        editorPos
-      }
-    }
-  }
-
-  /**
-    * Schedule the documentation using the Timer
-    *
-    * @param time      The current time
-    * @param editorPos The position in the editor
-    * @param point     The point where to show the doc
-    */
-  private def scheduleDocumentation(time: Long, editorPos: LogicalPosition, point: Point): Unit = {
-    if (editorPos != null) {
-      if (time - predTime > SCHEDULE_THRES) {
-        try {
-          hoverThread.schedule(new TimerTask {
-            override def run(): Unit = {
-              if (!editor.isDisposed) {
-                val curTime = System.nanoTime()
-                if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && (!isKeyPressed || isCtrlDown)) {
-                  val editorOffset = computableReadAction[Int](() => editor.logicalPositionToOffset(editorPos))
-                  val inHighlights = diagnosticsHighlights.filter(diag =>
-                    diag.rangeHighlighter.getStartOffset <= editorOffset &&
-                      editorOffset <= diag.rangeHighlighter.getEndOffset)
-                  if (inHighlights.isEmpty || isCtrlDown) {
-                    requestAndShowDoc(curTime, editorPos, point)
-                  }
-                }
-              }
-            }
-          }, POPUP_THRES)
-        } catch {
-          case e: Exception =>
-            hoverThread = new Timer("Hover", true) //Restart Timer if it crashes
-            LOG.warn(e)
-            LOG.warn("Hover timer reset")
-        }
-      }
     }
   }
 }

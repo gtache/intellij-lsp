@@ -3,6 +3,7 @@ package com.github.gtache.lsp.client.languageserver.wrapper
 import java.io.IOException
 import java.util.concurrent.CompletableFuture
 
+import com.github.gtache.lsp.ServerStatus
 import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.editor.EditorEventManager
@@ -17,6 +18,8 @@ import org.jetbrains.annotations.Nullable
   * A LanguageServerWrapper represents a connection to a LanguageServer and manages starting / stopping it as well as  connecting / disconnecting documents to it
   */
 trait LanguageServerWrapper {
+
+  def getStatus: ServerStatus
 
   def getServerDefinition: LanguageServerDefinition
 
