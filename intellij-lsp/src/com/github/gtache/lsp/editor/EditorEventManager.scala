@@ -218,21 +218,23 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     if (ctrlRange != null && isCtrlDown) {
       val loc = ctrlRange.loc
       invokeLater(() => {
-        val offset = editor.logicalPositionToOffset(editor.xyToLogicalPosition(e.getMouseEvent.getPoint))
-        if (identifier.getUri == loc.getUri && DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) <= offset && offset <= DocumentUtils.LSPPosToOffset(editor, loc.getRange.getEnd)) {
-          getReferences(offset)
-        } else {
-          val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(loc.getUri).getPath))
-          val descriptor = new OpenFileDescriptor(editor.getProject, file)
-          writeAction(() => {
-            val newEditor = FileEditorManager.getInstance(editor.getProject).openTextEditor(descriptor, true)
-            val startOffset = DocumentUtils.LSPPosToOffset(newEditor, loc.getRange.getStart)
-            newEditor.getCaretModel.getCurrentCaret.moveToOffset(startOffset)
-            newEditor.getSelectionModel.setSelection(startOffset, DocumentUtils.LSPPosToOffset(newEditor, loc.getRange.getEnd))
-          })
+        if (!editor.isDisposed) {
+          val offset = editor.logicalPositionToOffset(editor.xyToLogicalPosition(e.getMouseEvent.getPoint))
+          if (identifier.getUri == loc.getUri && DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) <= offset && offset <= DocumentUtils.LSPPosToOffset(editor, loc.getRange.getEnd)) {
+            getReferences(offset)
+          } else {
+            val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(loc.getUri).getPath))
+            val descriptor = new OpenFileDescriptor(editor.getProject, file)
+            writeAction(() => {
+              val newEditor = FileEditorManager.getInstance(editor.getProject).openTextEditor(descriptor, true)
+              val startOffset = DocumentUtils.LSPPosToOffset(newEditor, loc.getRange.getStart)
+              newEditor.getCaretModel.getCurrentCaret.moveToOffset(startOffset)
+              newEditor.getSelectionModel.setSelection(startOffset, DocumentUtils.LSPPosToOffset(newEditor, loc.getRange.getEnd))
+            })
+          }
+          ctrlRange.dispose()
+          ctrlRange = null
         }
-        ctrlRange.dispose()
-        ctrlRange = null
       })
     }
   }
@@ -244,8 +246,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def getReferences(offset: Int): Unit = {
     invokeLater(() => {
-      writeAction(() => editor.getCaretModel.getCurrentCaret.moveToOffset(offset))
-      getReferences(includeDefinition = false)
+      if (!editor.isDisposed) {
+        writeAction(() => editor.getCaretModel.getCurrentCaret.moveToOffset(offset))
+        getReferences(includeDefinition = false)
+      }
     })
   }
 
@@ -254,20 +258,22 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def getReferences(includeDefinition: Boolean = true): Unit = {
     pool(() => {
-      val context = new ReferenceContext(includeDefinition)
-      val params = new ReferenceParams(context)
-      params.setTextDocument(identifier)
-      val serverPos = computableReadAction(() => {
-        DocumentUtils.logicalToLSPPos(editor.getCaretModel.getCurrentCaret.getLogicalPosition)
-      })
-      params.setPosition(serverPos)
-      val future = requestManager.references(params)
-      if (future != null) {
-        val references = future.get(REFERENCES_TIMEOUT, TimeUnit.MILLISECONDS)
-        if (references != null) {
-          invokeLater(() => {
-            showReferences(references.asScala)
-          })
+      if (!editor.isDisposed) {
+        val context = new ReferenceContext(includeDefinition)
+        val params = new ReferenceParams(context)
+        params.setTextDocument(identifier)
+        val serverPos = computableReadAction(() => {
+          DocumentUtils.logicalToLSPPos(editor.getCaretModel.getCurrentCaret.getLogicalPosition)
+        })
+        params.setPosition(serverPos)
+        val future = requestManager.references(params)
+        if (future != null) {
+          val references = future.get(REFERENCES_TIMEOUT, TimeUnit.MILLISECONDS)
+          if (references != null) {
+            invokeLater(() => {
+              if (!editor.isDisposed) showReferences(references.asScala)
+            })
+          }
         }
       }
     })
@@ -276,6 +282,15 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private def showReferences(references: Iterable[Location]): Unit = {
     var name: String = ""
 
+    /**
+      * Opens the editor and get the required infos
+      *
+      * @param file              The file of the editor
+      * @param fileEditorManager The fileEditorManager
+      * @param start             The starting position
+      * @param end               The ending position
+      * @return (StartOffset, EndOffset, Name (of the symbol), line (containing the symbol))
+      */
     def openEditorAndGetOffsetsAndName(file: VirtualFile, fileEditorManager: FileEditorManager, start: Position, end: Position): (Int, Int, String, String) = {
       val descriptor = new OpenFileDescriptor(editor.getProject, file)
       computableWriteAction(() => {
@@ -296,6 +311,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       var endOffset: Int = -1
       var sample: String = ""
 
+      /**
+        * Opens the editor to retrieve the offsets, line, etc if needed
+        */
       def manageUnopenedEditor(): Unit = {
         val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(l.getUri).getPath))
         val fileEditorManager = FileEditorManager.getInstance(editor.getProject)
@@ -343,9 +361,16 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     showReferencesWindow(locations, name, caretPoint)
   }
 
+  /**
+    * Creates and shows the references window given the locations
+    *
+    * @param locations The locations : The file URI, the start offset, end offset, and the sample (line) containing the offsets
+    * @param name      The name of the symbol
+    * @param point     The point at which to show the window
+    */
   private def showReferencesWindow(locations: Array[(String, Int, Int, String)], name: String, point: Point): Unit = {
     if (locations.isEmpty) {
-      invokeLater(() => currentHint = createAndShowHint(editor, "No usages found", point))
+      invokeLater(() => if (!editor.isDisposed) currentHint = createAndShowHint(editor, "No usages found", point))
     } else {
       val frame = new JFrame()
       frame.setTitle("Usages of " + name + " (" + locations.length + (if (locations.length > 1) " usages found)" else " usage found"))
@@ -408,22 +433,24 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           val request = requestManager.documentHighlight(new TextDocumentPositionParams(identifier, LSPPos))
           if (request != null) {
             pool(() => {
-              try {
-                val resp = request.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS).asScala
-                invokeLater(() => resp.foreach(dh => {
-                  if (!editor.isDisposed) {
-                    val range = dh.getRange
-                    val kind = dh.getKind
-                    val startOffset = DocumentUtils.LSPPosToOffset(editor, range.getStart)
-                    val endOffset = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
-                    val colorScheme = editor.getColorsScheme
-                    val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION - 1, colorScheme.getAttributes(EditorColors.IDENTIFIER_UNDER_CARET_ATTRIBUTES), HighlighterTargetArea.EXACT_RANGE)
-                    selectedSymbHighlights.add(highlight)
-                  }
-                }))
-              } catch {
-                case e: TimeoutException =>
-                  LOG.warn(e)
+              if (!editor.isDisposed) {
+                try {
+                  val resp = request.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS).asScala
+                  invokeLater(() => resp.foreach(dh => {
+                    if (!editor.isDisposed) {
+                      val range = dh.getRange
+                      val kind = dh.getKind
+                      val startOffset = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+                      val endOffset = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+                      val colorScheme = editor.getColorsScheme
+                      val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION - 1, colorScheme.getAttributes(EditorColors.IDENTIFIER_UNDER_CARET_ATTRIBUTES), HighlighterTargetArea.EXACT_RANGE)
+                      selectedSymbHighlights.add(highlight)
+                    }
+                  }))
+                } catch {
+                  case e: TimeoutException =>
+                    LOG.warn(e)
+                }
               }
             })
           }
@@ -489,6 +516,13 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
+  /**
+    * Gets the hover request and shows it
+    *
+    * @param curTime   The current time
+    * @param editorPos The editor position
+    * @param point     The point at which to show the hint
+    */
   private def requestAndShowDoc(curTime: Long, editorPos: LogicalPosition, point: Point): Unit = {
     val serverPos = DocumentUtils.logicalToLSPPos(editorPos)
     val request = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
@@ -500,17 +534,19 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           val string = HoverHandler.getHoverString(hover)
           if (string != null && string != "") {
             if (isCtrlDown) {
-              invokeLater(() => currentHint = createAndShowHint(editor, string, point, flags = HintManager.HIDE_BY_OTHER_HINT))
+              invokeLater(() => if (!editor.isDisposed) currentHint = createAndShowHint(editor, string, point, flags = HintManager.HIDE_BY_OTHER_HINT))
               val loc = requestDefinition(serverPos)
               if (loc != null) {
                 invokeLater(() => {
-                  val startOffset = DocumentUtils.LSPPosToOffset(editor, range.getStart)
-                  val endOffset = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
-                  ctrlRange = CtrlRangeMarker(loc, editor, editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.HYPERLINK, editor.getColorsScheme.getAttributes(EditorColors.REFERENCE_HYPERLINK_COLOR), HighlighterTargetArea.EXACT_RANGE))
+                  if (!editor.isDisposed) {
+                    val startOffset = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+                    val endOffset = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+                    ctrlRange = CtrlRangeMarker(loc, editor, editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.HYPERLINK, editor.getColorsScheme.getAttributes(EditorColors.REFERENCE_HYPERLINK_COLOR), HighlighterTargetArea.EXACT_RANGE))
+                  }
                 })
               }
             } else {
-              invokeLater(() => currentHint = createAndShowHint(editor, string, point))
+              invokeLater(() => if (!editor.isDisposed) currentHint = createAndShowHint(editor, string, point))
             }
           } else {
             LOG.warn("Hover string returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
@@ -527,6 +563,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   }
 
+  /**
+    * Returns the position of the definition given a position in the editor
+    *
+    * @param position The position
+    * @return The location of the definition
+    */
   private def requestDefinition(position: Position): Location = {
     val params = new TextDocumentPositionParams(identifier, position)
     val request = requestManager.definition(params)
@@ -583,30 +625,32 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def documentChanged(event: DocumentEvent): Unit = {
     pool(() =>
-      if (event.getDocument == editor.getDocument) {
-        predTime = System.nanoTime() //So that there are no hover events while typing
-        changesParams.getTextDocument.setVersion({
-          version += 1
-          version - 1
-        })
-        syncKind match {
-          case TextDocumentSyncKind.None =>
-          case TextDocumentSyncKind.Incremental =>
-            val changeEvent = changesParams.getContentChanges.get(0)
-            val newText = event.getNewFragment
-            val offset = event.getOffset
-            val length = event.getNewLength
-            val range = computableReadAction(() => new Range(DocumentUtils.offsetToLSPPos(editor, offset), DocumentUtils.offsetToLSPPos(editor, offset + length)))
-            changeEvent.setRange(range)
-            changeEvent.setRangeLength(length)
-            changeEvent.setText(newText.toString)
+      if (!editor.isDisposed) {
+        if (event.getDocument == editor.getDocument) {
+          predTime = System.nanoTime() //So that there are no hover events while typing
+          changesParams.getTextDocument.setVersion({
+            version += 1
+            version - 1
+          })
+          syncKind match {
+            case TextDocumentSyncKind.None =>
+            case TextDocumentSyncKind.Incremental =>
+              val changeEvent = changesParams.getContentChanges.get(0)
+              val newText = event.getNewFragment
+              val offset = event.getOffset
+              val length = event.getNewLength
+              val range = computableReadAction(() => new Range(DocumentUtils.offsetToLSPPos(editor, offset), DocumentUtils.offsetToLSPPos(editor, offset + length)))
+              changeEvent.setRange(range)
+              changeEvent.setRangeLength(length)
+              changeEvent.setText(newText.toString)
 
-          case TextDocumentSyncKind.Full =>
-            changesParams.getContentChanges.get(0).setText(editor.getDocument.getText())
+            case TextDocumentSyncKind.Full =>
+              changesParams.getContentChanges.get(0).setText(editor.getDocument.getText())
+          }
+          requestManager.didChange(changesParams)
+        } else {
+          LOG.error("Wrong document for the EditorEventManager")
         }
-        requestManager.didChange(changesParams)
-      } else {
-        LOG.error("Wrong document for the EditorEventManager")
       })
   }
 
@@ -615,8 +659,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def documentSaved(): Unit = {
     pool(() => {
-      val params: DidSaveTextDocumentParams = new DidSaveTextDocumentParams(identifier, editor.getDocument.getText)
-      requestManager.didSave(params)
+      if (!editor.isDisposed) {
+        val params: DidSaveTextDocumentParams = new DidSaveTextDocumentParams(identifier, editor.getDocument.getText)
+        requestManager.didSave(params)
+      }
     })
   }
 
@@ -650,6 +696,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         import scala.collection.JavaConverters._
         val completion /*: CompletionList | List[CompletionItem] */ = if (res.isLeft) res.getLeft.asScala else res.getRight
 
+        /**
+          * Creates a LookupElement given a CompletionItem
+          *
+          * @param item The CompletionItem
+          * @return The corresponding LookupElement
+          */
         def createLookupItem(item: CompletionItem): LookupElement = {
           val addTextEdits = item.getAdditionalTextEdits
           val command = item.getCommand
@@ -719,51 +771,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
-    * Indicates that the document will be saved
-    */
-  //TODO Manual
-  def willSave(): Unit = {
-    if (wrapper.isWillSaveWaitUntil && !needSave) willSaveWaitUntil() else pool(() => {
-      requestManager.willSave(new WillSaveTextDocumentParams(identifier, TextDocumentSaveReason.Manual))
-    })
-  }
-
-  private def willSaveWaitUntil(): Unit = {
-    if (wrapper.isWillSaveWaitUntil) {
-      pool(() => {
-        val params = new WillSaveTextDocumentParams(identifier, TextDocumentSaveReason.Manual)
-        val future = requestManager.willSaveWaitUntil(params)
-        if (future != null) {
-          try {
-            val edits = future.get(WILLSAVE_TIMEOUT, TimeUnit.MILLISECONDS)
-            if (edits != null) {
-              invokeLater(() => applyEdit(edits = edits.asScala, name = "WaitUntil edits"))
-            }
-          } catch {
-            case e: TimeoutException =>
-              LOG.warn(e)
-          } finally {
-            needSave = true
-            saveDocument()
-          }
-        } else {
-          needSave = true
-          saveDocument()
-        }
-      })
-    } else {
-      LOG.error("Server doesn't support WillSaveWaitUntil")
-      needSave = true
-      saveDocument()
-    }
-  }
-
-  /**
     * Applies the given edits to the document
     *
-    * @param version The version of the edits (will be discarded if older than current version)
-    * @param edits   The edits to apply
-    * @param name    The name of the edits (Rename, for example)
+    * @param version    The version of the edits (will be discarded if older than current version)
+    * @param edits      The edits to apply
+    * @param name       The name of the edits (Rename, for example)
+    * @param closeAfter will close the file after edits if set to true
     * @return True if the edits were applied, false otherwise
     */
   def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
@@ -772,20 +785,22 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       if (document.isWritable) {
         val runnable = new Runnable {
           override def run(): Unit = {
-            edits.foreach(edit => {
-              val text = edit.getNewText
-              val range = edit.getRange
-              val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
-              val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
-              if (text == "" || text == null) {
-                document.deleteString(start, end)
-              } else if (end - start <= 0) {
-                document.insertString(start, text)
-              } else {
-                document.replaceString(start, end, text)
-              }
-            })
-            FileDocumentManager.getInstance().saveDocument(document)
+            if (!editor.isDisposed) {
+              edits.foreach(edit => {
+                val text = edit.getNewText
+                val range = edit.getRange
+                val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+                val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+                if (text == "" || text == null) {
+                  document.deleteString(start, end)
+                } else if (end - start <= 0) {
+                  document.insertString(start, text)
+                } else {
+                  document.replaceString(start, end, text)
+                }
+              })
+              FileDocumentManager.getInstance().saveDocument(document)
+            }
           }
         }
         writeAction(() => {
@@ -805,8 +820,50 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
-  private def saveDocument(): Unit = {
-    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
+  /**
+    * Indicates that the document will be saved
+    */
+  //TODO Manual
+  def willSave(): Unit = {
+    if (wrapper.isWillSaveWaitUntil && !needSave) willSaveWaitUntil() else pool(() => {
+      if (!editor.isDisposed) requestManager.willSave(new WillSaveTextDocumentParams(identifier, TextDocumentSaveReason.Manual))
+    })
+  }
+
+  /**
+    * If the server supports willSaveWaitUntil, the LSPVetoer will check if  a save is needed
+    * (needSave will basically alterate between true or false, so the document will always be saved)
+    */
+  private def willSaveWaitUntil(): Unit = {
+    if (wrapper.isWillSaveWaitUntil) {
+      pool(() => {
+        if (!editor.isDisposed) {
+          val params = new WillSaveTextDocumentParams(identifier, TextDocumentSaveReason.Manual)
+          val future = requestManager.willSaveWaitUntil(params)
+          if (future != null) {
+            try {
+              val edits = future.get(WILLSAVE_TIMEOUT, TimeUnit.MILLISECONDS)
+              if (edits != null) {
+                invokeLater(() => applyEdit(edits = edits.asScala, name = "WaitUntil edits"))
+              }
+            } catch {
+              case e: TimeoutException =>
+                LOG.warn(e)
+            } finally {
+              needSave = true
+              saveDocument()
+            }
+          } else {
+            needSave = true
+            saveDocument()
+          }
+        }
+      })
+    } else {
+      LOG.error("Server doesn't support WillSaveWaitUntil")
+      needSave = true
+      saveDocument()
+    }
   }
 
   /**
@@ -856,34 +913,38 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def diagnostics(diagnostics: Iterable[Diagnostic]): Unit = {
     pool(() => {
-      invokeLater(() => {
-        diagnosticsHighlights.foreach(highlight => editor.getMarkupModel.removeHighlighter(highlight.rangeHighlighter))
-        diagnosticsHighlights.clear()
-      })
-      for (diagnostic <- diagnostics) {
-        val code = diagnostic.getCode
-        val message = diagnostic.getMessage
-        val source = diagnostic.getSource
-        val range = diagnostic.getRange
-        val severity = diagnostic.getSeverity
-        val (start, end) = computableReadAction(() => (DocumentUtils.LSPPosToOffset(editor, range.getStart), DocumentUtils.LSPPosToOffset(editor, range.getEnd)))
-
-        val markupModel = editor.getMarkupModel
-        val colorScheme = editor.getColorsScheme
-
-        val (effectType, effectColor, layer) = severity match {
-          case null => null
-          case DiagnosticSeverity.Error => (EffectType.WAVE_UNDERSCORE, Color.RED, HighlighterLayer.ERROR)
-          case DiagnosticSeverity.Warning => (EffectType.WAVE_UNDERSCORE, Color.YELLOW, HighlighterLayer.WARNING)
-          case DiagnosticSeverity.Information => (EffectType.WAVE_UNDERSCORE, Color.GRAY, HighlighterLayer.WARNING)
-          case DiagnosticSeverity.Hint => (EffectType.BOLD_DOTTED_LINE, Color.GRAY, HighlighterLayer.WARNING)
-        }
+      if (!editor.isDisposed) {
         invokeLater(() => {
-          diagnosticsHighlights
-            .add(DiagnosticRangeHighlighter(markupModel.addRangeHighlighter(start, end, layer,
-              new TextAttributes(colorScheme.getDefaultForeground, colorScheme.getDefaultBackground, effectColor, effectType, Font.PLAIN), HighlighterTargetArea.EXACT_RANGE),
-              diagnostic))
+          diagnosticsHighlights.foreach(highlight => editor.getMarkupModel.removeHighlighter(highlight.rangeHighlighter))
+          diagnosticsHighlights.clear()
         })
+        for (diagnostic <- diagnostics) {
+          val code = diagnostic.getCode
+          val message = diagnostic.getMessage
+          val source = diagnostic.getSource
+          val range = diagnostic.getRange
+          val severity = diagnostic.getSeverity
+          val (start, end) = computableReadAction(() => (DocumentUtils.LSPPosToOffset(editor, range.getStart), DocumentUtils.LSPPosToOffset(editor, range.getEnd)))
+
+          val markupModel = editor.getMarkupModel
+          val colorScheme = editor.getColorsScheme
+
+          val (effectType, effectColor, layer) = severity match {
+            case null => null
+            case DiagnosticSeverity.Error => (EffectType.WAVE_UNDERSCORE, Color.RED, HighlighterLayer.ERROR)
+            case DiagnosticSeverity.Warning => (EffectType.WAVE_UNDERSCORE, Color.YELLOW, HighlighterLayer.WARNING)
+            case DiagnosticSeverity.Information => (EffectType.WAVE_UNDERSCORE, Color.GRAY, HighlighterLayer.WARNING)
+            case DiagnosticSeverity.Hint => (EffectType.BOLD_DOTTED_LINE, Color.GRAY, HighlighterLayer.WARNING)
+          }
+          invokeLater(() => {
+            if (!editor.isDisposed) {
+              diagnosticsHighlights
+                .add(DiagnosticRangeHighlighter(markupModel.addRangeHighlighter(start, end, layer,
+                  new TextAttributes(colorScheme.getDefaultForeground, colorScheme.getDefaultBackground, effectColor, effectType, Font.PLAIN), HighlighterTargetArea.EXACT_RANGE),
+                  diagnostic))
+            }
+          })
+        }
       }
     })
   }
@@ -897,9 +958,11 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def rename(renameTo: String): Unit = {
     val servPos = DocumentUtils.logicalToLSPPos(editor.offsetToLogicalPosition(editor.getCaretModel.getCurrentCaret.getOffset))
     pool(() => {
-      val params = new RenameParams(identifier, servPos, renameTo)
-      val request = requestManager.rename(params)
-      if (request != null) request.thenAccept(res => WorkspaceEditHandler.applyEdit(res, "Rename to " + renameTo))
+      if (!editor.isDisposed) {
+        val params = new RenameParams(identifier, servPos, renameTo)
+        val request = requestManager.rename(params)
+        if (request != null) request.thenAccept(res => WorkspaceEditHandler.applyEdit(res, "Rename to " + renameTo))
+      }
     })
   }
 
@@ -908,14 +971,16 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def reformat(closeAfter: Boolean = false): Unit = {
     pool(() => {
-      val params = new DocumentFormattingParams()
-      params.setTextDocument(identifier)
-      val options = new FormattingOptions()
-      params.setOptions(options)
-      val request = requestManager.formatting(params)
-      if (request != null) request.thenAccept(formatting =>
-        invokeLater(() =>
-          applyEdit(edits = formatting.asScala, name = "Reformat document", closeAfter = closeAfter)))
+      if (!editor.isDisposed) {
+        val params = new DocumentFormattingParams()
+        params.setTextDocument(identifier)
+        val options = new FormattingOptions()
+        params.setOptions(options)
+        val request = requestManager.formatting(params)
+        if (request != null) request.thenAccept(formatting =>
+          invokeLater(() =>
+            applyEdit(edits = formatting.asScala, name = "Reformat document", closeAfter = closeAfter)))
+      }
     })
   }
 
@@ -924,23 +989,25 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def reformatSelection(): Unit = {
     pool(() => {
-      val params = new DocumentRangeFormattingParams()
-      params.setTextDocument(identifier)
-      val selectionModel = editor.getSelectionModel
-      val start = selectionModel.getSelectionStart
-      val end = selectionModel.getSelectionEnd
-      val startingPos = DocumentUtils.offsetToLSPPos(editor, start)
-      val endPos = DocumentUtils.offsetToLSPPos(editor, end)
-      params.setRange(new Range(startingPos, endPos))
-      val options = new FormattingOptions() //TODO
-      params.setOptions(options)
-      val request = requestManager.rangeFormatting(params)
-      if (request != null) request.thenAccept(formatting => invokeLater(() => applyEdit(edits = formatting.asScala, name = "Reformat selection")))
+      if (!editor.isDisposed) {
+        val params = new DocumentRangeFormattingParams()
+        params.setTextDocument(identifier)
+        val selectionModel = editor.getSelectionModel
+        val start = selectionModel.getSelectionStart
+        val end = selectionModel.getSelectionEnd
+        val startingPos = DocumentUtils.offsetToLSPPos(editor, start)
+        val endPos = DocumentUtils.offsetToLSPPos(editor, end)
+        params.setRange(new Range(startingPos, endPos))
+        val options = new FormattingOptions() //TODO
+        params.setOptions(options)
+        val request = requestManager.rangeFormatting(params)
+        if (request != null) request.thenAccept(formatting => invokeLater(() => applyEdit(edits = formatting.asScala, name = "Reformat selection")))
+      }
     })
   }
 
   /**
-    * Calls completion or signatureHelp if the character typed was a trigger characte
+    * Calls onTypeFormatting or signatureHelp if the character typed was a trigger character
     *
     * @param c The character just typed
     */
@@ -954,20 +1021,27 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
+  /**
+    * Formats the document when a trigger character is typed
+    *
+    * @param c The trigger character
+    */
   private def onTypeFormatting(c: String): Unit = {
     pool(() => {
-      val params = new DocumentOnTypeFormattingParams()
-      params.setCh(c)
-      params.setPosition(computableReadAction(() => DocumentUtils.logicalToLSPPos(editor.getCaretModel.getCurrentCaret.getLogicalPosition)))
-      params.setTextDocument(identifier)
-      params.setOptions(new FormattingOptions())
-      val future = requestManager.onTypeFormatting(params)
-      if (future != null) {
-        try {
-          val edits = future.get(FORMATTING_TIMEOUT, TimeUnit.MILLISECONDS)
-          invokeLater(() => applyEdit(edits = edits.asScala, name = "On type formatting"))
-        } catch {
-          case e: TimeoutException => LOG.warn(e)
+      if (!editor.isDisposed) {
+        val params = new DocumentOnTypeFormattingParams()
+        params.setCh(c)
+        params.setPosition(computableReadAction(() => DocumentUtils.logicalToLSPPos(editor.getCaretModel.getCurrentCaret.getLogicalPosition)))
+        params.setTextDocument(identifier)
+        params.setOptions(new FormattingOptions())
+        val future = requestManager.onTypeFormatting(params)
+        if (future != null) {
+          try {
+            val edits = future.get(FORMATTING_TIMEOUT, TimeUnit.MILLISECONDS)
+            invokeLater(() => applyEdit(edits = edits.asScala, name = "On type formatting"))
+          } catch {
+            case e: TimeoutException => LOG.warn(e)
+          }
         }
       }
     })
@@ -981,33 +1055,44 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     val point = editor.logicalPositionToXY(lPos)
     val params = new TextDocumentPositionParams(identifier, DocumentUtils.logicalToLSPPos(lPos))
     pool(() => {
-      val future = requestManager.signatureHelp(params)
-      if (future != null) {
-        try {
-          val signature = future.get(SIGNATURE_TIMEOUT, TimeUnit.MILLISECONDS)
-          if (signature != null) {
-            val signatures = signature.getSignatures.asScala
-            if (signatures != null && signatures.nonEmpty) {
-              val activeSignatureIndex = signature.getActiveSignature
-              val activeParameterIndex = signature.getActiveParameter
-              val activeParameter = signatures(activeSignatureIndex).getParameters.get(activeParameterIndex).getLabel
-              val builder = StringBuilder.newBuilder
-              builder.append("<html>")
-              signatures.take(activeSignatureIndex).foreach(sig => builder.append(sig.getLabel).append("<br>"))
-              builder.append("<i>").append(signatures(activeSignatureIndex).getLabel
-                .replace(activeParameter, "<b><font color=\"yellow\">" + activeParameter + "</font></b>")).append("</i>")
-              signatures.drop(activeSignatureIndex + 1).foreach(sig => builder.append("<br>").append(sig.getLabel))
-              builder.append("</html>")
-              invokeLater(() => currentHint = createAndShowHint(editor, builder.toString(), point, HintManager.UNDER, HintManager.HIDE_BY_OTHER_HINT))
+      if (!editor.isDisposed) {
+        val future = requestManager.signatureHelp(params)
+        if (future != null) {
+          try {
+            val signature = future.get(SIGNATURE_TIMEOUT, TimeUnit.MILLISECONDS)
+            if (signature != null) {
+              val signatures = signature.getSignatures.asScala
+              if (signatures != null && signatures.nonEmpty) {
+                val activeSignatureIndex = signature.getActiveSignature
+                val activeParameterIndex = signature.getActiveParameter
+                val activeParameter = signatures(activeSignatureIndex).getParameters.get(activeParameterIndex).getLabel
+                val builder = StringBuilder.newBuilder
+                builder.append("<html>")
+                signatures.take(activeSignatureIndex).foreach(sig => builder.append(sig.getLabel).append("<br>"))
+                builder.append("<i>").append(signatures(activeSignatureIndex).getLabel
+                  .replace(activeParameter, "<b><font color=\"yellow\">" + activeParameter + "</font></b>")).append("</i>")
+                signatures.drop(activeSignatureIndex + 1).foreach(sig => builder.append("<br>").append(sig.getLabel))
+                builder.append("</html>")
+                invokeLater(() => currentHint = createAndShowHint(editor, builder.toString(), point, HintManager.UNDER, HintManager.HIDE_BY_OTHER_HINT))
+              }
             }
+          } catch {
+            case e: TimeoutException => LOG.warn(e)
           }
-        } catch {
-          case e: TimeoutException => LOG.warn(e)
         }
       }
     })
   }
 
+  /**
+    * Returns a Runnable used to apply the given edits and save the document
+    * Used by WorkspaceEditHandler (allows to revert a rename for example)
+    *
+    * @param version The edit version
+    * @param edits   The edits
+    * @param name    The name of the edit
+    * @return The runnable
+    */
   def getEditsRunnable(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Runnable = {
     if (version >= this.version) {
       val document = editor.getDocument
@@ -1026,7 +1111,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               document.replaceString(start, end, text)
             }
           })
-          FileDocumentManager.getInstance().saveDocument(document)
+          saveDocument()
         }
       } else {
         LOG.warn("Document is not writable")
@@ -1036,6 +1121,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       LOG.warn("Version " + version + " is older than " + this.version)
       null
     }
+  }
+
+  private def saveDocument(): Unit = {
+    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
   }
 
   /**
@@ -1064,6 +1153,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
+  /**
+    * Returns the logical position given a mouse event
+    *
+    * @param e The event
+    * @return The position (or null if out of bounds)
+    */
   private def getPos(e: EditorMouseEvent): LogicalPosition = {
     val mousePos = e.getMouseEvent.getPoint
     val editorPos = editor.xyToLogicalPosition(mousePos)
@@ -1082,35 +1177,36 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
+  /**
+    * Schedule the documentation using the Timer
+    *
+    * @param time      The current time
+    * @param editorPos The position in the editor
+    * @param point     The point where to show the doc
+    */
   private def scheduleDocumentation(time: Long, editorPos: LogicalPosition, point: Point): Unit = {
     if (editorPos != null) {
       if (time - predTime > SCHEDULE_THRES) {
         try {
           hoverThread.schedule(new TimerTask {
             override def run(): Unit = {
-              val curTime = System.nanoTime()
-              if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && (!isKeyPressed || isCtrlDown)) {
-                val editorOffset = computableReadAction[Int](() => editor.logicalPositionToOffset(editorPos))
-                val inHighlights = diagnosticsHighlights.filter(diag =>
-                  diag.rangeHighlighter.getStartOffset <= editorOffset &&
-                    editorOffset <= diag.rangeHighlighter.getEndOffset)
-                  .toList.sortBy(diag => diag.rangeHighlighter.getLayer)
-                if (inHighlights.nonEmpty && !isCtrlDown) {
-                  /*                  val first = inHighlights.head //TODO should be already managed by LSPInspection
-                                    val diagnostic = first.diagnostic
-                                    val message = diagnostic.getMessage
-                                    val code = diagnostic.getCode
-                                    val source = diagnostic.getSource
-                                    invokeLater(() => currentHint = createAndShowHint(editor, if (source != "" && source != null) source + " : " + message else message, point))*/
-                } else {
-                  requestAndShowDoc(curTime, editorPos, point)
+              if (!editor.isDisposed) {
+                val curTime = System.nanoTime()
+                if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && (!isKeyPressed || isCtrlDown)) {
+                  val editorOffset = computableReadAction[Int](() => editor.logicalPositionToOffset(editorPos))
+                  val inHighlights = diagnosticsHighlights.filter(diag =>
+                    diag.rangeHighlighter.getStartOffset <= editorOffset &&
+                      editorOffset <= diag.rangeHighlighter.getEndOffset)
+                  if (inHighlights.isEmpty || isCtrlDown) {
+                    requestAndShowDoc(curTime, editorPos, point)
+                  }
                 }
               }
             }
           }, POPUP_THRES)
         } catch {
           case e: Exception =>
-            hoverThread = new Timer("Hover", true)
+            hoverThread = new Timer("Hover", true) //Restart Timer if it crashes
             LOG.warn(e)
             LOG.warn("Hover timer reset")
         }
