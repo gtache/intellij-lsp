@@ -24,6 +24,7 @@ trait LanguageServerWrapper {
   def getServerDefinition: LanguageServerDefinition
 
   def getProject: Project
+
   /**
     * Register a capability for the language server
     *
@@ -101,6 +102,8 @@ trait LanguageServerWrapper {
   def logMessage(message: Message): Unit
 
   def stop(): Unit
+
+  def crashed(e: Exception): Unit
 
 
 }

@@ -19,8 +19,6 @@ object LSPIconProvider {
 
 trait LSPIconProvider {
 
-  import LSPIconProvider._
-
   def getCompletionIcon(kind: CompletionItemKind): Icon = LSPDefaultIconProvider.getCompletionIcon(kind)
 
   def getStatusIcons : Map[ServerStatus, Icon] = LSPDefaultIconProvider.getStatusIcons

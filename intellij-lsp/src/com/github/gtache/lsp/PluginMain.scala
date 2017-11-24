@@ -224,7 +224,7 @@ object PluginMain {
             }).toArray.asInstanceOf[Array[NavigationItem]]
           } catch {
             case e: TimeoutException => LOG.warn(e)
-              Array()
+              Array.empty
           }
         } else Array.empty
       case None => LOG.info("No wrapper for project " + project.getBasePath)

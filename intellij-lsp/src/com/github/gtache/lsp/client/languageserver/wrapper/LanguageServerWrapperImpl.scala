@@ -1,11 +1,10 @@
 /* Adapted from lsp4e */
 package com.github.gtache.lsp.client.languageserver.wrapper
 
-import java.io.IOException
+import java.io.{File, IOException}
 import java.net.URI
 import java.util.concurrent._
 
-import com.github.gtache.lsp.client.connection.StreamConnectionProvider
 import com.github.gtache.lsp.client.languageserver.ServerOptions
 import com.github.gtache.lsp.client.languageserver.requestmanager.{RequestManager, SimpleRequestManager}
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
@@ -17,7 +16,10 @@ import com.github.gtache.lsp.utils.FileUtils
 import com.github.gtache.lsp.{LSPServerStatusWidget, ServerStatus}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.fileEditor.{FileEditorManager, TextEditor}
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.vfs.LocalFileSystem
 import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException
 import org.eclipse.lsp4j.jsonrpc.messages.{Either, Message, ResponseErrorCode, ResponseMessage}
@@ -63,6 +65,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private val connectedEditors: mutable.Map[String, EditorEventManager] = mutable.HashMap()
   private val LOG: Logger = Logger.getInstance(classOf[LanguageServerWrapperImpl])
   private val statusWidget: LSPServerStatusWidget = LSPServerStatusWidget.createWidgetFor(this)
+  private var crashCount = 0
   private var status: ServerStatus = ServerStatus.STOPPED
   private var languageServer: LanguageServer = _
   private var client: LanguageClientImpl = _
@@ -156,7 +159,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         statusWidget.setStatus(status)
         initializeResult = res
         LOG.info("Got initializeResult for " + rootPath)
-        requestManager = new SimpleRequestManager(languageServer, client, getServerCapabilities)
+        requestManager = new SimpleRequestManager(this, languageServer, client, getServerCapabilities)
         res
       })
       initializeStartTime = System.currentTimeMillis
@@ -168,6 +171,16 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     * @return whether the underlying connection to language languageServer is still active
     */
   def isActive: Boolean = this.launcherFuture != null && !this.launcherFuture.isDone && !this.launcherFuture.isCancelled
+
+
+  def connect(uri: String): Unit = {
+    val editors = FileEditorManager.getInstance(project).getAllEditors(LocalFileSystem.getInstance().findFileByIoFile(new File(uri)))
+      .collect { case t: TextEditor => t.getEditor }
+    if (editors.nonEmpty) {
+      connect(editors.head)
+    }
+
+  }
 
   /**
     * Connects an editor to the languageServer
@@ -202,6 +215,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
               selectionListener.setManager(manager)
               manager.registerListeners()
               this.connectedEditors.put(uri, manager)
+              manager.documentOpened()
               LOG.info("Created a manager for " + uri)
             }
           }
@@ -344,4 +358,15 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   override def getProject: Project = project
 
   override def getStatus: ServerStatus = status
+
+  override def crashed(e: Exception): Unit = {
+    crashCount += 1
+    if (crashCount < 5) {
+      val editors = connectedEditors.clone().toMap.keys
+      stop()
+      editors.foreach(uri => connect(uri))
+    } else {
+      Messages.showErrorDialog("LanguageServer for definition " + serverDefinition + " keeps crashing due to \n" + e.getMessage + "\nCheck settings", "LSP error")
+    }
+  }
 }

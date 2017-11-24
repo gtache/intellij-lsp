@@ -126,17 +126,13 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private var hoverThread = new Timer("Hover", true)
   private var version: Int = -1
   private var predTime: Long = -1L
-  private var isOpen: Boolean = true
+  private var isOpen: Boolean = false
   private var mouseInEditor: Boolean = true
   private var currentHint: Hint = _
 
   uriToManager.put(FileUtils.editorToURIString(editor), this)
   editorToManager.put(editor, this)
   changesParams.getTextDocument.setUri(identifier.getUri)
-  pool(() => requestManager.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(identifier.getUri, wrapper.serverDefinition.id, {
-    version += 1
-    version - 1
-  }, editor.getDocument.getText))))
 
 
   /**
@@ -563,23 +559,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
-    * Immediately requests the server for documentation at the current editor position
-    *
-    * @param editor The editor
-    */
-  def quickDoc(editor: Editor): Unit = {
-    if (editor == this.editor) {
-      val caretPos = editor.getCaretModel.getLogicalPosition
-      val pointPos = editor.logicalPositionToXY(caretPos)
-      val currentTime = System.nanoTime()
-      pool(() => requestAndShowDoc(currentTime, caretPos, pointPos))
-      predTime = currentTime
-    } else {
-      LOG.warn("Not same editor!")
-    }
-  }
-
-  /**
     * Gets the hover request and shows it
     *
     * @param curTime   The current time
@@ -650,6 +629,23 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       }
     } else {
       null
+    }
+  }
+
+  /**
+    * Immediately requests the server for documentation at the current editor position
+    *
+    * @param editor The editor
+    */
+  def quickDoc(editor: Editor): Unit = {
+    if (editor == this.editor) {
+      val caretPos = editor.getCaretModel.getLogicalPosition
+      val pointPos = editor.logicalPositionToXY(caretPos)
+      val currentTime = System.nanoTime()
+      pool(() => requestAndShowDoc(currentTime, caretPos, pointPos))
+      predTime = currentTime
+    } else {
+      LOG.warn("Not same editor!")
     }
   }
 
@@ -725,6 +721,22 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       if (!editor.isDisposed) {
         val params: DidSaveTextDocumentParams = new DidSaveTextDocumentParams(identifier, editor.getDocument.getText)
         requestManager.didSave(params)
+      }
+    })
+  }
+
+  def documentOpened(): Unit = {
+    pool(() => {
+      if (!editor.isDisposed) {
+        if (isOpen) {
+          LOG.warn("Editor " + editor + " was already open")
+        } else {
+          requestManager.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(identifier.getUri, wrapper.serverDefinition.id, {
+            version += 1
+            version - 1
+          }, editor.getDocument.getText)))
+          isOpen = true
+        }
       }
     })
   }
@@ -880,6 +892,60 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
+    * Applies the given edits to the document
+    *
+    * @param version    The version of the edits (will be discarded if older than current version)
+    * @param edits      The edits to apply
+    * @param name       The name of the edits (Rename, for example)
+    * @param closeAfter will close the file after edits if set to true
+    * @return True if the edits were applied, false otherwise
+    */
+  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
+    if (version >= this.version) {
+      val document = editor.getDocument
+      if (document.isWritable) {
+        val runnable = new Runnable {
+          override def run(): Unit = {
+            if (!editor.isDisposed) {
+              edits.foreach(edit => {
+                val text = edit.getNewText
+                val range = edit.getRange
+                val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+                val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+                if (text == "" || text == null) {
+                  document.deleteString(start, end)
+                } else if (end - start <= 0) {
+                  document.insertString(start, text)
+                } else {
+                  document.replaceString(start, end, text)
+                }
+              })
+              FileDocumentManager.getInstance().saveDocument(document)
+            }
+          }
+        }
+        writeAction(() => {
+          CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, name, "LSPPlugin", document)
+          if (closeAfter) {
+            FileEditorManager.getInstance(editor.getProject)
+              .closeFile(PsiDocumentManager.getInstance(editor.getProject).getPsiFile(editor.getDocument).getVirtualFile)
+          }
+        })
+      } else {
+        LOG.warn("Document is not writable")
+      }
+      true
+    } else {
+      LOG.warn("Version " + version + " is older than " + this.version)
+      false
+    }
+  }
+
+  private def saveDocument(): Unit = {
+    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
+  }
+
+  /**
     * Returns the references given the position of the word to search for
     *
     * @param pos A logical position
@@ -995,56 +1061,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             applyEdit(edits = formatting.asScala, name = "Reformat document", closeAfter = closeAfter)))
       }
     })
-  }
-
-  /**
-    * Applies the given edits to the document
-    *
-    * @param version    The version of the edits (will be discarded if older than current version)
-    * @param edits      The edits to apply
-    * @param name       The name of the edits (Rename, for example)
-    * @param closeAfter will close the file after edits if set to true
-    * @return True if the edits were applied, false otherwise
-    */
-  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
-    if (version >= this.version) {
-      val document = editor.getDocument
-      if (document.isWritable) {
-        val runnable = new Runnable {
-          override def run(): Unit = {
-            if (!editor.isDisposed) {
-              edits.foreach(edit => {
-                val text = edit.getNewText
-                val range = edit.getRange
-                val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
-                val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
-                if (text == "" || text == null) {
-                  document.deleteString(start, end)
-                } else if (end - start <= 0) {
-                  document.insertString(start, text)
-                } else {
-                  document.replaceString(start, end, text)
-                }
-              })
-              FileDocumentManager.getInstance().saveDocument(document)
-            }
-          }
-        }
-        writeAction(() => {
-          CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, name, "LSPPlugin", document)
-          if (closeAfter) {
-            FileEditorManager.getInstance(editor.getProject)
-              .closeFile(PsiDocumentManager.getInstance(editor.getProject).getPsiFile(editor.getDocument).getVirtualFile)
-          }
-        })
-      } else {
-        LOG.warn("Document is not writable")
-      }
-      true
-    } else {
-      LOG.warn("Version " + version + " is older than " + this.version)
-      false
-    }
   }
 
   /**
@@ -1184,10 +1200,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       LOG.warn("Version " + version + " is older than " + this.version)
       null
     }
-  }
-
-  private def saveDocument(): Unit = {
-    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
   }
 
   /**
