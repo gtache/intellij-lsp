@@ -19,7 +19,7 @@ import com.intellij.openapi.vfs.VirtualFile
   * @param line      Its line
   * @param col       Its column
   */
-case class LSPNavigationItem(name: String, container: String, project: Project, file: VirtualFile, line: Int, col: Int) extends OpenFileDescriptor(project, file, line, col) with NavigationItem {
+case class LSPNavigationItem(name: String, container: String, project: Project, file: VirtualFile, line: Int, col: Int, icon: Icon = null) extends OpenFileDescriptor(project, file, line, col) with NavigationItem {
 
   private val LOG: Logger = Logger.getInstance(classOf[LSPNavigationItem])
 
@@ -31,6 +31,6 @@ case class LSPNavigationItem(name: String, container: String, project: Project, 
 
     override def getLocationString: String = (if (container != null) container else "") + name
 
-    override def getIcon(unused: Boolean): Icon = if (unused) null else AllIcons.Icon_small
+    override def getIcon(unused: Boolean): Icon = if (unused) null else icon
   }
 }

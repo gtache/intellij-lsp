@@ -5,6 +5,7 @@ import java.io.IOException
 import java.net.URI
 import java.util.concurrent._
 
+import com.github.gtache.lsp.client.connection.StreamConnectionProvider
 import com.github.gtache.lsp.client.languageserver.ServerOptions
 import com.github.gtache.lsp.client.languageserver.requestmanager.{RequestManager, SimpleRequestManager}
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
@@ -112,6 +113,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   @throws[IOException]
   def start(): Unit = {
     if (!started) {
+      serverDefinition.createConnectionProvider(rootPath)
       status = ServerStatus.STARTING
       statusWidget.setStatus(status)
       val (inputStream, outputStream) = serverDefinition.start()

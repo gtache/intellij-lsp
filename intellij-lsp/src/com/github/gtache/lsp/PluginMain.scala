@@ -10,7 +10,7 @@ import com.github.gtache.lsp.contributors.LSPNavigationItem
 import com.github.gtache.lsp.editor.listeners.{EditorListener, FileDocumentManagerListenerImpl, VFSListener}
 import com.github.gtache.lsp.requests.Timeout
 import com.github.gtache.lsp.settings.LSPState
-import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils}
+import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils, GUIUtils}
 import com.intellij.AppTopics
 import com.intellij.navigation.NavigationItem
 import com.intellij.openapi.application.ApplicationManager
@@ -199,15 +199,28 @@ object PluginMain {
     projectToLanguageWrappers.get(FileUtils.pathToUri(project.getBasePath)) match {
       case Some(set) =>
         val params: WorkspaceSymbolParams = new WorkspaceSymbolParams(name)
-        val res = set.filter(w => w.getStatus == ServerStatus.STARTED && w.getRequestManager != null).map(f => f.getRequestManager.symbol(params)).toSet
-        if (!res.contains(null)) {
+        val servDefToReq = set.collect {
+          case w: LanguageServerWrapper if w.getStatus == ServerStatus.STARTED && w.getRequestManager != null =>
+            (w.getServerDefinition, w.getRequestManager.symbol(params))
+        }.toSet.filter(w => w._2 != null)
+        if (!servDefToReq.contains(null)) {
           try {
             import scala.collection.JavaConverters._
-            val arr = res.flatMap(r => r.get(Timeout.SYMBOLS_TIMEOUT, TimeUnit.MILLISECONDS).asInstanceOf[java.util.List[SymbolInformation]].asScala.toSet)
-            arr.filter(s => if (onlyKind.isEmpty) true else onlyKind.contains(s.getKind)).map(f => {
-              val start = f.getLocation.getRange.getStart
-              val uri = FileUtils.URIToVFS(f.getLocation.getUri)
-              LSPNavigationItem(f.getName, f.getContainerName, project, uri, start.getLine, start.getCharacter)
+            val servDefToSymb = servDefToReq.map(r => {
+              val symbols = r._2.get(Timeout.SYMBOLS_TIMEOUT, TimeUnit.MILLISECONDS)
+              (r._1, if (symbols != null) symbols.asScala
+                .filter(s => if (onlyKind.isEmpty) true else onlyKind.contains(s.getKind)) else null)
+            }
+            ).filter(r => r._2 != null)
+            servDefToSymb.flatMap(res => {
+              val definition = res._1
+              val symbols = res._2
+              symbols.map(symb => {
+                val start = symb.getLocation.getRange.getStart
+                val uri = FileUtils.URIToVFS(symb.getLocation.getUri)
+                val iconProvider = GUIUtils.getIconProviderFor(definition)
+                LSPNavigationItem(symb.getName, symb.getContainerName, project, uri, start.getLine, start.getCharacter, iconProvider.getSymbolIcon(symb.getKind))
+              })
             }).toArray.asInstanceOf[Array[NavigationItem]]
           } catch {
             case e: TimeoutException => LOG.warn(e)
