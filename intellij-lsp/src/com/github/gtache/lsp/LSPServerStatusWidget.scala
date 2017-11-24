@@ -3,6 +3,7 @@ package com.github.gtache.lsp
 import java.awt.event.MouseEvent
 import javax.swing.Icon
 
+import com.github.gtache.lsp.client.languageserver.ServerStatus
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.utils.GUIUtils
 import com.intellij.openapi.project.Project

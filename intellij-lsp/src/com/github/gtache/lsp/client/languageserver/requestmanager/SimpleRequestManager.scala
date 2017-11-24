@@ -2,7 +2,7 @@ package com.github.gtache.lsp.client.languageserver.requestmanager
 
 import java.util.concurrent.CompletableFuture
 
-import com.github.gtache.lsp.ServerStatus
+import com.github.gtache.lsp.client.languageserver.ServerStatus
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.intellij.openapi.diagnostic.Logger
 import org.eclipse.lsp4j._

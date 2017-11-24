@@ -1,9 +1,8 @@
 package com.github.gtache.lsp
 
-import java.io.IOException
 import java.util.concurrent.{TimeUnit, TimeoutException}
 
-import com.github.gtache.lsp.client.MessageDialog
+import com.github.gtache.lsp.client.languageserver.ServerStatus
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.client.languageserver.wrapper.{LanguageServerWrapper, LanguageServerWrapperImpl}
 import com.github.gtache.lsp.contributors.LSPNavigationItem
@@ -130,23 +129,7 @@ object PluginMain {
                   LOG.info("Wrapper already existing for " + ext + " , " + rootUri)
               }
               LOG.info("Adding file " + file.getName)
-              try {
-                wrapper.connect(editor)
-              } catch {
-                case io: IOException =>
-                  MessageDialog.main("There is a configuration error for the language server with extension " + ext + " : " + io.getMessage)
-                  wrapper.stop()
-                  LOG.warn(io)
-                  extToLanguageWrapper.remove((ext, rootUri))
-                  projectToLanguageWrappers.get(rootUri).foreach(set => set.remove(wrapper))
-                  extToServerDefinition = extToServerDefinition.filter(s => s._1 != ext)
-                case e: Exception =>
-                  wrapper.stop()
-                  LOG.error(e)
-                  extToLanguageWrapper.remove((ext, rootUri))
-                  projectToLanguageWrappers(rootUri).remove(wrapper)
-                  extToServerDefinition = extToServerDefinition.filter(s => s._1 != ext)
-              }
+              wrapper.connect(editor)
             }
           })
         }

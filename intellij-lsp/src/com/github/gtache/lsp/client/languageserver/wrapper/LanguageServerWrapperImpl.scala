@@ -5,7 +5,7 @@ import java.io.{File, IOException}
 import java.net.URI
 import java.util.concurrent._
 
-import com.github.gtache.lsp.client.languageserver.ServerOptions
+import com.github.gtache.lsp.client.languageserver.{ServerOptions, ServerStatus}
 import com.github.gtache.lsp.client.languageserver.requestmanager.{RequestManager, SimpleRequestManager}
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.client.{DynamicRegistrationMethods, LanguageClientImpl}
@@ -13,7 +13,7 @@ import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.lsp.requests.Timeout
 import com.github.gtache.lsp.utils.FileUtils
-import com.github.gtache.lsp.{LSPServerStatusWidget, ServerStatus}
+import com.github.gtache.lsp.LSPServerStatusWidget
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.{FileEditorManager, TextEditor}

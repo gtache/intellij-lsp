@@ -3,7 +3,7 @@ package com.github.gtache.lsp.client.languageserver.wrapper
 import java.io.IOException
 import java.util.concurrent.CompletableFuture
 
-import com.github.gtache.lsp.ServerStatus
+import com.github.gtache.lsp.client.languageserver.ServerStatus
 import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.editor.EditorEventManager
@@ -19,10 +19,19 @@ import org.jetbrains.annotations.Nullable
   */
 trait LanguageServerWrapper {
 
+  /**
+    * @return The current status of this server
+    */
   def getStatus: ServerStatus
 
+  /**
+    * @return the server definition corresponding to this wrapper
+    */
   def getServerDefinition: LanguageServerDefinition
 
+  /**
+    * @return the project corresponding to this wrapper
+    */
   def getProject: Project
 
   /**
@@ -101,8 +110,15 @@ trait LanguageServerWrapper {
 
   def logMessage(message: Message): Unit
 
+  /**
+    * Stops the wrapper
+    */
   def stop(): Unit
 
+  /**
+    * Notifies the wrapper that the server has crashed / stopped unexpectedly
+    * @param e The exception returned
+    */
   def crashed(e: Exception): Unit
 
 
