@@ -12,7 +12,7 @@ import com.github.gtache.lsp.client.languageserver.ServerOptions
 import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapperImpl
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
-import com.github.gtache.lsp.requests.{HoverHandler, WorkspaceEditHandler}
+import com.github.gtache.lsp.requests.{HoverHandler, Timeouts, WorkspaceEditHandler}
 import com.github.gtache.lsp.utils.{DocumentUtils, FileUtils, GUIUtils}
 import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.codeInsight.completion.InsertionContext
@@ -106,7 +106,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                          val requestManager: RequestManager, val serverOptions: ServerOptions, val wrapper: LanguageServerWrapperImpl) {
 
   import EditorEventManager._
-  import GUIUtils.createAndShowHint
+  import GUIUtils.createAndShowEditorHint
   import com.github.gtache.lsp.requests.Timeout._
   import com.github.gtache.lsp.utils.ApplicationUtils._
 
@@ -152,12 +152,15 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           if (f != null) {
             try {
               val ret = f.get(EXECUTE_COMMAND_TIMEOUT, TimeUnit.MILLISECONDS)
+              wrapper.notifyResult(Timeouts.EXECUTE_COMMAND, success = true)
               ret match {
                 case e: WorkspaceEdit => WorkspaceEditHandler.applyEdit(e, name = "Execute command")
                 case _ =>
               }
             } catch {
-              case e: TimeoutException => LOG.warn(e)
+              case e: TimeoutException =>
+                LOG.warn(e)
+                wrapper.notifyResult(Timeouts.EXECUTE_COMMAND, success = false)
             }
           }
         })
@@ -266,11 +269,18 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         params.setPosition(serverPos)
         val future = requestManager.references(params)
         if (future != null) {
-          val references = future.get(REFERENCES_TIMEOUT, TimeUnit.MILLISECONDS)
-          if (references != null) {
-            invokeLater(() => {
-              if (!editor.isDisposed) showReferences(references.asScala)
-            })
+          try {
+            val references = future.get(REFERENCES_TIMEOUT, TimeUnit.MILLISECONDS)
+            wrapper.notifyResult(Timeouts.REFERENCES, success = true)
+            if (references != null) {
+              invokeLater(() => {
+                if (!editor.isDisposed) showReferences(references.asScala)
+              })
+            }
+          } catch {
+            case e: TimeoutException =>
+              LOG.warn(e)
+              wrapper.notifyResult(Timeouts.REFERENCES, success = false)
           }
         }
       }
@@ -368,7 +378,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   private def showReferencesWindow(locations: Array[(String, Int, Int, String)], name: String, point: Point): Unit = {
     if (locations.isEmpty) {
-      invokeLater(() => if (!editor.isDisposed) currentHint = createAndShowHint(editor, "No usages found", point))
+      invokeLater(() => if (!editor.isDisposed) currentHint = createAndShowEditorHint(editor, "No usages found", point))
     } else {
       val frame = new JFrame()
       frame.setTitle("Usages of " + name + " (" + locations.length + (if (locations.length > 1) " usages found)" else " usage found"))
@@ -434,6 +444,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               if (!editor.isDisposed) {
                 try {
                   val resp = request.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS).asScala
+                  wrapper.notifyResult(Timeouts.DOC_HIGHLIGHT, success = true)
                   invokeLater(() => resp.foreach(dh => {
                     if (!editor.isDisposed) {
                       val range = dh.getRange
@@ -448,6 +459,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 } catch {
                   case e: TimeoutException =>
                     LOG.warn(e)
+                    wrapper.notifyResult(Timeouts.DOC_HIGHLIGHT, success = false)
                 }
               }
             })
@@ -498,63 +510,19 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
-    * Returns the logical position given a mouse event
+    * Immediately requests the server for documentation at the current editor position
     *
-    * @param e The event
-    * @return The position (or null if out of bounds)
+    * @param editor The editor
     */
-  private def getPos(e: EditorMouseEvent): LogicalPosition = {
-    val mousePos = e.getMouseEvent.getPoint
-    val editorPos = editor.xyToLogicalPosition(mousePos)
-    val doc = e.getEditor.getDocument
-    val maxLines = doc.getLineCount
-    if (editorPos.line >= maxLines) {
-      null
+  def quickDoc(editor: Editor): Unit = {
+    if (editor == this.editor) {
+      val caretPos = editor.getCaretModel.getLogicalPosition
+      val pointPos = editor.logicalPositionToXY(caretPos)
+      val currentTime = System.nanoTime()
+      pool(() => requestAndShowDoc(currentTime, caretPos, pointPos))
+      predTime = currentTime
     } else {
-      val minY = doc.getLineStartOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
-      val maxY = doc.getLineEndOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
-      if (editorPos.column < minY || editorPos.column > maxY) {
-        null
-      } else {
-        editorPos
-      }
-    }
-  }
-
-  /**
-    * Schedule the documentation using the Timer
-    *
-    * @param time      The current time
-    * @param editorPos The position in the editor
-    * @param point     The point where to show the doc
-    */
-  private def scheduleDocumentation(time: Long, editorPos: LogicalPosition, point: Point): Unit = {
-    if (editorPos != null) {
-      if (time - predTime > SCHEDULE_THRES) {
-        try {
-          hoverThread.schedule(new TimerTask {
-            override def run(): Unit = {
-              if (!editor.isDisposed) {
-                val curTime = System.nanoTime()
-                if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && (!isKeyPressed || isCtrlDown)) {
-                  val editorOffset = computableReadAction[Int](() => editor.logicalPositionToOffset(editorPos))
-                  val inHighlights = diagnosticsHighlights.filter(diag =>
-                    diag.rangeHighlighter.getStartOffset <= editorOffset &&
-                      editorOffset <= diag.rangeHighlighter.getEndOffset)
-                  if (inHighlights.isEmpty || isCtrlDown) {
-                    requestAndShowDoc(curTime, editorPos, point)
-                  }
-                }
-              }
-            }
-          }, POPUP_THRES)
-        } catch {
-          case e: Exception =>
-            hoverThread = new Timer("Hover", true) //Restart Timer if it crashes
-            LOG.warn(e)
-            LOG.warn("Hover timer reset")
-        }
-      }
+      LOG.warn("Not same editor!")
     }
   }
 
@@ -571,12 +539,13 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     if (request != null) {
       try {
         val hover = request.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
+        wrapper.notifyResult(Timeouts.HOVER, success = true)
         if (hover != null) {
           val range = if (hover.getRange == null) new Range(DocumentUtils.logicalToLSPPos(editorPos), DocumentUtils.logicalToLSPPos(editorPos)) else hover.getRange
           val string = HoverHandler.getHoverString(hover)
           if (string != null && string != "") {
             if (isCtrlDown) {
-              invokeLater(() => if (!editor.isDisposed) currentHint = createAndShowHint(editor, string, point, flags = HintManager.HIDE_BY_OTHER_HINT))
+              invokeLater(() => if (!editor.isDisposed) currentHint = createAndShowEditorHint(editor, string, point, flags = HintManager.HIDE_BY_OTHER_HINT))
               val loc = requestDefinition(serverPos)
               if (loc != null) {
                 invokeLater(() => {
@@ -588,7 +557,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 })
               }
             } else {
-              invokeLater(() => if (!editor.isDisposed) currentHint = createAndShowHint(editor, string, point))
+              invokeLater(() => if (!editor.isDisposed) currentHint = createAndShowEditorHint(editor, string, point))
             }
           } else {
             LOG.warn("Hover string returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
@@ -599,6 +568,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       } catch {
         case e: TimeoutException =>
           LOG.warn(e)
+          wrapper.notifyResult(Timeouts.HOVER, success = false)
       }
     }
 
@@ -617,6 +587,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     if (request != null) {
       try {
         val definition = request.get(DEFINITION_TIMEOUT, TimeUnit.MILLISECONDS).asScala
+        wrapper.notifyResult(Timeouts.DEFINITION, success = true)
         if (definition != null && definition.nonEmpty) {
           definition.head
         } else {
@@ -625,27 +596,11 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       } catch {
         case e: TimeoutException =>
           LOG.warn(e)
+          wrapper.notifyResult(Timeouts.DEFINITION, success = false)
           null
       }
     } else {
       null
-    }
-  }
-
-  /**
-    * Immediately requests the server for documentation at the current editor position
-    *
-    * @param editor The editor
-    */
-  def quickDoc(editor: Editor): Unit = {
-    if (editor == this.editor) {
-      val caretPos = editor.getCaretModel.getLogicalPosition
-      val pointPos = editor.logicalPositionToXY(caretPos)
-      val currentTime = System.nanoTime()
-      pool(() => requestAndShowDoc(currentTime, caretPos, pointPos))
-      predTime = currentTime
-    } else {
-      LOG.warn("Not same editor!")
     }
   }
 
@@ -663,9 +618,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       if (request != null) {
         try {
           val response = request.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
+          wrapper.notifyResult(Timeouts.HOVER, success = true)
           HoverHandler.getHoverString(response)
         } catch {
-          case e: TimeoutException => LOG.warn(e)
+          case e: TimeoutException =>
+            LOG.warn(e)
+            wrapper.notifyResult(Timeouts.HOVER, success = false)
             ""
         }
       } else {
@@ -768,6 +726,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     if (request != null) {
       try {
         val res = request.get(COMPLETION_TIMEOUT, TimeUnit.MILLISECONDS)
+        wrapper.notifyResult(Timeouts.COMPLETION, success = true)
         import scala.collection.JavaConverters._
         val completion /*: CompletionList | List[CompletionItem] */ = if (res.isLeft) res.getLeft.asScala else res.getRight
 
@@ -840,6 +799,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       catch {
         case e: TimeoutException =>
           LOG.warn(e)
+          wrapper.notifyResult(Timeouts.COMPLETION, success = false)
           Iterable.empty
       }
     } else Iterable.empty
@@ -868,12 +828,14 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           if (future != null) {
             try {
               val edits = future.get(WILLSAVE_TIMEOUT, TimeUnit.MILLISECONDS)
+              wrapper.notifyResult(Timeouts.WILLSAVE, success = true)
               if (edits != null) {
                 invokeLater(() => applyEdit(edits = edits.asScala, name = "WaitUntil edits"))
               }
             } catch {
               case e: TimeoutException =>
                 LOG.warn(e)
+                wrapper.notifyResult(Timeouts.WILLSAVE, success = false)
             } finally {
               needSave = true
               saveDocument()
@@ -889,60 +851,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       needSave = true
       saveDocument()
     }
-  }
-
-  /**
-    * Applies the given edits to the document
-    *
-    * @param version    The version of the edits (will be discarded if older than current version)
-    * @param edits      The edits to apply
-    * @param name       The name of the edits (Rename, for example)
-    * @param closeAfter will close the file after edits if set to true
-    * @return True if the edits were applied, false otherwise
-    */
-  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
-    if (version >= this.version) {
-      val document = editor.getDocument
-      if (document.isWritable) {
-        val runnable = new Runnable {
-          override def run(): Unit = {
-            if (!editor.isDisposed) {
-              edits.foreach(edit => {
-                val text = edit.getNewText
-                val range = edit.getRange
-                val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
-                val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
-                if (text == "" || text == null) {
-                  document.deleteString(start, end)
-                } else if (end - start <= 0) {
-                  document.insertString(start, text)
-                } else {
-                  document.replaceString(start, end, text)
-                }
-              })
-              FileDocumentManager.getInstance().saveDocument(document)
-            }
-          }
-        }
-        writeAction(() => {
-          CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, name, "LSPPlugin", document)
-          if (closeAfter) {
-            FileEditorManager.getInstance(editor.getProject)
-              .closeFile(PsiDocumentManager.getInstance(editor.getProject).getPsiFile(editor.getDocument).getVirtualFile)
-          }
-        })
-      } else {
-        LOG.warn("Document is not writable")
-      }
-      true
-    } else {
-      LOG.warn("Version " + version + " is older than " + this.version)
-      false
-    }
-  }
-
-  private def saveDocument(): Unit = {
-    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
   }
 
   /**
@@ -1117,13 +1025,66 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         if (future != null) {
           try {
             val edits = future.get(FORMATTING_TIMEOUT, TimeUnit.MILLISECONDS)
+            wrapper.notifyResult(Timeouts.FORMATTING, success = true)
             invokeLater(() => applyEdit(edits = edits.asScala, name = "On type formatting"))
           } catch {
-            case e: TimeoutException => LOG.warn(e)
+            case e: TimeoutException =>
+              LOG.warn(e)
+              wrapper.notifyResult(Timeouts.FORMATTING, success = false)
           }
         }
       }
     })
+  }
+
+  /**
+    * Applies the given edits to the document
+    *
+    * @param version    The version of the edits (will be discarded if older than current version)
+    * @param edits      The edits to apply
+    * @param name       The name of the edits (Rename, for example)
+    * @param closeAfter will close the file after edits if set to true
+    * @return True if the edits were applied, false otherwise
+    */
+  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
+    if (version >= this.version) {
+      val document = editor.getDocument
+      if (document.isWritable) {
+        val runnable = new Runnable {
+          override def run(): Unit = {
+            if (!editor.isDisposed) {
+              edits.foreach(edit => {
+                val text = edit.getNewText
+                val range = edit.getRange
+                val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+                val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+                if (text == "" || text == null) {
+                  document.deleteString(start, end)
+                } else if (end - start <= 0) {
+                  document.insertString(start, text)
+                } else {
+                  document.replaceString(start, end, text)
+                }
+              })
+              FileDocumentManager.getInstance().saveDocument(document)
+            }
+          }
+        }
+        writeAction(() => {
+          CommandProcessor.getInstance().executeCommand(editor.getProject, runnable, name, "LSPPlugin", document)
+          if (closeAfter) {
+            FileEditorManager.getInstance(editor.getProject)
+              .closeFile(PsiDocumentManager.getInstance(editor.getProject).getPsiFile(editor.getDocument).getVirtualFile)
+          }
+        })
+      } else {
+        LOG.warn("Document is not writable")
+      }
+      true
+    } else {
+      LOG.warn("Version " + version + " is older than " + this.version)
+      false
+    }
   }
 
   /**
@@ -1139,6 +1100,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         if (future != null) {
           try {
             val signature = future.get(SIGNATURE_TIMEOUT, TimeUnit.MILLISECONDS)
+            wrapper.notifyResult(Timeouts.SIGNATURE, success = true)
             if (signature != null) {
               val signatures = signature.getSignatures.asScala
               if (signatures != null && signatures.nonEmpty) {
@@ -1152,11 +1114,13 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                   .replace(activeParameter, "<b><font color=\"yellow\">" + activeParameter + "</font></b>")).append("</i>")
                 signatures.drop(activeSignatureIndex + 1).foreach(sig => builder.append("<br>").append(sig.getLabel))
                 builder.append("</html>")
-                invokeLater(() => currentHint = createAndShowHint(editor, builder.toString(), point, HintManager.UNDER, HintManager.HIDE_BY_OTHER_HINT))
+                invokeLater(() => currentHint = createAndShowEditorHint(editor, builder.toString(), point, HintManager.UNDER, HintManager.HIDE_BY_OTHER_HINT))
               }
             }
           } catch {
-            case e: TimeoutException => LOG.warn(e)
+            case e: TimeoutException =>
+              LOG.warn(e)
+              wrapper.notifyResult(Timeouts.SIGNATURE, success = false)
           }
         }
       }
@@ -1202,6 +1166,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
+  private def saveDocument(): Unit = {
+    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
+  }
+
   /**
     * Retrieves the commands needed to apply a CodeAction
     *
@@ -1217,14 +1185,78 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     val future = requestManager.codeAction(params)
     if (future != null) {
       try {
-        future.get(CODEACTION_TIMEOUT, TimeUnit.MILLISECONDS).asScala
+        val res = future.get(CODEACTION_TIMEOUT, TimeUnit.MILLISECONDS).asScala
+        wrapper.notifyResult(Timeouts.CODEACTION,success = true)
+        res
       } catch {
         case e: TimeoutException =>
           LOG.warn(e)
+          wrapper.notifyResult(Timeouts.CODEACTION,success = false)
           null
       }
     } else {
       null
+    }
+  }
+
+  /**
+    * Returns the logical position given a mouse event
+    *
+    * @param e The event
+    * @return The position (or null if out of bounds)
+    */
+  private def getPos(e: EditorMouseEvent): LogicalPosition = {
+    val mousePos = e.getMouseEvent.getPoint
+    val editorPos = editor.xyToLogicalPosition(mousePos)
+    val doc = e.getEditor.getDocument
+    val maxLines = doc.getLineCount
+    if (editorPos.line >= maxLines) {
+      null
+    } else {
+      val minY = doc.getLineStartOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
+      val maxY = doc.getLineEndOffset(editorPos.line) - (if (editorPos.line > 0) doc.getLineEndOffset(editorPos.line - 1) else 0)
+      if (editorPos.column < minY || editorPos.column > maxY) {
+        null
+      } else {
+        editorPos
+      }
+    }
+  }
+
+  /**
+    * Schedule the documentation using the Timer
+    *
+    * @param time      The current time
+    * @param editorPos The position in the editor
+    * @param point     The point where to show the doc
+    */
+  private def scheduleDocumentation(time: Long, editorPos: LogicalPosition, point: Point): Unit = {
+    if (editorPos != null) {
+      if (time - predTime > SCHEDULE_THRES) {
+        try {
+          hoverThread.schedule(new TimerTask {
+            override def run(): Unit = {
+              if (!editor.isDisposed) {
+                val curTime = System.nanoTime()
+                if (curTime - predTime > HOVER_TIME_THRES && mouseInEditor && editor.getContentComponent.hasFocus && (!isKeyPressed || isCtrlDown)) {
+                  val editorOffset = computableReadAction[Int](() => editor.logicalPositionToOffset(editorPos))
+                  val inHighlights = diagnosticsHighlights.filter(diag =>
+                    diag.rangeHighlighter.getStartOffset <= editorOffset &&
+                      editorOffset <= diag.rangeHighlighter.getEndOffset)
+                  if (inHighlights.isEmpty || isCtrlDown) {
+                    requestAndShowDoc(curTime, editorPos, point)
+                  }
+                }
+              }
+            }
+          }, POPUP_THRES)
+        } catch {
+          case e: Exception =>
+            hoverThread = new Timer("Hover", true) //Restart Timer if it crashes
+            LOG.warn(e)
+            LOG.warn("Hover timer reset")
+        }
+      }
     }
   }
 }

@@ -7,6 +7,7 @@ import com.github.gtache.lsp.client.languageserver.ServerStatus
 import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.editor.EditorEventManager
+import com.github.gtache.lsp.requests.Timeouts
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import org.eclipse.lsp4j.jsonrpc.messages.Message
@@ -18,6 +19,17 @@ import org.jetbrains.annotations.Nullable
   * A LanguageServerWrapper represents a connection to a LanguageServer and manages starting / stopping it as well as  connecting / disconnecting documents to it
   */
 trait LanguageServerWrapper {
+
+
+  /**
+    * Tells the wrapper if a request was timed out or not
+    *
+    * @param timeouts The type of timeout
+    * @param success  if it didn't timeout
+    */
+  def notifyResult(timeouts: Timeouts, success: Boolean): Unit
+
+  def getConnectedFiles: Iterable[String]
 
   /**
     * @return The current status of this server
@@ -117,6 +129,7 @@ trait LanguageServerWrapper {
 
   /**
     * Notifies the wrapper that the server has crashed / stopped unexpectedly
+    *
     * @param e The exception returned
     */
   def crashed(e: Exception): Unit

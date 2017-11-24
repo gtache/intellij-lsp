@@ -40,6 +40,8 @@ object Timeout {
 
   def HOVER_TIMEOUT: Int = timeouts(HOVER)
 
+  def INIT_TIMEOUT : Int = timeouts(INIT)
+
   def REFERENCES_TIMEOUT: Int = timeouts(REFERENCES)
 
   def SIGNATURE_TIMEOUT: Int = timeouts(SIGNATURE)

@@ -57,15 +57,17 @@ trait LanguageServerDefinition {
     * @return The input and output streams of the server
     */
   def start(): (InputStream, OutputStream) = {
-    streamConnectionProvider.start()
-    (streamConnectionProvider.getInputStream, streamConnectionProvider.getOutputStream)
+    if (streamConnectionProvider != null) {
+      streamConnectionProvider.start()
+      (streamConnectionProvider.getInputStream, streamConnectionProvider.getOutputStream)
+    } else (null, null)
   }
 
   /**
     * Stops the Language server
     */
   def stop(): Unit = {
-    streamConnectionProvider.stop()
+    if (streamConnectionProvider != null) streamConnectionProvider.stop()
   }
 
   /**

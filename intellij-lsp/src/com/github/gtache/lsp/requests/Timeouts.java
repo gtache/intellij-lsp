@@ -12,6 +12,7 @@ public enum Timeouts {
     EXECUTE_COMMAND(2000),
     FORMATTING(2000),
     HOVER(2000),
+    INIT(1000),
     REFERENCES(2000),
     SIGNATURE(1000),
     SHUTDOWN(5000),

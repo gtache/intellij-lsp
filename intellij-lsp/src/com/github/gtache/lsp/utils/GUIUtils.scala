@@ -1,12 +1,13 @@
 package com.github.gtache.lsp.utils
 
 import java.awt.Point
-import javax.swing.JLabel
+import javax.swing.{JComponent, JLabel}
 
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.contributors.icon.{LSPDefaultIconProvider, LSPIconProvider}
 import com.intellij.codeInsight.hint.{HintManager, HintManagerImpl}
 import com.intellij.openapi.editor.Editor
+import com.intellij.ui.awt.RelativePoint
 import com.intellij.ui.{Hint, LightweightHint}
 
 /**
@@ -24,12 +25,18 @@ object GUIUtils {
     * @param flags      The flags (when the hint will disappear)
     * @return The hint
     */
-  def createAndShowHint(editor: Editor, string: String, point: Point, constraint: Short = HintManager.ABOVE,
-                        flags: Int = HintManager.HIDE_BY_ANY_KEY | HintManager.HIDE_BY_TEXT_CHANGE | HintManager.HIDE_BY_SCROLLING): Hint = {
+  def createAndShowEditorHint(editor: Editor, string: String, point: Point, constraint: Short = HintManager.ABOVE,
+                              flags: Int = HintManager.HIDE_BY_ANY_KEY | HintManager.HIDE_BY_TEXT_CHANGE | HintManager.HIDE_BY_SCROLLING): Hint = {
     val hint = new LightweightHint(new JLabel(string))
     val p = HintManagerImpl.getHintPosition(hint, editor, editor.xyToLogicalPosition(point), constraint)
     HintManagerImpl.getInstanceImpl.showEditorHint(hint, editor, p, flags, 0, false, HintManagerImpl.createHintHint(editor, p, hint, constraint).setContentActive(false))
     hint
+  }
+
+  def createAndShowHint(component: JComponent, string: String, point: RelativePoint,
+                        flags: Int = HintManager.HIDE_BY_ANY_KEY | HintManager.HIDE_BY_TEXT_CHANGE | HintManager.HIDE_BY_OTHER_HINT | HintManager.HIDE_BY_SCROLLING): Unit = {
+    val hint = new LightweightHint(new JLabel(string))
+    HintManagerImpl.getInstanceImpl.showHint(component, point, flags, 0)
   }
 
   /**

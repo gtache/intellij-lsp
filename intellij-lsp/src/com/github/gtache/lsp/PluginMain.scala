@@ -7,7 +7,7 @@ import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServ
 import com.github.gtache.lsp.client.languageserver.wrapper.{LanguageServerWrapper, LanguageServerWrapperImpl}
 import com.github.gtache.lsp.contributors.LSPNavigationItem
 import com.github.gtache.lsp.editor.listeners.{EditorListener, FileDocumentManagerListenerImpl, VFSListener}
-import com.github.gtache.lsp.requests.Timeout
+import com.github.gtache.lsp.requests.{Timeout, Timeouts}
 import com.github.gtache.lsp.settings.LSPState
 import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils, GUIUtils}
 import com.intellij.AppTopics
@@ -184,31 +184,35 @@ object PluginMain {
         val params: WorkspaceSymbolParams = new WorkspaceSymbolParams(name)
         val servDefToReq = set.collect {
           case w: LanguageServerWrapper if w.getStatus == ServerStatus.STARTED && w.getRequestManager != null =>
-            (w.getServerDefinition, w.getRequestManager.symbol(params))
+            (w, w.getRequestManager.symbol(params))
         }.toSet.filter(w => w._2 != null)
         if (!servDefToReq.contains(null)) {
-          try {
-            import scala.collection.JavaConverters._
-            val servDefToSymb = servDefToReq.map(r => {
-              val symbols = r._2.get(Timeout.SYMBOLS_TIMEOUT, TimeUnit.MILLISECONDS)
-              (r._1, if (symbols != null) symbols.asScala
+          import scala.collection.JavaConverters._
+          val servDefToSymb = servDefToReq.map(w => {
+            try {
+              val symbols = w._2.get(Timeout.SYMBOLS_TIMEOUT, TimeUnit.MILLISECONDS)
+              w._1.notifyResult(Timeouts.SYMBOLS, success = true)
+              (w._1, if (symbols != null) symbols.asScala
                 .filter(s => if (onlyKind.isEmpty) true else onlyKind.contains(s.getKind)) else null)
+            } catch {
+              case e: TimeoutException =>
+                LOG.warn(e)
+                w._1.notifyResult(Timeouts.SYMBOLS, success = false)
+                null
             }
-            ).filter(r => r._2 != null)
-            servDefToSymb.flatMap(res => {
-              val definition = res._1
-              val symbols = res._2
-              symbols.map(symb => {
-                val start = symb.getLocation.getRange.getStart
-                val uri = FileUtils.URIToVFS(symb.getLocation.getUri)
-                val iconProvider = GUIUtils.getIconProviderFor(definition)
-                LSPNavigationItem(symb.getName, symb.getContainerName, project, uri, start.getLine, start.getCharacter, iconProvider.getSymbolIcon(symb.getKind))
-              })
-            }).toArray.asInstanceOf[Array[NavigationItem]]
-          } catch {
-            case e: TimeoutException => LOG.warn(e)
-              Array.empty
           }
+          ).filter(r => r._2 != null)
+          servDefToSymb.flatMap(res => {
+            val definition = res._1
+            val symbols = res._2
+            symbols.map(symb => {
+              val start = symb.getLocation.getRange.getStart
+              val uri = FileUtils.URIToVFS(symb.getLocation.getUri)
+              val iconProvider = GUIUtils.getIconProviderFor(definition.getServerDefinition)
+              LSPNavigationItem(symb.getName, symb.getContainerName, project, uri, start.getLine, start.getCharacter, iconProvider.getSymbolIcon(symb.getKind))
+            })
+          }).toArray.asInstanceOf[Array[NavigationItem]]
+
         } else Array.empty
       case None => LOG.info("No wrapper for project " + project.getBasePath)
         Array.empty
