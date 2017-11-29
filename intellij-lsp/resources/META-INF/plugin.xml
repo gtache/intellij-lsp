@@ -31,9 +31,10 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Add your extensions here -->
-        <applicationConfigurable groupId="language" displayName="Language Server Protocol"
-                                 instance="com.github.gtache.lsp.settings.ServersSettings" id="LSPSettings"/>
-        <applicationConfigurable parentId="LSPSettings" id="TimeoutSettings" displayName="Timeouts"
+        <applicationConfigurable instance="com.github.gtache.lsp.settings.MiscSettings" id="MiscSettings" groupId="language" displayName="Language Server Protocol" />
+        <applicationConfigurable parentId="MiscSettings" displayName="Server Definitions"
+                                 instance="com.github.gtache.lsp.settings.ServersSettings" id="ServerSettings"/>
+        <applicationConfigurable parentId="MiscSettings" id="TimeoutSettings" displayName="Timeouts"
                                  instance="com.github.gtache.lsp.settings.TimeoutSettings"/>
         <applicationService id="LSPState"
                             serviceInterface="com.github.gtache.lsp.settings.LSPState"
@@ -50,6 +51,8 @@
         <fileDocumentSynchronizationVetoer
                 implementation="com.github.gtache.lsp.editor.listeners.LSPFileDocumentSynchronizationVetoer"
                 id="LSPFileDocumentSynchronizationVetoer"/>
+        <renameHandler implementation="com.github.gtache.lsp.contributors.LSPRenameHandler" id="LSPRenameHandler" order="first" />
+        <renamePsiElementProcessor implementation="com.github.gtache.lsp.contributors.LSPRenameProcessor" id="LSPRenameProcessor" order="first" />
     </extensions>
 
     <actions>

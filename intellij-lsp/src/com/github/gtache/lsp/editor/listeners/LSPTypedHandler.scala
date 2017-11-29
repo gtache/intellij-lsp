@@ -7,13 +7,13 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
 
+/**
+  * This class notifies an EditorEventManager that a character has been typed in the editor
+  */
 class LSPTypedHandler extends TypedHandlerDelegate {
   override def charTyped(c: Char, project: Project, editor: Editor, file: PsiFile): Result = {
-    EditorEventManager.forEditor(editor) match {
-      case Some(manager) =>
-        manager.characterTyped(c)
-      case None =>
-    }
+    EditorEventManager.forEditor(editor).foreach(m => m.characterTyped(c))
     Result.CONTINUE
   }
+
 }

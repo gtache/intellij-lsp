@@ -5,6 +5,10 @@ import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentSynchronizationVetoer
 
+/**
+  * This class is used to reject save requests
+  * It is used for willSaveWaitUntil to allow time to apply the edits
+  */
 class LSPFileDocumentSynchronizationVetoer extends FileDocumentSynchronizationVetoer {
   override def maySaveDocument(document: Document, isSaveExplicit: Boolean): Boolean = {
     EditorEventManager.forUri(FileUtils.documentToUri(document)) match {

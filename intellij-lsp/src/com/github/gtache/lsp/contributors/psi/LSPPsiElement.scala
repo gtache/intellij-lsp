@@ -2,7 +2,10 @@ package com.github.gtache.lsp.contributors.psi
 
 import javax.swing.Icon
 
+import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils}
 import com.intellij.lang.{ASTNode, Language}
+import com.intellij.navigation.ItemPresentation
+import com.intellij.openapi.fileEditor.{FileEditorManager, OpenFileDescriptor}
 import com.intellij.openapi.fileTypes.PlainTextLanguage
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.{Key, TextRange}
@@ -22,24 +25,18 @@ import org.jetbrains.annotations.Nullable
   * @param start   The offset in the editor where the element starts
   * @param end     The offset where it ends
   */
-case class LSPPsiElement(var name: String, project: Project, start: Int, end: Int, file: PsiFile) extends PsiNameIdentifierOwner {
+case class LSPPsiElement(var name: String, project: Project, start: Int, end: Int, file: PsiFile) extends PsiNameIdentifierOwner with NavigatablePsiElement {
 
   private val COPYABLE_USER_MAP_KEY: Key[KeyFMap] = Key.create("COPYABLE_USER_MAP_KEY")
   private val updater = AtomicFieldUpdater.forFieldOfType(classOf[LSPPsiElement], classOf[KeyFMap])
   private val manager = PsiManager.getInstance(project)
+  private val reference = LSPPsiReference(this)
+  //private val iconProvider : LSPIconProvider = GUIUtils.getIconProviderFor(PluginMain.getExtToServerDefinition.get(file.getVirtualFile.getExtension).orNull)
+
   /**
     * Concurrent writes to this field are via CASes only, using the {@link #updater}
     */
   @volatile private var myUserMap: KeyFMap = KeyFMap.EMPTY_MAP
-
-  /**
-    * Returns the project to which the PSI element belongs.
-    *
-    * @return the project instance.
-    * @throws PsiInvalidElementAccessException
-    * if this element is invalid
-    */
-  override def getProject: Project = project
 
   /**
     * Returns the language of the PSI element.
@@ -69,16 +66,6 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     * @return the parent of the element, or null if the element has no parent.
     */
   override def getParent: PsiElement = getContainingFile
-
-  /**
-    * Returns the file containing the PSI element.
-    *
-    * @return the file instance, or null if the PSI element is not contained in a file (for example,
-    *         the element represents a package or directory).
-    * @throws PsiInvalidElementAccessException
-    * if this element is invalid
-    */
-  override def getContainingFile: PsiFile = file
 
   /**
     * Returns the first child of the PSI element.
@@ -146,23 +133,11 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
   override def findReferenceAt(offset: Int): PsiReference = null
 
   /**
-    * Returns the offset in the file to which the caret should be placed
-    * when performing the navigation to the element. (For classes implementing
-    * {@link PsiNamedElement}, this should return the offset in the file of the
-    * name identifier.)
-    *
-    * @return the offset of the PSI element.
-    */
-  override def getTextOffset: Int = start
-
-  /**
     * Returns the text of the PSI element as a character array.
     *
     * @return the element text as a character array.
     */
   override def textToCharArray: Array[Char] = name.toCharArray
-
-  //Q: get rid of these methods?
 
   /**
     * Returns the PSI element which should be used as a navigation target
@@ -195,6 +170,15 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     */
   override def textMatches(text: CharSequence): Boolean = getText == text
 
+  //Q: get rid of these methods?
+
+  /**
+    * Returns the text of the PSI element.
+    *
+    * @return the element text.
+    */
+  override def getText: String = name
+
   /**
     * Checks if the text of this PSI element is equal to the text of the specified PSI element.
     *
@@ -210,13 +194,6 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     * @return true if the character is found, false otherwise.
     */
   override def textContains(c: Char): Boolean = getText.contains(c)
-
-  /**
-    * Returns the text of the PSI element.
-    *
-    * @return the element text.
-    */
-  override def getText: String = name
 
   /**
     * Passes the element to the specified visitor.
@@ -401,7 +378,7 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     *         associated references.
     * @see com.intellij.psi.search.searches.ReferencesSearch
     */
-  override def getReference: PsiReference = new LSPPsiReference(this)
+  override def getReference: PsiReference = reference
 
   /**
     * Returns all references from this PSI element to other PSI elements. An element can
@@ -419,7 +396,7 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     * @see PsiReferenceService#getReferences
     * @see com.intellij.psi.search.searches.ReferencesSearch
     */
-  override def getReferences: Array[PsiReference] = null
+  override def getReferences: Array[PsiReference] = Array(reference)
 
   /**
     * Passes the declarations contained in this PSI element and its children
@@ -460,7 +437,7 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     *
     * @return the resolve scope instance.
     */
-  override def getResolveScope: GlobalSearchScope = null
+  override def getResolveScope: GlobalSearchScope = getContainingFile.getResolveScope
 
   /**
     * Returns the scope in which references to this element are searched.
@@ -468,7 +445,17 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     * @return the search scope instance.
     * @see { @link com.intellij.psi.search.PsiSearchHelper#getUseScope(PsiElement)}
     */
-  override def getUseScope: SearchScope = null
+  override def getUseScope: SearchScope = getContainingFile.getResolveScope
+
+  /**
+    * Returns the file containing the PSI element.
+    *
+    * @return the file instance, or null if the PSI element is not contained in a file (for example,
+    *         the element represents a package or directory).
+    * @throws PsiInvalidElementAccessException
+    * if this element is invalid
+    */
+  override def getContainingFile: PsiFile = file
 
   /**
     * Returns the AST node corresponding to the element.
@@ -493,17 +480,15 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
 
   override def getIcon(flags: Int): Icon = null
 
-  import com.intellij.openapi.util.{KeyWithDefaultValue, UserDataHolderBase}
-  import com.intellij.util.keyFMap.KeyFMap
-
   override def getNameIdentifier: PsiElement = this
-
-  override def getName: String = name
 
   override def setName(name: String): PsiElement = {
     this.name = name
     this
   }
+
+  import com.intellij.openapi.util.{KeyWithDefaultValue, UserDataHolderBase}
+  import com.intellij.util.keyFMap.KeyFMap
 
   override def putUserData[T](key: Key[T], @Nullable value: T): Unit = {
     var control = true
@@ -518,27 +503,6 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     val map = getUserData(COPYABLE_USER_MAP_KEY)
     if (map == null) null.asInstanceOf[T] else map.get(key)
   }
-
-  def getUserData[T](key: Key[T]): T = {
-    var t = getUserMap.get(key)
-    if (t == null && key.isInstanceOf[KeyWithDefaultValue[_]]) t = putUserDataIfAbsent(key, key.asInstanceOf[KeyWithDefaultValue[T]].getDefaultValue)
-    t
-  }
-
-  def putUserDataIfAbsent[T](key: Key[T], value: T): T = {
-    while (true) {
-      val map = getUserMap
-      val oldValue = map.get(key)
-      if (oldValue != null) return oldValue
-      val newMap = map.plus(key, value)
-      if ((newMap eq map) || changeUserMap(map, newMap)) return value
-    }
-    null.asInstanceOf[T]
-  }
-
-  protected def changeUserMap(oldMap: KeyFMap, newMap: KeyFMap): Boolean = updater.compareAndSet(this, oldMap, newMap)
-
-  protected def getUserMap: KeyFMap = myUserMap
 
   def putCopyableUserData[T](key: Key[T], value: T): Unit = {
     var control = true
@@ -570,7 +534,69 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     clone.putUserData(COPYABLE_USER_MAP_KEY, getUserData(COPYABLE_USER_MAP_KEY))
   }
 
+  def getUserData[T](key: Key[T]): T = {
+    var t = getUserMap.get(key)
+    if (t == null && key.isInstanceOf[KeyWithDefaultValue[_]]) t = putUserDataIfAbsent(key, key.asInstanceOf[KeyWithDefaultValue[T]].getDefaultValue)
+    t
+  }
+
+  def putUserDataIfAbsent[T](key: Key[T], value: T): T = {
+    while (true) {
+      val map = getUserMap
+      val oldValue = map.get(key)
+      if (oldValue != null) return oldValue
+      val newMap = map.plus(key, value)
+      if ((newMap eq map) || changeUserMap(map, newMap)) return value
+    }
+    null.asInstanceOf[T]
+  }
+
+  protected def changeUserMap(oldMap: KeyFMap, newMap: KeyFMap): Boolean = updater.compareAndSet(this, oldMap, newMap)
+
+  protected def getUserMap: KeyFMap = myUserMap
+
   def isUserDataEmpty: Boolean = getUserMap.isEmpty
+
+  override def getPresentation: ItemPresentation = new ItemPresentation {
+    override def getPresentableText: String = getName
+
+    override def getLocationString: String = getContainingFile.getName
+
+    override def getIcon(unused: Boolean): Icon = if (unused) null else null //iconProvider.getIcon(LSPPsiElement.this)
+  }
+
+  override def getName: String = name
+
+  override def navigate(requestFocus: Boolean): Unit = {
+    val editor = FileUtils.editorFromPsiFile(getContainingFile)
+    if (editor == null) {
+      val descriptor = new OpenFileDescriptor(getProject, getContainingFile.getVirtualFile, getTextOffset)
+      ApplicationUtils.invokeLater(() => ApplicationUtils.writeAction(() => FileEditorManager.getInstance(getProject).openTextEditor(descriptor, false)))
+    }
+  }
+
+  /**
+    * Returns the project to which the PSI element belongs.
+    *
+    * @return the project instance.
+    * @throws PsiInvalidElementAccessException
+    * if this element is invalid
+    */
+  override def getProject: Project = project
+
+  /**
+    * Returns the offset in the file to which the caret should be placed
+    * when performing the navigation to the element. (For classes implementing
+    * {@link PsiNamedElement}, this should return the offset in the file of the
+    * name identifier.)
+    *
+    * @return the offset of the PSI element.
+    */
+  override def getTextOffset: Int = start
+
+  override def canNavigateToSource: Boolean = true
+
+  override def canNavigate: Boolean = true
 
   protected def clearUserData(): Unit = {
     setUserMap(KeyFMap.EMPTY_MAP)
@@ -579,6 +605,4 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
   protected def setUserMap(map: KeyFMap): Unit = {
     myUserMap = map
   }
-
-
 }

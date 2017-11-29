@@ -46,11 +46,13 @@ object GUIUtils {
     * @return The LSPIconProvider, or LSPDefaultIconProvider if none are found
     */
   def getIconProviderFor(serverDefinition: LanguageServerDefinition): LSPIconProvider = {
-    try {
-      val providers = LSPIconProvider.EP_NAME.getExtensions.filter(provider => provider.isSpecificFor(serverDefinition))
-      if (providers.nonEmpty) providers.head else LSPDefaultIconProvider
-    } catch {
-      case e: IllegalArgumentException => LSPDefaultIconProvider
-    }
+    if (serverDefinition!=null) {
+      try {
+        val providers = LSPIconProvider.EP_NAME.getExtensions.filter(provider => provider.isSpecificFor(serverDefinition))
+        if (providers.nonEmpty) providers.head else LSPDefaultIconProvider
+      } catch {
+        case e: IllegalArgumentException => LSPDefaultIconProvider
+      }
+    } else LSPDefaultIconProvider
   }
 }

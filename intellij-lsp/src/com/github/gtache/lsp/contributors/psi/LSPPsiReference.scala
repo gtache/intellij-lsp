@@ -23,7 +23,7 @@ case class LSPPsiReference(var element: PsiElement) extends PsiReference {
     *
     * @return Relative range in element
     */
-  def getRangeInElement: TextRange = element.getTextRange
+  def getRangeInElement: TextRange = new TextRange(0, element.getTextLength)
 
   /**
     * Returns the element which is the target of the reference.
@@ -51,7 +51,7 @@ case class LSPPsiReference(var element: PsiElement) extends PsiReference {
     * @throws IncorrectOperationException if the rename cannot be handled for some reason.
     */
   @throws[IncorrectOperationException]
-  def handleElementRename(newElementName: String): PsiElement = null
+  def handleElementRename(newElementName: String): PsiElement = element
 
   /**
     * Changes the reference so that it starts to point to the specified element. This is called,

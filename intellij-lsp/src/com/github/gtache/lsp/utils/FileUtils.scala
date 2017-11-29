@@ -5,9 +5,11 @@ import java.net.{MalformedURLException, URI, URL}
 
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Document, Editor}
-import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, TextEditor}
 import com.intellij.openapi.fileTypes.FileType
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
+import com.intellij.psi.PsiFile
 import org.eclipse.lsp4j.TextDocumentIdentifier
 
 /**
@@ -16,6 +18,23 @@ import org.eclipse.lsp4j.TextDocumentIdentifier
 object FileUtils {
   val os: OS.Value = if (System.getProperty("os.name").toLowerCase.contains("win")) OS.WINDOWS else OS.UNIX
   private val LOG: Logger = Logger.getInstance(this.getClass)
+
+  def editorFromPsiFile(psiFile: PsiFile): Editor = {
+    editorFromVirtualFile(psiFile.getVirtualFile, psiFile.getProject)
+  }
+
+  def editorFromUri(uri: String, project: Project): Editor = {
+    editorFromVirtualFile(virtualFileFromURI(uri), project)
+  }
+
+  def virtualFileFromURI(uri: String): VirtualFile = {
+    LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
+  }
+
+  def editorFromVirtualFile(file: VirtualFile, project: Project): Editor = {
+    FileEditorManager.getInstance(project).getAllEditors(file)
+      .collect { case t: TextEditor => t.getEditor }.headOption.orNull
+  }
 
   /**
     * Returns a file type given an editor
@@ -75,28 +94,6 @@ object FileUtils {
     res
   }
 
-  private def sanitizeURI(uri: String): String = {
-    val reconstructed: StringBuilder = StringBuilder.newBuilder
-    var uriCp = new String(uri)
-    if (!uri.startsWith("file:")) {
-      LOG.warn("Malformed uri : " + uri)
-      uri //Probably not an uri
-    } else {
-      uriCp = uriCp.drop(5).dropWhile(c => c == '/')
-      reconstructed.append("file:///")
-      if (os == OS.UNIX) {
-        reconstructed.append(uriCp).toString()
-      } else {
-        reconstructed.append(uriCp.takeWhile(c => c != '/'))
-        if (!reconstructed.endsWith(":")) {
-          reconstructed.append(":")
-        }
-        reconstructed.append(uriCp.dropWhile(c => c != '/')).toString()
-      }
-
-    }
-  }
-
   /**
     * Returns the project base dir uri given an editor
     *
@@ -121,9 +118,32 @@ object FileUtils {
     sanitizeURI(new File(path).toURI.toString)
   }
 
+  def sanitizeURI(uri: String): String = {
+    val reconstructed: StringBuilder = StringBuilder.newBuilder
+    var uriCp = new String(uri)
+    if (!uri.startsWith("file:")) {
+      LOG.warn("Malformed uri : " + uri)
+      uri //Probably not an uri
+    } else {
+      uriCp = uriCp.drop(5).dropWhile(c => c == '/')
+      reconstructed.append("file:///")
+      if (os == OS.UNIX) {
+        reconstructed.append(uriCp).toString()
+      } else {
+        reconstructed.append(uriCp.takeWhile(c => c != '/'))
+        if (!reconstructed.endsWith(":")) {
+          reconstructed.append(":")
+        }
+        reconstructed.append(uriCp.dropWhile(c => c != '/')).toString()
+      }
+
+    }
+  }
+
   def documentToUri(document: Document): String = {
     sanitizeURI(VFSToURIString(FileDocumentManager.getInstance().getFile(document)))
   }
+
 
   /**
     * Object representing the OS type (Windows or Unix)

@@ -157,7 +157,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         initializeFuture.thenRun(() => {
           if (!this.connectedEditors.contains(uri)) {
             val capabilities = getServerCapabilities
-            val syncOptions: Either[TextDocumentSyncKind, TextDocumentSyncOptions] = if (initializeResult == null) null else capabilities.getTextDocumentSync
+            val syncOptions: Either[TextDocumentSyncKind, TextDocumentSyncOptions] = if (capabilities == null) null else capabilities.getTextDocumentSync
             var syncKind: TextDocumentSyncKind = null
             if (syncOptions != null) {
               if (syncOptions.isRight) syncKind = syncOptions.getRight.getChange

@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 /**
  * GUI for the Timeouts settings
  */
-public class TimeoutGUI {
+public class TimeoutGUI implements LSPGUI {
     private static final String FIELD_TOOLTIP = "Time in milliseconds";
     private static final Logger LOG = Logger.getInstance(TimeoutGUI.class);
     private final Map<Timeouts, JTextField> rows;
@@ -105,8 +105,12 @@ public class TimeoutGUI {
         final Map<Timeouts, Integer> currentTimeouts = Timeout.getTimeoutsJava();
         try { //Don't allow apply if the value is not valid
             return Arrays.stream(Timeouts.values()).anyMatch(t -> {
-                final int newValue = Integer.parseInt(rows.get(t).getText());
-                return currentTimeouts.get(t) != newValue && newValue >= 0;
+                if (rows.containsKey(t)) {
+                    final int newValue = Integer.parseInt(rows.get(t).getText());
+                    return currentTimeouts.get(t) != newValue && newValue >= 0;
+                } else {
+                    return false;
+                }
             });
         } catch (final NumberFormatException e) {
             return false;

@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 /**
  * The GUI for the LSP ServerDefinition settings
  */ //TODO improve
-public class ServersGUI {
+public class ServersGUI implements LSPGUI {
 
     private static final String EXT_LABEL = "Extension";
     private static final String EXT_TOOLTIP = "e.g. scala, java, c, js, ...";

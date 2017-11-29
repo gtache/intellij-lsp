@@ -1,16 +1,24 @@
 package com.github.gtache.lsp.requests
 
 import java.io.File
-import java.net.URI
+import java.net.{URI, URL}
+import java.util
 
+import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.editor.EditorEventManager
+import com.github.gtache.lsp.utils.{DocumentUtils, FileUtils}
 import com.intellij.openapi.command.{CommandProcessor, UndoConfirmationPolicy}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.{FileEditorManager, OpenFileDescriptor}
 import com.intellij.openapi.project.{Project, ProjectManager}
 import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
-import org.eclipse.lsp4j.{TextEdit, WorkspaceEdit}
+import com.intellij.psi.PsiElement
+import com.intellij.refactoring.listeners.RefactoringElementListener
+import com.intellij.usageView.UsageInfo
+import org.eclipse.lsp4j.{Range, TextEdit, WorkspaceEdit}
+
+import scala.collection.mutable
 
 /**
   * An Object handling WorkspaceEdits
@@ -21,32 +29,62 @@ object WorkspaceEditHandler {
 
   private val LOG: Logger = Logger.getInstance(WorkspaceEditHandler.getClass)
 
+  def applyEdit(elem: PsiElement, newName: String, infos: Array[UsageInfo], listener: RefactoringElementListener, openedEditors: Iterable[VirtualFile]): Unit = {
+    val edits = mutable.Map[String, mutable.ListBuffer[TextEdit]]()
+    elem match {
+      case lspElem: LSPPsiElement =>
+        if (infos.forall(info => info.getElement.isInstanceOf[LSPPsiElement])) {
+          infos.foreach(ui => {
+            val editor = FileUtils.editorFromVirtualFile(ui.getVirtualFile, ui.getProject)
+            val range = ui.getElement.getTextRange
+            val lspRange = new Range(DocumentUtils.offsetToLSPPos(editor, range.getStartOffset), DocumentUtils.offsetToLSPPos(editor, range.getEndOffset))
+            val edit = new TextEdit(lspRange, newName)
+            val uri = FileUtils.sanitizeURI(new URL(ui.getVirtualFile.getUrl).toURI.toString)
+            if (edits.contains(uri)) {
+              edits(uri) += edit
+            } else {
+              edits.put(uri, mutable.ListBuffer(edit))
+            }
+          })
+          import scala.collection.JavaConverters._
+          val javaMap = new util.HashMap[String, java.util.List[TextEdit]]()
+          edits.foreach(edit => {
+            javaMap.put(edit._1, edit._2.asJava)
+          })
+          val workspaceEdit = new WorkspaceEdit(javaMap)
+          applyEdit(workspaceEdit, "Rename " + lspElem.getName + " to " + newName, fast = false, openedEditors)
+        }
+      case _ =>
+    }
+  }
+
   /**
     * Applies a WorkspaceEdit
     *
     * @param edit The edit
     * @return True if everything was applied, false otherwise
     */
-  def applyEdit(edit: WorkspaceEdit, name: String = "LSP edits"): Boolean = {
+  def applyEdit(edit: WorkspaceEdit, name: String = "LSP edits", fast: Boolean = false, toClose: Iterable[VirtualFile] = Seq()): Boolean = {
     import scala.collection.JavaConverters._
     val changes = edit.getChanges.asScala
     val dChanges = edit.getDocumentChanges.asScala
     var didApply: Boolean = true
 
-    invokeLater(() => {
+    def applyEdits(): Unit = {
       var curProject: Project = null
       val openedEditors: scala.collection.mutable.ListBuffer[VirtualFile] = scala.collection.mutable.ListBuffer()
 
       /**
         * Opens an editor when needed and gets the Runnable
-        * @param edits The text edits
-        * @param uri The uri of the file
+        *
+        * @param edits   The text edits
+        * @param uri     The uri of the file
         * @param version The version of the file
         * @return The runnable containing the edits
         */
       def manageUnopenedEditor(edits: Iterable[TextEdit], uri: String, version: Int = Int.MaxValue): Runnable = {
         val project = ProjectManager.getInstance().getOpenProjects()(0)
-        val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(uri)))
+        val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(uri).getPath))
         val fileEditorManager = FileEditorManager.getInstance(project)
         val descriptor = new OpenFileDescriptor(project, file)
         val editor: Editor = computableWriteAction(() => {
@@ -96,13 +134,20 @@ object WorkspaceEditHandler {
         val runnable = new Runnable {
           override def run(): Unit = toApply.foreach(r => r.run())
         }
-        writeAction(() => {
+        invokeLater(() => writeAction(() => {
           CommandProcessor.getInstance().executeCommand(curProject, runnable, name, "LSPPlugin", UndoConfirmationPolicy.DEFAULT, false)
-          openedEditors.foreach(f => FileEditorManager.getInstance(curProject).closeFile(f))
-        })
+          (openedEditors ++ toClose).foreach(f => FileEditorManager.getInstance(curProject).closeFile(f))
+        }))
       }
+    }
 
-    })
+    if (fast) {
+      applyEdits()
+    } else {
+      invokeLater(() => {
+        applyEdits()
+      })
+    }
     didApply
   }
 
