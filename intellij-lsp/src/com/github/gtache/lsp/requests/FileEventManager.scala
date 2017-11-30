@@ -1,10 +1,10 @@
 package com.github.gtache.lsp.requests
 
+import com.github.gtache.lsp.PluginMain
+import com.github.gtache.lsp.client.languageserver.ServerStatus
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils}
-import com.github.gtache.lsp.PluginMain
-import com.github.gtache.lsp.client.languageserver.ServerStatus
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.vfs.VirtualFile

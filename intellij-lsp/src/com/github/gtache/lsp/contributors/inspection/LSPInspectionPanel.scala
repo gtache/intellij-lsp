@@ -7,6 +7,7 @@ import com.intellij.codeInspection.InspectionProfileEntry
 
 /**
   * The Options panel for the LSP inspection
+  *
   * @param label
   * @param owner
   */

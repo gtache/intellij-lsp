@@ -9,18 +9,18 @@ import javax.swing.*;
 import java.awt.*;
 
 public class MiscGUI implements LSPGUI {
+    private final LSPState state;
     private JLabel useInplaceRenameLabel;
     private JCheckBox useInplaceRenameCheckbox;
     private JPanel rootPanel;
-    private final LSPState state;
-
-    public JPanel getRootPanel() {
-        return rootPanel;
-    }
 
     public MiscGUI() {
         state = LSPState.getInstance();
         useInplaceRenameCheckbox.setSelected(state.isUseInplaceRename());
+    }
+
+    public JPanel getRootPanel() {
+        return rootPanel;
     }
 
     @Override

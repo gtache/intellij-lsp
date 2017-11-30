@@ -52,7 +52,7 @@ object WorkspaceEditHandler {
             javaMap.put(edit._1, edit._2.asJava)
           })
           val workspaceEdit = new WorkspaceEdit(javaMap)
-          applyEdit(workspaceEdit, "Rename " + lspElem.getName + " to " + newName, fast = false, openedEditors)
+          applyEdit(workspaceEdit, "Rename " + lspElem.getName + " to " + newName, openedEditors)
         }
       case _ =>
     }
@@ -64,13 +64,13 @@ object WorkspaceEditHandler {
     * @param edit The edit
     * @return True if everything was applied, false otherwise
     */
-  def applyEdit(edit: WorkspaceEdit, name: String = "LSP edits", fast: Boolean = false, toClose: Iterable[VirtualFile] = Seq()): Boolean = {
+  def applyEdit(edit: WorkspaceEdit, name: String = "LSP edits", toClose: Iterable[VirtualFile] = Seq()): Boolean = {
     import scala.collection.JavaConverters._
     val changes = edit.getChanges.asScala
     val dChanges = edit.getDocumentChanges.asScala
     var didApply: Boolean = true
 
-    def applyEdits(): Unit = {
+    invokeLater(() => {
       var curProject: Project = null
       val openedEditors: scala.collection.mutable.ListBuffer[VirtualFile] = scala.collection.mutable.ListBuffer()
 
@@ -139,15 +139,7 @@ object WorkspaceEditHandler {
           (openedEditors ++ toClose).foreach(f => FileEditorManager.getInstance(curProject).closeFile(f))
         }))
       }
-    }
-
-    if (fast) {
-      applyEdits()
-    } else {
-      invokeLater(() => {
-        applyEdits()
-      })
-    }
+    })
     didApply
   }
 

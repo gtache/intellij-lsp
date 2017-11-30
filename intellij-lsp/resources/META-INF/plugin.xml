@@ -51,8 +51,8 @@
         <fileDocumentSynchronizationVetoer
                 implementation="com.github.gtache.lsp.editor.listeners.LSPFileDocumentSynchronizationVetoer"
                 id="LSPFileDocumentSynchronizationVetoer"/>
-        <renameHandler implementation="com.github.gtache.lsp.contributors.LSPRenameHandler" id="LSPRenameHandler" order="first" />
-        <renamePsiElementProcessor implementation="com.github.gtache.lsp.contributors.LSPRenameProcessor" id="LSPRenameProcessor" order="first" />
+        <renameHandler implementation="com.github.gtache.lsp.contributors.rename.LSPRenameHandler" id="LSPRenameHandler" order="first" />
+        <renamePsiElementProcessor implementation="com.github.gtache.lsp.contributors.rename.LSPRenameProcessor" id="LSPRenameProcessor" order="first" />
     </extensions>
 
     <actions>

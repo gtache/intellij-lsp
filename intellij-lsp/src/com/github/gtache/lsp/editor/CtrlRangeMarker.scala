@@ -1,8 +1,10 @@
 package com.github.gtache.lsp.editor
 
+import java.awt.Cursor
+
+import com.github.gtache.lsp.utils.DocumentUtils
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.markup.RangeHighlighter
-import com.intellij.psi.impl.source.PsiFieldImpl
 import org.eclipse.lsp4j.Location
 
 /**
@@ -14,12 +16,21 @@ import org.eclipse.lsp4j.Location
   */
 case class CtrlRangeMarker(loc: Location, editor: Editor, range: RangeHighlighter) {
 
-  def containsOffset(offset: Int): Boolean = {
-    range.getStartOffset <= offset && range.getEndOffset >= offset
+  def highlightContainsOffset(offset: Int): Boolean = {
+    if (!isDefinition) range.getStartOffset <= offset && range.getEndOffset >= offset else definitionContainsOffset(offset)
+  }
+
+  def definitionContainsOffset(offset: Int): Boolean = {
+    DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) <= offset && offset <= DocumentUtils.LSPPosToOffset(editor, loc.getRange.getEnd)
   }
 
   def dispose(): Unit = {
-    editor.getMarkupModel.removeHighlighter(range)
+    if (!isDefinition) {
+      editor.getMarkupModel.removeHighlighter(range)
+      editor.getContentComponent.setCursor(Cursor.getDefaultCursor)
+    }
   }
+
+  def isDefinition: Boolean = range == null
 
 }

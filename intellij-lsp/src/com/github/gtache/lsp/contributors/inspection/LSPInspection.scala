@@ -25,6 +25,7 @@ class LSPInspection extends LocalInspectionTool {
       /**
         * Get all the ProblemDescriptor given an EditorEventManager
         * Look at the DiagnosticHighlights, create dummy PsiElement for each, create descriptor using it
+        *
         * @param m The manager
         * @return The ProblemDescriptors
         */

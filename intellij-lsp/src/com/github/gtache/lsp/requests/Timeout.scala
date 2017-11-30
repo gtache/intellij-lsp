@@ -40,7 +40,7 @@ object Timeout {
 
   def HOVER_TIMEOUT: Int = timeouts(HOVER)
 
-  def INIT_TIMEOUT : Int = timeouts(INIT)
+  def INIT_TIMEOUT: Int = timeouts(INIT)
 
   def REFERENCES_TIMEOUT: Int = timeouts(REFERENCES)
 

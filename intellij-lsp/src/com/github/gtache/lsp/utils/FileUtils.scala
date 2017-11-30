@@ -23,17 +23,17 @@ object FileUtils {
     editorFromVirtualFile(psiFile.getVirtualFile, psiFile.getProject)
   }
 
+  def editorFromVirtualFile(file: VirtualFile, project: Project): Editor = {
+    FileEditorManager.getInstance(project).getAllEditors(file)
+      .collect { case t: TextEditor => t.getEditor }.headOption.orNull
+  }
+
   def editorFromUri(uri: String, project: Project): Editor = {
     editorFromVirtualFile(virtualFileFromURI(uri), project)
   }
 
   def virtualFileFromURI(uri: String): VirtualFile = {
     LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
-  }
-
-  def editorFromVirtualFile(file: VirtualFile, project: Project): Editor = {
-    FileEditorManager.getInstance(project).getAllEditors(file)
-      .collect { case t: TextEditor => t.getEditor }.headOption.orNull
   }
 
   /**
@@ -64,23 +64,6 @@ object FileUtils {
     */
   def editorToURIString(editor: Editor): String = {
     sanitizeURI(VFSToURIString(FileDocumentManager.getInstance().getFile(editor.getDocument)))
-  }
-
-  /**
-    * Returns the URI string corresponding to a VirtualFileSystem file
-    *
-    * @param file The file
-    * @return the URI
-    */
-  def VFSToURIString(file: VirtualFile): String = {
-    try {
-      val uri = sanitizeURI(new URL(file.getUrl).toURI.toString)
-      uri
-    } catch {
-      case e: MalformedURLException =>
-        LOG.warn(e)
-        null
-    }
   }
 
   /**
@@ -118,6 +101,27 @@ object FileUtils {
     sanitizeURI(new File(path).toURI.toString)
   }
 
+  def documentToUri(document: Document): String = {
+    sanitizeURI(VFSToURIString(FileDocumentManager.getInstance().getFile(document)))
+  }
+
+  /**
+    * Returns the URI string corresponding to a VirtualFileSystem file
+    *
+    * @param file The file
+    * @return the URI
+    */
+  def VFSToURIString(file: VirtualFile): String = {
+    try {
+      val uri = sanitizeURI(new URL(file.getUrl).toURI.toString)
+      uri
+    } catch {
+      case e: MalformedURLException =>
+        LOG.warn(e)
+        null
+    }
+  }
+
   def sanitizeURI(uri: String): String = {
     val reconstructed: StringBuilder = StringBuilder.newBuilder
     var uriCp = new String(uri)
@@ -139,11 +143,6 @@ object FileUtils {
 
     }
   }
-
-  def documentToUri(document: Document): String = {
-    sanitizeURI(VFSToURIString(FileDocumentManager.getInstance().getFile(document)))
-  }
-
 
   /**
     * Object representing the OS type (Windows or Unix)

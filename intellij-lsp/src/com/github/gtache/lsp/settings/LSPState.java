@@ -29,15 +29,6 @@ public class LSPState implements PersistentStateComponent<LSPState> {
 
     public Map<String, String[]> extToServ = new LinkedHashMap<>(10); //Must be public to be saved
     public Map<Timeouts, Integer> timeouts = new EnumMap<>(Timeouts.class);
-
-    public boolean isUseInplaceRename() {
-        return useInplaceRename;
-    }
-
-    public void setUseInplaceRename(boolean useInplaceRename) {
-        this.useInplaceRename = useInplaceRename;
-    }
-
     public boolean useInplaceRename = false;
 
     public LSPState() {
@@ -46,6 +37,14 @@ public class LSPState implements PersistentStateComponent<LSPState> {
     @Nullable
     public static LSPState getInstance() {
         return ServiceManager.getService(LSPState.class);
+    }
+
+    public boolean isUseInplaceRename() {
+        return useInplaceRename;
+    }
+
+    public void setUseInplaceRename(boolean useInplaceRename) {
+        this.useInplaceRename = useInplaceRename;
     }
 
     public Map<String, UserConfigurableServerDefinition> getExtToServ() {

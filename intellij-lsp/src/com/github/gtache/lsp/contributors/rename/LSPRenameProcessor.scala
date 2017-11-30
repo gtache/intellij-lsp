@@ -1,10 +1,11 @@
-package com.github.gtache.lsp.contributors
+package com.github.gtache.lsp.contributors.rename
 
 import java.util
 
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.requests.WorkspaceEditHandler
+import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.{FileEditorManager, TextEditor}
 import com.intellij.openapi.project.Project
@@ -68,7 +69,12 @@ class LSPRenameProcessor extends RenamePsiElementProcessor {
   override def findReferences(element: PsiElement, searchInCommentsAndStrings: Boolean): util.Collection[PsiReference] = {
     import scala.collection.JavaConverters._
     element match {
-      case lsp: LSPPsiElement => if (elements.contains(lsp)) elements.map(e => e.getReference).asJava else Seq().asJava
+      case lsp: LSPPsiElement => if (elements.contains(lsp)) elements.map(e => e.getReference).asJava else {
+        EditorEventManager.forEditor(FileUtils.editorFromPsiFile(lsp.getContainingFile)) match {
+          case Some(m) => m.references(lsp.getTextOffset, getOriginalElement = true)._1.map(p => p.getReference).toList.asJava
+          case None => Seq().asJava
+        }
+      }
       case _ => Seq().asJava
     }
   }

@@ -95,12 +95,12 @@ class LSPServerStatusWidget(wrapper: LanguageServerWrapper) extends StatusBarWid
         message.append("Timeouts (failed requests) :<br>")
         timeouts.foreach(t => {
           val timeouts = t._2._2
-          message.append(t._1.name().substring(0,1)).append(t._1.name().substring(1).toLowerCase).append(" => ")
+          message.append(t._1.name().substring(0, 1)).append(t._1.name().substring(1).toLowerCase).append(" => ")
           val total = t._2._1 + timeouts
           if (total != 0) {
-            if (timeouts>0) message.append("<font color=\"red\">")
+            if (timeouts > 0) message.append("<font color=\"red\">")
             message.append(timeouts).append("/").append(total).append(" (").append(timeouts.asInstanceOf[Double] / total * 100).append("%)<br>")
-            if (timeouts>0) message.append("</font>")
+            if (timeouts > 0) message.append("</font>")
           } else message.append("0/0 (0%)<br>")
         })
         message.append("</html>")

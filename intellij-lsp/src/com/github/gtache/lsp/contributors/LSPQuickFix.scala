@@ -4,7 +4,7 @@ import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.intellij.codeInspection.{LocalQuickFix, ProblemDescriptor}
 import com.intellij.openapi.project.Project
-import org.eclipse.lsp4j.{Command, ExecuteCommandParams}
+import org.eclipse.lsp4j.Command
 
 /**
   * The Quickfix for LSP

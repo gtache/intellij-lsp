@@ -2,7 +2,6 @@ package com.github.gtache.lsp.contributors
 
 import javax.swing.Icon
 
-import com.intellij.icons.AllIcons
 import com.intellij.navigation.{ItemPresentation, NavigationItem}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
