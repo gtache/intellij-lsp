@@ -26,9 +26,6 @@ trait CommandServerDefinition extends UserConfigurableServerDefinition {
   def command: Array[String]
 
   override def createConnectionProvider(workingDir: String): StreamConnectionProvider = {
-    if (streamConnectionProvider == null) {
-      streamConnectionProvider = new ProcessStreamConnectionProvider(command, workingDir)
-    }
-    streamConnectionProvider
+    new ProcessStreamConnectionProvider(command, workingDir)
   }
 }

@@ -17,11 +17,8 @@ case class ArtifactLanguageServerDefinition(ext: String, packge: String, mainCla
   import ArtifactLanguageServerDefinition.typ
 
   override def createConnectionProvider(workingDir: String): StreamConnectionProvider = {
-    if (streamConnectionProvider == null) {
-      val cp = CoursierImpl.resolveClasspath(packge)
-      streamConnectionProvider = new ProcessStreamConnectionProvider(Seq("java", "-cp", cp, mainClass) ++ args, workingDir)
-    }
-    streamConnectionProvider
+    val cp = CoursierImpl.resolveClasspath(packge)
+    new ProcessStreamConnectionProvider(Seq("java", "-cp", cp, mainClass) ++ args, workingDir)
   }
 
   override def toString: String = super.toString + " " + typ + " : " + packge + " mainClass : " + mainClass + " args : " + args.mkString(" ")

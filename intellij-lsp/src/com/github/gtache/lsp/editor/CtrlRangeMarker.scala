@@ -2,6 +2,7 @@ package com.github.gtache.lsp.editor
 
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.markup.RangeHighlighter
+import com.intellij.psi.impl.source.PsiFieldImpl
 import org.eclipse.lsp4j.Location
 
 /**

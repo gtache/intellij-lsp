@@ -9,9 +9,9 @@ import com.intellij.refactoring.RefactoringActionHandler
 import com.intellij.refactoring.rename.RenameHandler
 
 class LSPRenameHandler extends RenameHandler {
-  override def invoke(project: Project, editor: Editor, file: PsiFile, dataContext: DataContext) = Messages.showInfoMessage("HAHA","HA")
+  override def invoke(project: Project, editor: Editor, file: PsiFile, dataContext: DataContext) = ???
 
-  override def invoke(project: Project, elements: Array[PsiElement], dataContext: DataContext) = Messages.showInfoMessage("HAHAH","HAA")
+  override def invoke(project: Project, elements: Array[PsiElement], dataContext: DataContext) = ???
 
   override def isAvailableOnDataContext(dataContext: DataContext) = true
 

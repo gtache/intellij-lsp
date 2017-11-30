@@ -37,8 +37,11 @@ object LanguageServerDefinition {
   * A trait representing a ServerDefinition
   */
 trait LanguageServerDefinition {
+
+  import LanguageServerDefinition.LOG
+
   private val mappedExtensions: mutable.Set[String] = mutable.Set(ext)
-  protected var streamConnectionProvider: StreamConnectionProvider = _
+  private val streamConnectionProviders: mutable.Map[String, StreamConnectionProvider] = mutable.Map()
 
   /**
     * @return The extension that the language server manages
@@ -52,31 +55,35 @@ trait LanguageServerDefinition {
 
 
   /**
-    * Starts the Language server and returns a tuple (InputStream, OutputStream)
+    * Starts a Language server for the given directory and returns a tuple (InputStream, OutputStream)
     *
+    * @param workingDir The root directory
     * @return The input and output streams of the server
     */
-  def start(): (InputStream, OutputStream) = {
-    if (streamConnectionProvider != null) {
-      streamConnectionProvider.start()
-      (streamConnectionProvider.getInputStream, streamConnectionProvider.getOutputStream)
-    } else (null, null)
+  def start(workingDir: String): (InputStream, OutputStream) = {
+    streamConnectionProviders.get(workingDir) match {
+      case Some(streamConnectionProvider) =>
+        (streamConnectionProvider.getInputStream, streamConnectionProvider.getOutputStream)
+      case None =>
+        val streamConnectionProvider = createConnectionProvider(workingDir)
+        streamConnectionProvider.start()
+        streamConnectionProviders.put(workingDir, streamConnectionProvider)
+        (streamConnectionProvider.getInputStream, streamConnectionProvider.getOutputStream)
+    }
   }
 
   /**
-    * Stops the Language server
-    */
-  def stop(): Unit = {
-    if (streamConnectionProvider != null) streamConnectionProvider.stop()
-  }
-
-  /**
-    * Instantiates a StreamConnectionProvider for this ServerDefinition
+    * Stops the Language server corresponding to the given working directory
     *
-    * @param workingDir The current working directory
-    * @return The StreamConnectionProvider
+    * @param workingDir The root directory
     */
-  def createConnectionProvider(workingDir: String): StreamConnectionProvider
+  def stop(workingDir: String): Unit = {
+    streamConnectionProviders.get(workingDir) match {
+      case Some(s) => s.stop()
+        streamConnectionProviders.remove(workingDir)
+      case None => LOG.warn("No connection for workingDir " + workingDir + " and ext " + ext)
+    }
+  }
 
   /**
     * Adds a file extension for this LanguageServer
@@ -96,7 +103,6 @@ trait LanguageServerDefinition {
     mappedExtensions.remove(ext)
   }
 
-
   /**
     * @return the extensions linked to this LanguageServer
     */
@@ -110,5 +116,13 @@ trait LanguageServerDefinition {
   def getInitializationOptions(uri: URI): Any = null
 
   override def toString: String = "ServerDefinition for " + ext
+
+  /**
+    * Creates a StreamConnectionProvider given the working directory
+    *
+    * @param workingDir The root directory
+    * @return The stream connection provider
+    */
+  protected def createConnectionProvider(workingDir: String): StreamConnectionProvider
 
 }

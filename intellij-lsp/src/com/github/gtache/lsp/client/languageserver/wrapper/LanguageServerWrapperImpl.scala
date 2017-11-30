@@ -1,7 +1,7 @@
 /* Adapted from lsp4e */
 package com.github.gtache.lsp.client.languageserver.wrapper
 
-import java.io.{File, IOException}
+import java.io.IOException
 import java.net.URI
 import java.util.concurrent._
 
@@ -18,7 +18,6 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.{FileEditorManager, TextEditor}
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
-import com.intellij.openapi.vfs.LocalFileSystem
 import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException
 import org.eclipse.lsp4j.jsonrpc.messages.{Either, Message, ResponseErrorCode, ResponseMessage}
@@ -119,13 +118,66 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     statusWidget.notifyResult(timeout, success)
   }
 
-  def notifyTimeout(timeout: Timeouts) : Unit = {
+  /**
+    * Starts the LanguageServer
+    */
+  @throws[IOException]
+  def start(): Unit = {
+    if (status == ServerStatus.STOPPED) {
+      status = ServerStatus.STARTING
+      statusWidget.setStatus(status)
+      val (inputStream, outputStream) = serverDefinition.start(rootPath)
+      client = serverDefinition.createLanguageClient
+      val initParams = new InitializeParams
+      initParams.setRootUri(FileUtils.pathToUri(rootPath))
+      val launcher = LSPLauncher.createClientLauncher(client, inputStream, outputStream)
+
+      this.languageServer = launcher.getRemoteProxy
+      client.connect(languageServer, this)
+      this.launcherFuture = launcher.startListening
+      //TODO update capabilities when implemented
+      val workspaceClientCapabilities = new WorkspaceClientCapabilities
+      workspaceClientCapabilities.setApplyEdit(true)
+      //workspaceClientCapabilities.setDidChangeConfiguration(new DidChangeConfigurationCapabilities)
+      workspaceClientCapabilities.setDidChangeWatchedFiles(new DidChangeWatchedFilesCapabilities)
+      workspaceClientCapabilities.setExecuteCommand(new ExecuteCommandCapabilities)
+      workspaceClientCapabilities.setWorkspaceEdit(new WorkspaceEditCapabilities(true))
+      workspaceClientCapabilities.setSymbol(new SymbolCapabilities)
+      val textDocumentClientCapabilities = new TextDocumentClientCapabilities
+      textDocumentClientCapabilities.setCodeAction(new CodeActionCapabilities)
+      //textDocumentClientCapabilities.setCodeLens(new CodeLensCapabilities)
+      textDocumentClientCapabilities.setCompletion(new CompletionCapabilities(new CompletionItemCapabilities(false)))
+      textDocumentClientCapabilities.setDefinition(new DefinitionCapabilities)
+      textDocumentClientCapabilities.setDocumentHighlight(new DocumentHighlightCapabilities)
+      //textDocumentClientCapabilities.setDocumentLink(new DocumentLinkCapabilities)
+      //textDocumentClientCapabilities.setDocumentSymbol(new DocumentSymbolCapabilities)
+      textDocumentClientCapabilities.setFormatting(new FormattingCapabilities)
+      textDocumentClientCapabilities.setHover(new HoverCapabilities)
+      textDocumentClientCapabilities.setOnTypeFormatting(new OnTypeFormattingCapabilities)
+      textDocumentClientCapabilities.setRangeFormatting(new RangeFormattingCapabilities)
+      textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
+      textDocumentClientCapabilities.setRename(new RenameCapabilities)
+      textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
+      textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, true, true))
+      initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilities, textDocumentClientCapabilities, null))
+      initParams.setInitializationOptions(this.serverDefinition.getInitializationOptions(URI.create(initParams.getRootUri)))
+      initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
+        initializeResult = res
+        LOG.info("Got initializeResult for " + rootPath)
+        requestManager = new SimpleRequestManager(this, languageServer, client, res.getCapabilities)
+        status = ServerStatus.STARTED
+        statusWidget.setStatus(status)
+        res
+      })
+      initializeStartTime = System.currentTimeMillis
+    }
+  }
+
+  def notifyTimeout(timeout: Timeouts): Unit = {
     notifyResult(timeout, success = false)
   }
 
-  def notifySuccess(timeout: Timeouts) : Unit = {
-    notifyResult(timeout, success = true)
-  }
+  def notifySuccess(timeout: Timeouts): Unit = {}
 
   /**
     * Returns the EditorEventManager for a given uri
@@ -230,62 +282,6 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   }
 
   /**
-    * Starts the LanguageServer
-    */
-  @throws[IOException]
-  def start(): Unit = {
-    if (status == ServerStatus.STOPPED) {
-      serverDefinition.createConnectionProvider(rootPath)
-      status = ServerStatus.STARTING
-      statusWidget.setStatus(status)
-      val (inputStream, outputStream) = serverDefinition.start()
-      client = serverDefinition.createLanguageClient
-      val initParams = new InitializeParams
-      initParams.setRootUri(FileUtils.pathToUri(rootPath))
-      val launcher = LSPLauncher.createClientLauncher(client, inputStream, outputStream)
-
-      this.languageServer = launcher.getRemoteProxy
-      client.connect(languageServer, this)
-      this.launcherFuture = launcher.startListening
-      //TODO update capabilities when implemented
-      val workspaceClientCapabilities = new WorkspaceClientCapabilities
-      workspaceClientCapabilities.setApplyEdit(true)
-      //workspaceClientCapabilities.setDidChangeConfiguration(new DidChangeConfigurationCapabilities)
-      workspaceClientCapabilities.setDidChangeWatchedFiles(new DidChangeWatchedFilesCapabilities)
-      workspaceClientCapabilities.setExecuteCommand(new ExecuteCommandCapabilities)
-      workspaceClientCapabilities.setWorkspaceEdit(new WorkspaceEditCapabilities(true))
-      workspaceClientCapabilities.setSymbol(new SymbolCapabilities)
-      val textDocumentClientCapabilities = new TextDocumentClientCapabilities
-      textDocumentClientCapabilities.setCodeAction(new CodeActionCapabilities)
-      //textDocumentClientCapabilities.setCodeLens(new CodeLensCapabilities)
-      textDocumentClientCapabilities.setCompletion(new CompletionCapabilities(new CompletionItemCapabilities(false)))
-      textDocumentClientCapabilities.setDefinition(new DefinitionCapabilities)
-      textDocumentClientCapabilities.setDocumentHighlight(new DocumentHighlightCapabilities)
-      //textDocumentClientCapabilities.setDocumentLink(new DocumentLinkCapabilities)
-      //textDocumentClientCapabilities.setDocumentSymbol(new DocumentSymbolCapabilities)
-      textDocumentClientCapabilities.setFormatting(new FormattingCapabilities)
-      textDocumentClientCapabilities.setHover(new HoverCapabilities)
-      textDocumentClientCapabilities.setOnTypeFormatting(new OnTypeFormattingCapabilities)
-      textDocumentClientCapabilities.setRangeFormatting(new RangeFormattingCapabilities)
-      textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
-      textDocumentClientCapabilities.setRename(new RenameCapabilities)
-      textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
-      textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, true, true))
-      initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilities, textDocumentClientCapabilities, null))
-      initParams.setInitializationOptions(this.serverDefinition.getInitializationOptions(URI.create(initParams.getRootUri)))
-      initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
-        initializeResult = res
-        LOG.info("Got initializeResult for " + rootPath)
-        requestManager = new SimpleRequestManager(this, languageServer, client, res.getCapabilities)
-        status = ServerStatus.STARTED
-        statusWidget.setStatus(status)
-        res
-      })
-      initializeStartTime = System.currentTimeMillis
-    }
-  }
-
-  /**
     * @return The language ID that this wrapper is dealing with if defined in the content type mapping for the language languageServer
     */
   @Nullable def getLanguageId(contentTypes: Array[String]): String = {
@@ -320,7 +316,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       this.launcherFuture.cancel(true)
       this.launcherFuture = null
     }
-    if (this.serverDefinition != null) this.serverDefinition.stop()
+    if (this.serverDefinition != null) this.serverDefinition.stop(rootPath)
     connectedEditors.foreach(e => disconnect(e._1))
     this.languageServer = null
     status = ServerStatus.STOPPED
@@ -377,7 +373,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   }
 
   private def connect(uri: String): Unit = {
-    val editors = FileEditorManager.getInstance(project).getAllEditors(LocalFileSystem.getInstance().findFileByIoFile(new File(uri)))
+    val editors = FileEditorManager.getInstance(project).getAllEditors(FileUtils.URIToVFS(uri))
       .collect { case t: TextEditor => t.getEditor }
     if (editors.nonEmpty) {
       connect(editors.head)
