@@ -119,6 +119,14 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     statusWidget.notifyResult(timeout, success)
   }
 
+  def notifyTimeout(timeout: Timeouts) : Unit = {
+    notifyResult(timeout, success = false)
+  }
+
+  def notifySuccess(timeout: Timeouts) : Unit = {
+    notifyResult(timeout, success = true)
+  }
+
   /**
     * Returns the EditorEventManager for a given uri
     *
