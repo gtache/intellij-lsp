@@ -164,7 +164,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         if (future != null) {
           try {
             val signature = future.get(SIGNATURE_TIMEOUT, TimeUnit.MILLISECONDS)
-            wrapper.notifyResult(Timeouts.SIGNATURE, success = true)
+            wrapper.notifySuccess(Timeouts.SIGNATURE)
             if (signature != null) {
               val signatures = signature.getSignatures.asScala
               if (signatures != null && signatures.nonEmpty) {
@@ -184,7 +184,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           } catch {
             case e: TimeoutException =>
               LOG.warn(e)
-              wrapper.notifyResult(Timeouts.SIGNATURE, success = false)
+              wrapper.notifyFailure(Timeouts.SIGNATURE)
           }
         }
       }
@@ -208,12 +208,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         if (future != null) {
           try {
             val edits = future.get(FORMATTING_TIMEOUT, TimeUnit.MILLISECONDS)
-            wrapper.notifyResult(Timeouts.FORMATTING, success = true)
+            wrapper.notifySuccess(Timeouts.FORMATTING)
             invokeLater(() => applyEdit(edits = edits.asScala, name = "On type formatting"))
           } catch {
             case e: TimeoutException =>
               LOG.warn(e)
-              wrapper.notifyResult(Timeouts.FORMATTING, success = false)
+              wrapper.notifyFailure(Timeouts.FORMATTING)
           }
         }
       }
@@ -236,12 +236,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     if (future != null) {
       try {
         val res = future.get(CODEACTION_TIMEOUT, TimeUnit.MILLISECONDS).asScala
-        wrapper.notifyResult(Timeouts.CODEACTION, success = true)
+        wrapper.notifySuccess(Timeouts.CODEACTION)
         res
       } catch {
         case e: TimeoutException =>
           LOG.warn(e)
-          wrapper.notifyResult(Timeouts.CODEACTION, success = false)
+          wrapper.notifyFailure(Timeouts.CODEACTION)
           null
       }
     } else {
@@ -260,7 +260,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     if (request != null) {
       try {
         val res = request.get(COMPLETION_TIMEOUT, TimeUnit.MILLISECONDS)
-        wrapper.notifyResult(Timeouts.COMPLETION, success = true)
+        wrapper.notifySuccess(Timeouts.COMPLETION)
         import scala.collection.JavaConverters._
         val completion /*: CompletionList | List[CompletionItem] */ = if (res.isLeft) res.getLeft.asScala else res.getRight
 
@@ -333,7 +333,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       catch {
         case e: TimeoutException =>
           LOG.warn(e)
-          wrapper.notifyResult(Timeouts.COMPLETION, success = false)
+          wrapper.notifyFailure(Timeouts.COMPLETION)
           Iterable.empty
       }
     } else Iterable.empty
@@ -485,14 +485,14 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           if (future != null) {
             try {
               val edits = future.get(WILLSAVE_TIMEOUT, TimeUnit.MILLISECONDS)
-              wrapper.notifyResult(Timeouts.WILLSAVE, success = true)
+              wrapper.notifySuccess(Timeouts.WILLSAVE)
               if (edits != null) {
                 invokeLater(() => applyEdit(edits = edits.asScala, name = "WaitUntil edits"))
               }
             } catch {
               case e: TimeoutException =>
                 LOG.warn(e)
-                wrapper.notifyResult(Timeouts.WILLSAVE, success = false)
+                wrapper.notifyFailure(Timeouts.WILLSAVE)
             } finally {
               needSave = true
               saveDocument()
@@ -592,7 +592,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     if (future != null) {
       try {
         val references = future.get(REFERENCES_TIMEOUT, TimeUnit.MILLISECONDS)
-        wrapper.notifyResult(Timeouts.REFERENCES, success = true)
+        wrapper.notifySuccess(Timeouts.REFERENCES)
         if (references != null) {
           references.asScala.collect {
             case l: Location if l.getUri == identifier.getUri =>
@@ -604,7 +604,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       } catch {
         case e: TimeoutException =>
           LOG.warn(e)
-          wrapper.notifyResult(Timeouts.REFERENCES, success = false)
+          wrapper.notifyFailure(Timeouts.REFERENCES)
           null
       }
     }
@@ -630,7 +630,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           if (f != null) {
             try {
               val ret = f.get(EXECUTE_COMMAND_TIMEOUT, TimeUnit.MILLISECONDS)
-              wrapper.notifyResult(Timeouts.EXECUTE_COMMAND, success = true)
+              wrapper.notifySuccess(Timeouts.EXECUTE_COMMAND)
               ret match {
                 case e: WorkspaceEdit => WorkspaceEditHandler.applyEdit(e, name = "Execute command")
                 case _ =>
@@ -638,7 +638,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             } catch {
               case e: TimeoutException =>
                 LOG.warn(e)
-                wrapper.notifyResult(Timeouts.EXECUTE_COMMAND, success = false)
+                wrapper.notifyFailure(Timeouts.EXECUTE_COMMAND)
             }
           }
         })
@@ -667,7 +667,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             .orNull
         } catch {
           case e: TimeoutException =>
-            wrapper.notifyTimeout(Timeouts.DOC_HIGHLIGHT)
+            wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
             LOG.warn(e)
             null
         }
@@ -742,7 +742,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         if (future != null) {
           try {
             val references = future.get(REFERENCES_TIMEOUT, TimeUnit.MILLISECONDS)
-            wrapper.notifyResult(Timeouts.REFERENCES, success = true)
+            wrapper.notifySuccess(Timeouts.REFERENCES)
             if (references != null) {
               invokeLater(() => {
                 if (!editor.isDisposed) showReferences(references.asScala)
@@ -751,7 +751,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           } catch {
             case e: TimeoutException =>
               LOG.warn(e)
-              wrapper.notifyResult(Timeouts.REFERENCES, success = false)
+              wrapper.notifyFailure(Timeouts.REFERENCES)
           }
         }
       }
@@ -896,6 +896,72 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
+  private def createCtrlRange(serverPos: Position, range: Range): Unit = {
+    val loc = requestDefinition(serverPos)
+    if (loc != null) {
+      invokeLater(() => {
+        if (!editor.isDisposed) {
+          val corRange = if (range == null) {
+            val params = new TextDocumentPositionParams(identifier, serverPos)
+            val future = requestManager.documentHighlight(params)
+            if (future != null) {
+              try {
+                val highlights = future.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
+                wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
+                val offset = DocumentUtils.LSPPosToOffset(editor, serverPos)
+                highlights.asScala.find(dh => DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart) <= offset
+                  && offset <= DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)).map(dh => dh.getRange).getOrElse(new Range(serverPos, serverPos)
+                )
+              } catch {
+                case e: TimeoutException =>
+                  LOG.warn(e)
+                  wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
+                  new Range(serverPos, serverPos)
+              }
+            } else new Range(serverPos, serverPos)
+
+          } else range
+          val startOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getStart)
+          val endOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getEnd)
+          val isDefinition = DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) == startOffset
+          if (ctrlRange != null) ctrlRange.dispose()
+          ctrlRange = CtrlRangeMarker(loc, editor,
+            if (!isDefinition) editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.HYPERLINK, editor.getColorsScheme.getAttributes(EditorColors.REFERENCE_HYPERLINK_COLOR), HighlighterTargetArea.EXACT_RANGE)
+            else null)
+        }
+      })
+    }
+  }
+
+  /**
+    * Returns the position of the definition given a position in the editor
+    *
+    * @param position The position
+    * @return The location of the definition
+    */
+  private def requestDefinition(position: Position): Location = {
+    val params = new TextDocumentPositionParams(identifier, position)
+    val request = requestManager.definition(params)
+    if (request != null) {
+      try {
+        val definition = request.get(DEFINITION_TIMEOUT, TimeUnit.MILLISECONDS).asScala
+        wrapper.notifySuccess(Timeouts.DEFINITION)
+        if (definition != null && definition.nonEmpty) {
+          definition.head
+        } else {
+          null
+        }
+      } catch {
+        case e: TimeoutException =>
+          LOG.warn(e)
+          wrapper.notifyFailure(Timeouts.DEFINITION)
+          null
+      }
+    } else {
+      null
+    }
+  }
+
   /**
     * Will show documentation if the mouse doesn't move for a given time (Hover)
     *
@@ -970,7 +1036,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     if (request != null) {
       try {
         val hover = request.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
-        wrapper.notifyResult(Timeouts.HOVER, success = true)
+        wrapper.notifySuccess(Timeouts.HOVER)
         if (hover != null) {
           val string = HoverHandler.getHoverString(hover)
           if (string != null && string != "") {
@@ -989,77 +1055,11 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       } catch {
         case e: TimeoutException =>
           LOG.warn(e)
-          wrapper.notifyResult(Timeouts.HOVER, success = false)
+          wrapper.notifyFailure(Timeouts.HOVER)
       }
     }
 
 
-  }
-
-  private def createCtrlRange(serverPos: Position, range: Range): Unit = {
-    val loc = requestDefinition(serverPos)
-    if (loc != null) {
-      invokeLater(() => {
-        if (!editor.isDisposed) {
-          val corRange = if (range == null) {
-            val params = new TextDocumentPositionParams(identifier, serverPos)
-            val future = requestManager.documentHighlight(params)
-            if (future != null) {
-              try {
-                val highlights = future.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
-                wrapper.notifyResult(Timeouts.DOC_HIGHLIGHT, success = true)
-                val offset = DocumentUtils.LSPPosToOffset(editor, serverPos)
-                highlights.asScala.find(dh => DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart) <= offset
-                  && offset <= DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)).map(dh => dh.getRange).getOrElse(new Range(serverPos, serverPos)
-                )
-              } catch {
-                case e: TimeoutException =>
-                  LOG.warn(e)
-                  wrapper.notifyResult(Timeouts.DOC_HIGHLIGHT, success = false)
-                  new Range(serverPos, serverPos)
-              }
-            } else new Range(serverPos, serverPos)
-
-          } else range
-          val startOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getStart)
-          val endOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getEnd)
-          val isDefinition = DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) == startOffset
-          if (ctrlRange != null) ctrlRange.dispose()
-          ctrlRange = CtrlRangeMarker(loc, editor,
-            if (!isDefinition) editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.HYPERLINK, editor.getColorsScheme.getAttributes(EditorColors.REFERENCE_HYPERLINK_COLOR), HighlighterTargetArea.EXACT_RANGE)
-          else null)
-        }
-      })
-    }
-  }
-
-  /**
-    * Returns the position of the definition given a position in the editor
-    *
-    * @param position The position
-    * @return The location of the definition
-    */
-  private def requestDefinition(position: Position): Location = {
-    val params = new TextDocumentPositionParams(identifier, position)
-    val request = requestManager.definition(params)
-    if (request != null) {
-      try {
-        val definition = request.get(DEFINITION_TIMEOUT, TimeUnit.MILLISECONDS).asScala
-        wrapper.notifyResult(Timeouts.DEFINITION, success = true)
-        if (definition != null && definition.nonEmpty) {
-          definition.head
-        } else {
-          null
-        }
-      } catch {
-        case e: TimeoutException =>
-          LOG.warn(e)
-          wrapper.notifyResult(Timeouts.DEFINITION, success = false)
-          null
-      }
-    } else {
-      null
-    }
   }
 
   /**
@@ -1078,7 +1078,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     if (request != null) {
       try {
         val res = request.get(REFERENCES_TIMEOUT, TimeUnit.MILLISECONDS)
-        wrapper.notifyResult(Timeouts.REFERENCES, success = true)
+        wrapper.notifySuccess(Timeouts.REFERENCES)
         if (res != null) {
           val openedEditors = mutable.ListBuffer[VirtualFile]()
           (res.asScala.map(l => {
@@ -1104,7 +1104,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       } catch {
         case e: TimeoutException =>
           LOG.warn(e)
-          wrapper.notifyResult(Timeouts.REFERENCES, success = false)
+          wrapper.notifyFailure(Timeouts.REFERENCES)
           (Seq.empty, Seq.empty)
       }
     } else (Seq.empty, Seq.empty)
@@ -1202,12 +1202,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       if (request != null) {
         try {
           val response = request.get(HOVER_TIMEOUT, TimeUnit.MILLISECONDS)
-          wrapper.notifyResult(Timeouts.HOVER, success = true)
+          wrapper.notifySuccess(Timeouts.HOVER)
           HoverHandler.getHoverString(response)
         } catch {
           case e: TimeoutException =>
             LOG.warn(e)
-            wrapper.notifyResult(Timeouts.HOVER, success = false)
+            wrapper.notifyFailure(Timeouts.HOVER)
             ""
         }
       } else {
@@ -1238,7 +1238,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               if (!editor.isDisposed) {
                 try {
                   val resp = request.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS).asScala
-                  wrapper.notifyResult(Timeouts.DOC_HIGHLIGHT, success = true)
+                  wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
                   invokeLater(() => resp.foreach(dh => {
                     if (!editor.isDisposed) {
                       val range = dh.getRange
@@ -1253,7 +1253,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 } catch {
                   case e: TimeoutException =>
                     LOG.warn(e)
-                    wrapper.notifyResult(Timeouts.DOC_HIGHLIGHT, success = false)
+                    wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
                 }
               }
             })

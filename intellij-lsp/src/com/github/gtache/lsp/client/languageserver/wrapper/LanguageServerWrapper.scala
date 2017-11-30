@@ -29,6 +29,10 @@ trait LanguageServerWrapper {
     */
   def notifyResult(timeouts: Timeouts, success: Boolean): Unit
 
+  def notifySuccess(timeouts: Timeouts): Unit = notifyResult(timeouts, success = true)
+
+  def notifyFailure(timeouts: Timeouts): Unit = notifyResult(timeouts, success = false)
+
   def getConnectedFiles: Iterable[String]
 
   /**

@@ -24,13 +24,19 @@ case class CtrlRangeMarker(loc: Location, editor: Editor, range: RangeHighlighte
     DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) <= offset && offset <= DocumentUtils.LSPPosToOffset(editor, loc.getRange.getEnd)
   }
 
+  /**
+    * If the marker points to the definition itself
+    */
+  def isDefinition: Boolean = range == null
+
+  /**
+    * Removes the highlighter and restores the default cursor
+    */
   def dispose(): Unit = {
     if (!isDefinition) {
       editor.getMarkupModel.removeHighlighter(range)
       editor.getContentComponent.setCursor(Cursor.getDefaultCursor)
     }
   }
-
-  def isDefinition: Boolean = range == null
 
 }

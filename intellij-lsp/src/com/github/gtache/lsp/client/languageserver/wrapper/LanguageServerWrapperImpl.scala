@@ -100,10 +100,10 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       try {
         start()
         if (this.initializeFuture != null) this.initializeFuture.get(if (capabilitiesAlreadyRequested) 0 else Timeout.INIT_TIMEOUT, TimeUnit.MILLISECONDS)
-        notifyResult(Timeouts.INIT, success = true)
+        notifySuccess(Timeouts.INIT)
       } catch {
         case e: TimeoutException =>
-          notifyResult(Timeouts.INIT, success = false)
+          notifyFailure(Timeouts.INIT)
           if (System.currentTimeMillis - initializeStartTime > 10000) LOG.error("LanguageServer not initialized after 10s", e) //$NON-NLS-1$
         case e@(_: IOException | _: InterruptedException | _: ExecutionException) =>
           LOG.error(e)
@@ -114,15 +114,9 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     }
   }
 
-  def notifyTimeout(timeout: Timeouts): Unit = {
-    notifyResult(timeout, success = false)
-  }
-
   override def notifyResult(timeout: Timeouts, success: Boolean): Unit = {
     statusWidget.notifyResult(timeout, success)
   }
-
-  def notifySuccess(timeout: Timeouts): Unit = {}
 
   /**
     * Returns the EditorEventManager for a given uri
@@ -306,10 +300,10 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     if (this.languageServer != null) try {
       val shutdown: CompletableFuture[AnyRef] = this.languageServer.shutdown
       shutdown.get(Timeout.SHUTDOWN_TIMEOUT, TimeUnit.MILLISECONDS)
-      notifyResult(Timeouts.SHUTDOWN, success = true)
+      notifySuccess(Timeouts.SHUTDOWN)
     } catch {
       case _: Exception =>
-        notifyResult(Timeouts.SHUTDOWN, success = false)
+        notifyFailure(Timeouts.SHUTDOWN)
       // most likely closed externally
     }
     if (this.launcherFuture != null) {
