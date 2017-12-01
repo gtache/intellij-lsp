@@ -1,13 +1,13 @@
-package com.github.gtache.lsp.utils
+package com.github.gtache.lsp.utils.coursier
 
 import java.io.File
 
 import com.github.gtache.lsp.settings.LSPState
+import com.github.gtache.lsp.utils.{ApplicationUtils, Utils}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.ui.Messages
-import coursier.Cache
-import coursier.core.Repository
 import coursier.ivy.IvyRepository
+import coursier.{Cache, Dependency, Fetch, Module, Repository, Resolution}
 import coursier.maven.MavenRepository
 
 import scalaz.concurrent.Task
@@ -31,7 +31,6 @@ object CoursierImpl {
     * @return The full classpath string
     */
   def resolveClasspath(toResolve: String): String = {
-    import coursier._
     val start = Resolution(Set({
       val parsed = parseDepString(toResolve)
       Dependency(Module(parsed._1, parsed._2), parsed._3)

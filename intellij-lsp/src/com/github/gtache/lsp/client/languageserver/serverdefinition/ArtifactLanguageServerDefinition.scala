@@ -1,7 +1,7 @@
 package com.github.gtache.lsp.client.languageserver.serverdefinition
 
 import com.github.gtache.lsp.client.connection.{ProcessStreamConnectionProvider, StreamConnectionProvider}
-import com.github.gtache.lsp.utils.CoursierImpl
+import com.github.gtache.lsp.utils.coursier.CoursierImpl
 import com.intellij.openapi.diagnostic.Logger
 
 /**

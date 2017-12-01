@@ -1,20 +1,24 @@
 <idea-plugin>
     <id>com.github.gtache.lsp</id>
     <name>LSP Support</name>
-    <version>1.1</version>
+    <version>1.2</version>
     <vendor email="guillaume.tache@epfl.ch" url="https://github.com/gtache">gtache</vendor>
 
     <description>Adds LSP (Language Server Protocol) support for IntelliJ</description>
 
     <change-notes>
-        -Adds server status icons in the status bar
-        -Adds implementations for codeAction, executeCommand, showMessageRequest
-        -Improves showMessage implementation
-        -Improves handling of markdown response for Hover
-        -Fixes several potential bugs regarding the state of the editor
-        -Fixes potential problem with formatting
-        -Fixes sending wrong filetype for DidChangeWatchedFiles
-        -Removes duplicate hint on diagnostic error
+        <![CDATA[
+        -Adds actions to see timeouts and connected files by clicking on the icon in the status bar<br>
+        -Adds Coursier repositories setting<br>
+        -Highlights (like hyperlink) symbol when pressing Ctrl (same behavior as IntelliJ)<br>
+        -Allows rename through refactor shortcut (Shift+F6 by default)<br>
+        -Rename action now uses inplace renaming if all symbols are in the same file.<br>
+        -Adds icons extensions for Goto symbol/class<br>
+        -Adds default icons for completion and Goto<br>
+        -Finds usages (Shift+Alt+F7) now opens in the find usages tool window<br>
+        -Fixes not being able to instantiate multiple times the same server (working on multiple projects for example)<br>
+        -Handles server crashing
+]]>
     </change-notes>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->

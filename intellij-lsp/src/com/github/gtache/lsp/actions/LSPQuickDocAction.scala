@@ -6,6 +6,7 @@ import com.intellij.lang.LanguageDocumentation
 import com.intellij.openapi.actionSystem.{AnActionEvent, CommonDataKeys}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileTypes.PlainTextLanguage
 import com.intellij.openapi.project.DumbAware
 import com.intellij.psi.PsiManager
 
@@ -18,7 +19,8 @@ class LSPQuickDocAction extends ShowQuickDocInfoAction with DumbAware {
   override def actionPerformed(e: AnActionEvent): Unit = {
     val editor = e.getData(CommonDataKeys.EDITOR)
     val file = FileDocumentManager.getInstance().getFile(editor.getDocument)
-    if (LanguageDocumentation.INSTANCE.allForLanguage(PsiManager.getInstance(editor.getProject).findFile(file).getLanguage).isEmpty) {
+    val language = PsiManager.getInstance(editor.getProject).findFile(file).getLanguage
+    if (language == PlainTextLanguage.INSTANCE || LanguageDocumentation.INSTANCE.allForLanguage(language).isEmpty) {
       EditorEventManager.forEditor(editor) match {
         case Some(manager) => manager.quickDoc(editor)
         case None => super.actionPerformed(e)

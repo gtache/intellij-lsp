@@ -1,7 +1,7 @@
 package com.github.gtache.lsp.settings.gui;
 
 import com.github.gtache.lsp.settings.LSPState;
-import com.github.gtache.lsp.utils.CoursierImpl$;
+import com.github.gtache.lsp.utils.coursier.CoursierImpl$;
 import com.github.gtache.lsp.utils.Utils;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
