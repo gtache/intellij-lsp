@@ -20,7 +20,7 @@ class LSPQuickDocAction extends ShowQuickDocInfoAction with DumbAware {
     val editor = e.getData(CommonDataKeys.EDITOR)
     val file = FileDocumentManager.getInstance().getFile(editor.getDocument)
     val language = PsiManager.getInstance(editor.getProject).findFile(file).getLanguage
-    if (language == PlainTextLanguage.INSTANCE || LanguageDocumentation.INSTANCE.allForLanguage(language).isEmpty) {
+    if (LanguageDocumentation.INSTANCE.allForLanguage(language).isEmpty) {
       EditorEventManager.forEditor(editor) match {
         case Some(manager) => manager.quickDoc(editor)
         case None => super.actionPerformed(e)

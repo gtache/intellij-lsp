@@ -47,7 +47,7 @@ object ReformatHandler {
     */
   def reformatFile(file: VirtualFile, project: Project): Unit = {
     if (PluginMain.isExtensionSupported(file.getExtension)) {
-      val uri = FileUtils.VFSToURIString(file)
+      val uri = FileUtils.VFSToURI(file)
       EditorEventManager.forUri(uri) match {
         case Some(manager) =>
           manager.reformat()

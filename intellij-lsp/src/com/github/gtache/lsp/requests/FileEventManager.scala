@@ -21,7 +21,7 @@ object FileEventManager {
     * @param doc The document
     */
   def willSave(doc: Document): Unit = {
-    val uri = FileUtils.VFSToURIString(FileDocumentManager.getInstance().getFile(doc))
+    val uri = FileUtils.VFSToURI(FileDocumentManager.getInstance().getFile(doc))
     EditorEventManager.forUri(uri).foreach(e => e.willSave())
   }
 
@@ -38,7 +38,7 @@ object FileEventManager {
     * @param file The file
     */
   def fileChanged(file: VirtualFile): Unit = {
-    val uri: String = FileUtils.VFSToURIString(file)
+    val uri: String = FileUtils.VFSToURI(file)
     if (uri != null) {
       EditorEventManager.forUri(uri) match {
         case Some(m) => m.documentSaved()
@@ -63,7 +63,7 @@ object FileEventManager {
     * @param file The file
     */
   def fileDeleted(file: VirtualFile): Unit = {
-    val uri = FileUtils.VFSToURIString(file)
+    val uri = FileUtils.VFSToURI(file)
     if (uri != null) {
       changedConfiguration(uri, FileChangeType.Deleted)
     }
@@ -98,7 +98,7 @@ object FileEventManager {
     * @param file The file
     */
   def fileCreated(file: VirtualFile): Unit = {
-    val uri = FileUtils.VFSToURIString(file)
+    val uri = FileUtils.VFSToURI(file)
     if (uri != null) {
       changedConfiguration(uri, FileChangeType.Created)
     }

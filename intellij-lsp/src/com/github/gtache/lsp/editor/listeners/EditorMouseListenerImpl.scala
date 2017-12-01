@@ -8,7 +8,7 @@ import com.intellij.openapi.editor.event.{EditorMouseEvent, EditorMouseListener}
 class EditorMouseListenerImpl extends EditorMouseListener with LSPListener {
 
   override def mouseExited(e: EditorMouseEvent): Unit = {
-    if (checkManager()) manager.stopListening()
+    if (checkManager()) manager.mouseExited()
   }
 
   override def mousePressed(e: EditorMouseEvent): Unit = {
@@ -18,7 +18,7 @@ class EditorMouseListenerImpl extends EditorMouseListener with LSPListener {
   }
 
   override def mouseEntered(e: EditorMouseEvent): Unit = {
-    if (checkManager()) manager.startListening()
+    if (checkManager()) manager.mouseEntered()
   }
 
   override def mouseClicked(e: EditorMouseEvent): Unit = {

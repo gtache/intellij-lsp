@@ -1,10 +1,11 @@
 package com.github.gtache.lsp.contributors
 
+import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.lang.documentation.DocumentationProvider
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.psi.{PsiElement, PsiManager}
+import com.intellij.psi.{PsiElement, PsiFile, PsiManager}
 
 /**
   * A documentation provider for LSP (is called when CTRL is pushed while staying on a token)
@@ -30,7 +31,14 @@ class LSPDocumentationProvider extends DocumentationProvider {
   }
 
   override def getQuickNavigateInfo(element: PsiElement, originalElement: PsiElement): String = {
-    val uri = FileUtils.VFSToURIString(originalElement.getContainingFile.getVirtualFile)
-    EditorEventManager.forUri(uri).fold("")(e => e.requestDoc(e.editor, originalElement.getTextOffset))
+    element match {
+      case l: LSPPsiElement =>
+        EditorEventManager.forUri(FileUtils.VFSToURI(l.getContainingFile.getVirtualFile)).fold("")(m => m.requestDoc(m.editor, l.getTextOffset))
+      case p: PsiFile =>
+        val editor = FileUtils.editorFromPsiFile(p)
+        editor.getCaretModel.getCurrentCaret.getOffset
+        EditorEventManager.forEditor(editor).fold("")(m => m.requestDoc(editor, editor.getCaretModel.getCurrentCaret.getOffset))
+      case _ => ""
+    }
   }
 }

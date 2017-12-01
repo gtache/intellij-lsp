@@ -20,7 +20,7 @@ class LSPInspection extends LocalInspectionTool {
   override def checkFile(file: PsiFile, manager: InspectionManager, isOnTheFly: Boolean): Array[ProblemDescriptor] = {
     val virtualFile = file.getVirtualFile
     if (PluginMain.isExtensionSupported(virtualFile.getExtension)) {
-      val uri = FileUtils.VFSToURIString(virtualFile)
+      val uri = FileUtils.VFSToURI(virtualFile)
 
       /**
         * Get all the ProblemDescriptor given an EditorEventManager

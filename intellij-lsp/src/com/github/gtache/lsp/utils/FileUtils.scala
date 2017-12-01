@@ -62,7 +62,7 @@ object FileUtils {
     * @return The URI
     */
   def editorToURIString(editor: Editor): String = {
-    sanitizeURI(VFSToURIString(FileDocumentManager.getInstance().getFile(editor.getDocument)))
+    sanitizeURI(VFSToURI(FileDocumentManager.getInstance().getFile(editor.getDocument)))
   }
 
   /**
@@ -101,7 +101,7 @@ object FileUtils {
   }
 
   def documentToUri(document: Document): String = {
-    sanitizeURI(VFSToURIString(FileDocumentManager.getInstance().getFile(document)))
+    sanitizeURI(VFSToURI(FileDocumentManager.getInstance().getFile(document)))
   }
 
   /**
@@ -110,7 +110,7 @@ object FileUtils {
     * @param file The file
     * @return the URI
     */
-  def VFSToURIString(file: VirtualFile): String = {
+  def VFSToURI(file: VirtualFile): String = {
     try {
       val uri = sanitizeURI(new URL(file.getUrl).toURI.toString)
       uri
