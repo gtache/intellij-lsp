@@ -104,35 +104,33 @@ object PluginMain {
     }
     val file: VirtualFile = FileDocumentManager.getInstance.getFile(editor.getDocument)
     if (file != null) {
-      ApplicationManager.getApplication.executeOnPooledThread(new Runnable {
-        override def run(): Unit = {
-          val ext: String = file.getExtension
-          val project: Project = editor.getProject
-          val rootPath: String = FileUtils.editorToProjectFolderPath(editor)
-          val rootUri: String = FileUtils.pathToUri(rootPath)
-          LOG.info("Opened " + file.getName)
-          extToServerDefinition.get(ext).foreach(s => {
-            extToLanguageWrapper.synchronized {
-              var wrapper = extToLanguageWrapper.get((ext, rootUri)).orNull
-              wrapper match {
-                case null =>
-                  LOG.info("Instantiating wrapper for " + ext + " : " + rootUri)
-                  wrapper = new LanguageServerWrapperImpl(s, project)
-                  extToLanguageWrapper.put((ext, rootUri), wrapper)
-                  projectToLanguageWrappers.get(rootUri) match {
-                    case Some(set) =>
-                      set.add(wrapper)
-                    case None =>
-                      projectToLanguageWrappers.put(rootUri, mutable.Set(wrapper))
-                  }
-                case l: LanguageServerWrapperImpl =>
-                  LOG.info("Wrapper already existing for " + ext + " , " + rootUri)
-              }
-              LOG.info("Adding file " + file.getName)
-              wrapper.connect(editor)
+      ApplicationUtils.pool(() => {
+        val ext: String = file.getExtension
+        val project: Project = editor.getProject
+        val rootPath: String = FileUtils.editorToProjectFolderPath(editor)
+        val rootUri: String = FileUtils.pathToUri(rootPath)
+        LOG.info("Opened " + file.getName)
+        extToServerDefinition.get(ext).foreach(s => {
+          extToLanguageWrapper.synchronized {
+            var wrapper = extToLanguageWrapper.get((ext, rootUri)).orNull
+            wrapper match {
+              case null =>
+                LOG.info("Instantiating wrapper for " + ext + " : " + rootUri)
+                wrapper = new LanguageServerWrapperImpl(s, project)
+                extToLanguageWrapper.put((ext, rootUri), wrapper)
+                projectToLanguageWrappers.get(rootUri) match {
+                  case Some(set) =>
+                    set.add(wrapper)
+                  case None =>
+                    projectToLanguageWrappers.put(rootUri, mutable.Set(wrapper))
+                }
+              case l: LanguageServerWrapperImpl =>
+                LOG.info("Wrapper already existing for " + ext + " , " + rootUri)
             }
-          })
-        }
+            LOG.info("Adding file " + file.getName)
+            wrapper.connect(editor)
+          }
+        })
       })
 
     } else {

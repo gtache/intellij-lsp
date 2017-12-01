@@ -6,7 +6,7 @@ import javax.swing.Icon
 
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.requests.Timeouts
-import com.github.gtache.lsp.utils.GUIUtils
+import com.github.gtache.lsp.utils.{ApplicationUtils, GUIUtils}
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.{AnAction, AnActionEvent, DefaultActionGroup}
 import com.intellij.openapi.project.{DumbAware, Project}
@@ -125,7 +125,7 @@ class LSPServerStatusWidget(wrapper: LanguageServerWrapper) extends StatusBarWid
 
   private def updateWidget(): Unit = {
     val manager = WindowManager.getInstance()
-    if (manager != null && project != null) {
+    if (manager != null && project != null && !project.isDisposed) {
       val statusBar = manager.getStatusBar(project)
       if (statusBar != null) {
         statusBar.updateWidget(ID())
@@ -133,9 +133,15 @@ class LSPServerStatusWidget(wrapper: LanguageServerWrapper) extends StatusBarWid
     }
   }
 
-  override def ID(): String = projectName + "_" + ext
+  override def dispose(): Unit = {
+    val manager = WindowManager.getInstance()
+    if (manager != null && project != null && !project.isDisposed) {
+      val statusBar = manager.getStatusBar(project)
+      if (statusBar != null) ApplicationUtils.invokeLater(() => statusBar.removeWidget(ID()))
+    }
+  }
 
-  override def dispose(): Unit = {}
+  override def ID(): String = projectName + "_" + ext
 }
 
 
