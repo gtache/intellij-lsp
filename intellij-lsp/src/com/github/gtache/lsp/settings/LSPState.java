@@ -13,23 +13,21 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.util.xmlb.XmlSerializerUtil;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.EnumMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 @State(name = "LSPState", storages = @Storage(id = "LSPState", file = "LSPState.xml"))
 
 /**
  * Class representing the state of the LSP settings
  */
-public class LSPState implements PersistentStateComponent<LSPState> {
+public final class LSPState implements PersistentStateComponent<LSPState> {
 
     private static final Logger LOG = Logger.getInstance(LSPState.class);
 
 
     public Map<String, String[]> extToServ = new LinkedHashMap<>(10); //Must be public to be saved
     public Map<Timeouts, Integer> timeouts = new EnumMap<>(Timeouts.class);
-    public boolean useInplaceRename = false;
+    public List<String> coursierResolvers = new ArrayList<>(5);
 
     public LSPState() {
     }
@@ -39,12 +37,12 @@ public class LSPState implements PersistentStateComponent<LSPState> {
         return ServiceManager.getService(LSPState.class);
     }
 
-    public boolean isUseInplaceRename() {
-        return useInplaceRename;
+    public List<String> getCoursierResolvers() {
+        return coursierResolvers;
     }
 
-    public void setUseInplaceRename(boolean useInplaceRename) {
-        this.useInplaceRename = useInplaceRename;
+    public void setCoursierResolvers(final Collection<String> coursierResolvers) {
+        this.coursierResolvers = new ArrayList<>(coursierResolvers);
     }
 
     public Map<String, UserConfigurableServerDefinition> getExtToServ() {
@@ -63,7 +61,6 @@ public class LSPState implements PersistentStateComponent<LSPState> {
         this.timeouts = new EnumMap<>(timeouts);
     }
 
-    @Nullable
     @Override
     public LSPState getState() {
         return this;

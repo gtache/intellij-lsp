@@ -1,5 +1,8 @@
 package com.github.gtache.lsp.utils
 
+import java.util
+import java.util.ResourceBundle
+
 import com.intellij.openapi.diagnostic.Logger
 
 import scala.annotation.varargs
@@ -8,6 +11,9 @@ import scala.annotation.varargs
   * Object containing some useful methods for the plugin
   */
 object Utils {
+
+  val bundle: ResourceBundle = ResourceBundle.getBundle("com.github.gtache.lsp.LSPBundle")
+  val lineSeparator: String = System.getProperty("line.separator")
 
   private val LOG: Logger = Logger.getInstance(Utils.getClass)
 
@@ -30,6 +36,11 @@ object Utils {
     */
   @varargs def concatenateArrays(arr: Array[Any]*): Array[Any] = {
     arr.flatten.toArray
+  }
+
+  def stringToList(str: String, sep: String = lineSeparator): util.List[String] = {
+    import scala.collection.JavaConverters._
+    str.split(sep).toIndexedSeq.asJava
   }
 
 

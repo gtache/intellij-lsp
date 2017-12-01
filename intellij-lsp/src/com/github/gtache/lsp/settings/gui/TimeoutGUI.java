@@ -22,15 +22,14 @@ import java.util.stream.Collectors;
 /**
  * GUI for the Timeouts settings
  */
-public class TimeoutGUI implements LSPGUI {
+public final class TimeoutGUI implements LSPGUI {
     private static final String FIELD_TOOLTIP = "Time in milliseconds";
     private static final Logger LOG = Logger.getInstance(TimeoutGUI.class);
     private final Map<Timeouts, JTextField> rows;
-    private final LSPState state;
+    private final LSPState state = state();
     private final JPanel rootPanel;
 
     public TimeoutGUI() {
-        state = LSPState.getInstance();
         rows = Timeout.getTimeoutsJava().entrySet().stream().map(e -> {
             NumberFormat format = NumberFormat.getInstance();
             NumberFormatter formatter = new NumberFormatter(format);
@@ -59,6 +58,7 @@ public class TimeoutGUI implements LSPGUI {
         return new GridConstraints(rowIdx, colIdx, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, 1, null, null, null, 0, false);
     }
 
+    @Override
     public JPanel getRootPanel() {
         return rootPanel;
     }
@@ -89,6 +89,7 @@ public class TimeoutGUI implements LSPGUI {
         return panel;
     }
 
+    @Override
     public void apply() {
         final Map<Timeouts, Integer> newTimeouts = rows.entrySet().stream().map(e ->
                 new AbstractMap.SimpleEntry<>(e.getKey(), Integer.parseInt(e.getValue().getText()))).collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue));
@@ -96,11 +97,13 @@ public class TimeoutGUI implements LSPGUI {
         Timeout.setTimeouts(newTimeouts);
     }
 
+    @Override
     public void reset() {
         final Map<Timeouts, Integer> currentTimeouts = Timeout.getTimeoutsJava();
         rows.forEach((timeout, textField) -> textField.setText(currentTimeouts.get(timeout).toString()));
     }
 
+    @Override
     public boolean isModified() {
         final Map<Timeouts, Integer> currentTimeouts = Timeout.getTimeoutsJava();
         try { //Don't allow apply if the value is not valid
@@ -112,7 +115,7 @@ public class TimeoutGUI implements LSPGUI {
                     return false;
                 }
             });
-        } catch (final NumberFormatException e) {
+        } catch (final NumberFormatException ignored) {
             return false;
         }
     }

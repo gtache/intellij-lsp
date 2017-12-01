@@ -34,7 +34,7 @@ public enum DynamicRegistrationMethods {
     }
 
     public static DynamicRegistrationMethods forName(final String name) {
-        return Arrays.stream(DynamicRegistrationMethods.values()).filter(n -> n.getName().equals(name)).collect(Collectors.toList()).get(0);
+        return Arrays.stream(DynamicRegistrationMethods.values()).filter(n -> n.name.equals(name)).collect(Collectors.toList()).get(0);
     }
 
     public String getName() {

@@ -27,7 +27,7 @@ class LSPRenameProcessor extends RenamePsiElementProcessor {
     element match {
       case lsp: LSPPsiElement => true
       case file: PsiFile =>
-        val editorO = FileEditorManager.getInstance(file.getProject).getAllEditors(file.getVirtualFile).collect { case t: TextEditor => t.getEditor }.headOption
+        val editorO = FileEditorManager.getInstance(file.getProject).getAllEditors(file.getVirtualFile).collectFirst { case t: TextEditor => t.getEditor }
         val manager = editorO.collect { case e: Editor if EditorEventManager.forEditor(e).nonEmpty => EditorEventManager.forEditor(e).get }
         manager match {
           case Some(m) =>

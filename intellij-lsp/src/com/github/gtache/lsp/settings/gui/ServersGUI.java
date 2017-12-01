@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 /**
  * The GUI for the LSP ServerDefinition settings
  */ //TODO improve
-public class ServersGUI implements LSPGUI {
+public final class ServersGUI implements LSPGUI {
 
     private static final String EXT_LABEL = "Extension";
     private static final String EXT_TOOLTIP = "e.g. scala, java, c, js, ...";
@@ -32,18 +32,18 @@ public class ServersGUI implements LSPGUI {
     private static final String COMMAND = "command";
     private static final String PATH = "path";
     private static final Logger LOG = Logger.getInstance(ServersGUI.class);
-    private final LSPState state;
+    private final LSPState state = state();
     private final JPanel rootPanel;
-    private final List<ServersGUIRow> rows = new ArrayList<>();
-    private final Map<String, UserConfigurableServerDefinition> serverDefinitions = new LinkedHashMap<>();
+    private final List<ServersGUIRow> rows = new ArrayList<>(5);
+    private final Map<String, UserConfigurableServerDefinition> serverDefinitions = new LinkedHashMap<>(5);
 
     public ServersGUI() {
-        state = LSPState.getInstance();
         rootPanel = new JPanel();
         rootPanel.setLayout(new BoxLayout(rootPanel, BoxLayout.Y_AXIS));
         rootPanel.add(createArtifactRow("", "", "", ""));
     }
 
+    @Override
     public JPanel getRootPanel() {
         return rootPanel;
     }
@@ -58,7 +58,7 @@ public class ServersGUI implements LSPGUI {
         rootPanel.removeAll();
     }
 
-    public void addServerDefinition(UserConfigurableServerDefinition serverDefinition) {
+    public void addServerDefinition(final UserConfigurableServerDefinition serverDefinition) {
         if (serverDefinition != null) {
             serverDefinitions.put(serverDefinition.ext(), serverDefinition);
             if (serverDefinition.getClass().equals(ArtifactLanguageServerDefinition.class)) {
@@ -76,12 +76,13 @@ public class ServersGUI implements LSPGUI {
         }
     }
 
+    @Override
     public void apply() {
         final List<String> extensions = rows.stream().map(row -> row.getText(EXT)).collect(Collectors.toList());
         final Set<String> distinct = new ArrayList<>(extensions).stream().distinct().collect(Collectors.toSet());
-        distinct.forEach(s -> extensions.remove(s));
+        distinct.forEach(extensions::remove);
         if (!extensions.isEmpty()) {
-            Messages.showWarningDialog(extensions.stream().reduce((f, s) -> "Duplicate : " + f + '\n' + s).orElse("Error while getting extensions") + '\n' + "Unexpected behavior may occur", "Duplicate Extensions");
+            Messages.showWarningDialog(extensions.stream().reduce((f, s) -> "Duplicate : " + f + Utils.lineSeparator() + s).orElse("Error while getting extensions") + Utils.lineSeparator() + "Unexpected behavior may occur", "Duplicate Extensions");
         }
         //TODO manage without restarting
         Messages.showInfoMessage("The changes will be applied after restarting the IDE.", "LSP Settings");
@@ -97,6 +98,7 @@ public class ServersGUI implements LSPGUI {
         LSPState.getInstance().setExtToServ(serverDefinitions);
     }
 
+    @Override
     public boolean isModified() {
         if (serverDefinitions.size() == rows.stream().filter(row -> Arrays.stream(row.toStringArray()).skip(1).anyMatch(s -> s != null && !s.isEmpty())).collect(Collectors.toList()).size()) {
             for (final ServersGUIRow row : rows) {
@@ -112,10 +114,11 @@ public class ServersGUI implements LSPGUI {
         }
     }
 
+    @Override
     public void reset() {
         this.clear();
         if (state.getExtToServ() != null && !state.getExtToServ().isEmpty()) {
-            for (UserConfigurableServerDefinition serverDefinition : state.getExtToServ().values()) {
+            for (final UserConfigurableServerDefinition serverDefinition : state.getExtToServ().values()) {
                 addServerDefinition(serverDefinition);
             }
         } else {
@@ -171,7 +174,7 @@ public class ServersGUI implements LSPGUI {
         return removeRowButton;
     }
 
-    private JPanel createRow(final List<JComponent> labelFields, final String selectedItem) {
+    private JPanel createRow(final Collection<JComponent> labelFields, final String selectedItem) {
         final JPanel panel = new JPanel();
         int colIdx = 0;
         panel.setLayout(new GridLayoutManager(2, 17, JBUI.emptyInsets(), -1, -1));

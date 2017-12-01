@@ -1,6 +1,14 @@
 package com.github.gtache.lsp.settings.gui
 
+import javax.swing.JPanel
+
+import com.github.gtache.lsp.settings.LSPState
+
 trait LSPGUI {
+
+  import LSPGUI.lspState
+
+  def state: LSPState = lspState
 
   def isModified: Boolean
 
@@ -8,5 +16,10 @@ trait LSPGUI {
 
   def apply(): Unit
 
+  def getRootPanel: JPanel
 
+}
+
+object LSPGUI {
+  val lspState: LSPState = LSPState.getInstance()
 }

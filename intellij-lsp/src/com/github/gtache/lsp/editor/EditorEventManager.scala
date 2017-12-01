@@ -831,6 +831,71 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
+  private def createCtrlRange(serverPos: Position, range: Range): Unit = {
+    val loc = requestDefinition(serverPos)
+    if (loc != null) {
+      invokeLater(() => {
+        if (!editor.isDisposed) {
+          val corRange = if (range == null) {
+            val params = new TextDocumentPositionParams(identifier, serverPos)
+            val future = requestManager.documentHighlight(params)
+            if (future != null) {
+              try {
+                val highlights = future.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
+                wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
+                val offset = DocumentUtils.LSPPosToOffset(editor, serverPos)
+                highlights.asScala.find(dh => DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart) <= offset
+                  && offset <= DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)).fold(new Range(serverPos, serverPos))(dh => dh.getRange)
+              } catch {
+                case e: TimeoutException =>
+                  LOG.warn(e)
+                  wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
+                  new Range(serverPos, serverPos)
+              }
+            } else new Range(serverPos, serverPos)
+
+          } else range
+          val startOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getStart)
+          val endOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getEnd)
+          val isDefinition = DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) == startOffset
+          if (ctrlRange != null) ctrlRange.dispose()
+          ctrlRange = CtrlRangeMarker(loc, editor,
+            if (!isDefinition) editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.HYPERLINK, editor.getColorsScheme.getAttributes(EditorColors.REFERENCE_HYPERLINK_COLOR), HighlighterTargetArea.EXACT_RANGE)
+            else null)
+        }
+      })
+    }
+  }
+
+  /**
+    * Returns the position of the definition given a position in the editor
+    *
+    * @param position The position
+    * @return The location of the definition
+    */
+  private def requestDefinition(position: Position): Location = {
+    val params = new TextDocumentPositionParams(identifier, position)
+    val request = requestManager.definition(params)
+    if (request != null) {
+      try {
+        val definition = request.get(DEFINITION_TIMEOUT, TimeUnit.MILLISECONDS).asScala
+        wrapper.notifySuccess(Timeouts.DEFINITION)
+        if (definition != null && definition.nonEmpty) {
+          definition.head
+        } else {
+          null
+        }
+      } catch {
+        case e: TimeoutException =>
+          LOG.warn(e)
+          wrapper.notifyFailure(Timeouts.DEFINITION)
+          null
+      }
+    } else {
+      null
+    }
+  }
+
   /**
     * Will show documentation if the mouse doesn't move for a given time (Hover)
     *
@@ -931,72 +996,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   }
 
-  private def createCtrlRange(serverPos: Position, range: Range): Unit = {
-    val loc = requestDefinition(serverPos)
-    if (loc != null) {
-      invokeLater(() => {
-        if (!editor.isDisposed) {
-          val corRange = if (range == null) {
-            val params = new TextDocumentPositionParams(identifier, serverPos)
-            val future = requestManager.documentHighlight(params)
-            if (future != null) {
-              try {
-                val highlights = future.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
-                wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
-                val offset = DocumentUtils.LSPPosToOffset(editor, serverPos)
-                highlights.asScala.find(dh => DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart) <= offset
-                  && offset <= DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)).map(dh => dh.getRange).getOrElse(new Range(serverPos, serverPos)
-                )
-              } catch {
-                case e: TimeoutException =>
-                  LOG.warn(e)
-                  wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
-                  new Range(serverPos, serverPos)
-              }
-            } else new Range(serverPos, serverPos)
-
-          } else range
-          val startOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getStart)
-          val endOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getEnd)
-          val isDefinition = DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) == startOffset
-          if (ctrlRange != null) ctrlRange.dispose()
-          ctrlRange = CtrlRangeMarker(loc, editor,
-            if (!isDefinition) editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.HYPERLINK, editor.getColorsScheme.getAttributes(EditorColors.REFERENCE_HYPERLINK_COLOR), HighlighterTargetArea.EXACT_RANGE)
-            else null)
-        }
-      })
-    }
-  }
-
-  /**
-    * Returns the position of the definition given a position in the editor
-    *
-    * @param position The position
-    * @return The location of the definition
-    */
-  private def requestDefinition(position: Position): Location = {
-    val params = new TextDocumentPositionParams(identifier, position)
-    val request = requestManager.definition(params)
-    if (request != null) {
-      try {
-        val definition = request.get(DEFINITION_TIMEOUT, TimeUnit.MILLISECONDS).asScala
-        wrapper.notifySuccess(Timeouts.DEFINITION)
-        if (definition != null && definition.nonEmpty) {
-          definition.head
-        } else {
-          null
-        }
-      } catch {
-        case e: TimeoutException =>
-          LOG.warn(e)
-          wrapper.notifyFailure(Timeouts.DEFINITION)
-          null
-      }
-    } else {
-      null
-    }
-  }
-
   /**
     * Returns the references given the position of the word to search for
     * Must be called from main thread
@@ -1069,6 +1068,28 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
+    * Reformat the text currently selected in the editor
+    */
+  def reformatSelection(): Unit = {
+    pool(() => {
+      if (!editor.isDisposed) {
+        val params = new DocumentRangeFormattingParams()
+        params.setTextDocument(identifier)
+        val selectionModel = editor.getSelectionModel
+        val start = selectionModel.getSelectionStart
+        val end = selectionModel.getSelectionEnd
+        val startingPos = DocumentUtils.offsetToLSPPos(editor, start)
+        val endPos = DocumentUtils.offsetToLSPPos(editor, end)
+        params.setRange(new Range(startingPos, endPos))
+        val options = new FormattingOptions() //TODO
+        params.setOptions(options)
+        val request = requestManager.rangeFormatting(params)
+        if (request != null) request.thenAccept(formatting => invokeLater(() => applyEdit(edits = formatting.asScala, name = "Reformat selection")))
+      }
+    })
+  }
+
+  /**
     * Applies the given edits to the document
     *
     * @param version    The version of the edits (will be discarded if older than current version)
@@ -1131,28 +1152,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   private def saveDocument(): Unit = {
     invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
-  }
-
-  /**
-    * Reformat the text currently selected in the editor
-    */
-  def reformatSelection(): Unit = {
-    pool(() => {
-      if (!editor.isDisposed) {
-        val params = new DocumentRangeFormattingParams()
-        params.setTextDocument(identifier)
-        val selectionModel = editor.getSelectionModel
-        val start = selectionModel.getSelectionStart
-        val end = selectionModel.getSelectionEnd
-        val startingPos = DocumentUtils.offsetToLSPPos(editor, start)
-        val endPos = DocumentUtils.offsetToLSPPos(editor, end)
-        params.setRange(new Range(startingPos, endPos))
-        val options = new FormattingOptions() //TODO
-        params.setOptions(options)
-        val request = requestManager.rangeFormatting(params)
-        if (request != null) request.thenAccept(formatting => invokeLater(() => applyEdit(edits = formatting.asScala, name = "Reformat selection")))
-      }
-    })
   }
 
   /**

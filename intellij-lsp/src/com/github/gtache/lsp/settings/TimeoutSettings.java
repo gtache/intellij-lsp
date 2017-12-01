@@ -3,7 +3,6 @@ package com.github.gtache.lsp.settings;
 import com.github.gtache.lsp.settings.gui.TimeoutGUI;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.options.Configurable;
-import com.intellij.openapi.options.ConfigurationException;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
 
@@ -12,7 +11,7 @@ import javax.swing.*;
 /**
  * Settings for the Timeouts
  */
-public class TimeoutSettings implements Configurable {
+public final class TimeoutSettings implements Configurable {
 
     private static final Logger LOG = Logger.getInstance(TimeoutSettings.class);
     @Nullable
@@ -54,7 +53,7 @@ public class TimeoutSettings implements Configurable {
     }
 
     @Override
-    public void apply() throws ConfigurationException {
+    public void apply() {
         timeoutGUI.apply();
     }
 

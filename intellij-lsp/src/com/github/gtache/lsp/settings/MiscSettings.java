@@ -8,7 +8,7 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 
-public class MiscSettings implements Configurable {
+public final class MiscSettings implements Configurable {
 
     private static final Logger LOG = Logger.getInstance(MiscSettings.class);
     @Nullable
@@ -33,7 +33,7 @@ public class MiscSettings implements Configurable {
 
     @Override
     public String getHelpTopic() {
-        return "com.github.gtache.lsp.settings.ServersSettings";
+        return "com.github.gtache.lsp.settings.MiscSettings";
     }
 
     @Override
