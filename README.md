@@ -34,14 +34,17 @@ Concretely, what you can do with IntelliJ at the moment :
 ![Goto](https://github.com/gtache/intellij-lsp/blob/master/doc/images/goto.gif "GotoGif")
 - See which symbols are the same as the one selected   
 ![Selection](https://github.com/gtache/intellij-lsp/blob/master/doc/images/selection.gif "SelectionGif")
-- Rename a symbol with Shift+Alt+F6 (seems to make IntelliJ consider Ctrl pressed until pressing it, will look into it)     
+- Rename a symbol with the basic refactor action (Shift+F6 by default) (you can also rename using Shift+Alt+F6 as a backup if needed)         
 ![Rename](https://github.com/gtache/intellij-lsp/blob/master/doc/images/rename.gif "RenameGif")
-- Go to definition of a symbol, using Ctrl+Click (may need several tries)    
-- See usages / references of a symbol, using Shift+Alt+F7 on it or Ctrl+Click on its definition, and go to these locations by clicking on them in the generated window (may need several tries to make Ctrl-click work, will look into it)     
-![CtrlClick](https://github.com/gtache/intellij-lsp/blob/master/doc/images/ctrlClick.gif "CtrlClickGif")
+- Go to definition of a symbol, using Ctrl+Click (may need several tries for the first time)    
+- See usages / references of a symbol, using Shift+Alt+F7 on it or Ctrl+Click on its definition, and go to these locations by clicking on them in the generated window (may need several tries to make Ctrl-click work as for definition)    
+Ctrl-click :     
+![CtrlClick](https://github.com/gtache/intellij-lsp/blob/master/doc/images/ctrlClick.gif "CtrlClickGif")    
+Shift+Alt+F7 :     
+![References](https://github.com/gtache/intellij-lsp/blob/master/doc/images/references.gif "ReferencesGif")     
 - See diagnostics (error, warnings) and hover over them to see the message    
 ![Diagnostic](https://github.com/gtache/intellij-lsp/blob/master/doc/images/diagnostic.gif "DiagnosticGif")    
-- You can see the server(s) status in the status bar
+- You can see the server(s) status in the status bar, and click on the icon to see the connected files and the timeouts    
 ![ServerStatus](https://github.com/gtache/intellij-lsp/blob/master/doc/images/server_status.gif "StatusGif")    
 - Format a document / a selection (Ctrl+Alt(+Shift)+L by default) - untested     
 -  Get the signature help when typing - untested     
@@ -73,7 +76,16 @@ With plugin.xml containing
 <depends>com.github.gtache.lsp</depends>
 ```
 
+The current concrete classes are :      
+- ArtifactLanguageServerDefinition : This definition uses an artifact location (like a Maven one), retrieves the jar using Coursier and launches the given main class with the given arguments.
+- RawCommandServerDefinition : This definition simply runs the command given.
+- ExeLanguageServerDefinition : Basically a more convenient way to write a RawCommand, it splits the file to execute and the arguments given to it.
+
+If you need/want to write an other implementation, you will need to at least implement the createConnectionProvider method, which instantiates and returns a StreamConnectionProvider (which can be basically anything as long as it gets you the input and output stream to the server). You can also implement custom logic in the start and stop methods of the server definition if needed.
+
 ## Further extensions
-You can add a custom LSPIconProvider to provide custom icons for the completion items or for the server status. You need to register an LSPIconProvider extension in your plugin.xml and implement the required methods (or delegate to the default provider).
+You can add a custom LSPIconProvider to provide custom icons for the completion/symbols items or for the server status. You need to register an LSPIconProvider extension in your plugin.xml and implement the required methods (or delegate to the default provider).
+
+
 
 There is a skeleton of a more concrete LSP plugin for Dotty with Syntax Highlighting in the intellij-lsp-dotty folder. Most of the code is taken and adapted from https://github.com/JetBrains/intellij-scala
