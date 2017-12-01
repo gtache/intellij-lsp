@@ -53,6 +53,8 @@
                 id="LSPFileDocumentSynchronizationVetoer"/>
         <renameHandler implementation="com.github.gtache.lsp.contributors.rename.LSPRenameHandler" id="LSPRenameHandler" order="first" />
         <renamePsiElementProcessor implementation="com.github.gtache.lsp.contributors.rename.LSPRenameProcessor" id="LSPRenameProcessor" order="first" />
+<!--        <lang.findUsagesProvider implementationClass="com.github.gtache.lsp.contributors.LSPFindUsagesProvider" id="LSPFindUsagesProvider" language="TEXT" order="first" />
+        <findUsagesHandlerFactory implementation="com.github.gtache.lsp.contributors.LSPFindUsagesHandlerFactory" id="LSPFindUsagesHandlerFactory" />-->
     </extensions>
 
     <actions>

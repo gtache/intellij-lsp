@@ -117,13 +117,6 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
       case e: Exception => crashed(e)
     }
 
-  private def checkStatus: Boolean = wrapper.getStatus == ServerStatus.STARTED
-
-  private def crashed(e: Exception): Unit = {
-    LOG.warn(e)
-    wrapper.crashed(e)
-  }
-
   override def willSave(params: WillSaveTextDocumentParams): Unit =
     if (checkStatus) try {
       if (textDocumentOptions == null || textDocumentOptions.getWillSave) textDocumentService.willSave(params)
@@ -168,6 +161,13 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
       case e: Exception => crashed(e)
         null
     } else null
+
+  private def checkStatus: Boolean = wrapper.getStatus == ServerStatus.STARTED
+
+  private def crashed(e: Exception): Unit = {
+    LOG.warn(e)
+    wrapper.crashed(e)
+  }
 
   override def hover(params: TextDocumentPositionParams): CompletableFuture[Hover] =
     if (checkStatus) try {
