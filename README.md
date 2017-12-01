@@ -79,7 +79,8 @@ With plugin.xml containing
 The current concrete classes are :      
 - ArtifactLanguageServerDefinition : This definition uses an artifact location (like a Maven one), retrieves the jar using Coursier and launches the given main class with the given arguments.
 - RawCommandServerDefinition : This definition simply runs the command given.
-- ExeLanguageServerDefinition : Basically a more convenient way to write a RawCommand, it splits the file to execute and the arguments given to it.
+- ExeLanguageServerDefinition : Basically a more convenient way to write a RawCommand, it splits the file to execute and the arguments given to it.    
+**Note that all those classes will use the server stdin/stdout to communicate**
 
 If you need/want to write an other implementation, you will need to at least implement the createConnectionProvider method, which instantiates and returns a StreamConnectionProvider (which can be basically anything as long as it gets you the input and output stream to the server). You can also implement custom logic in the start and stop methods of the server definition if needed.
 
