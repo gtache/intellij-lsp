@@ -13,7 +13,7 @@ import com.github.gtache.lsp.client.{DynamicRegistrationMethods, LanguageClientI
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.lsp.requests.{Timeout, Timeouts}
-import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils}
+import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils, LSPException}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.{FileEditorManager, TextEditor}
@@ -59,6 +59,7 @@ object LanguageServerWrapperImpl {
 class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, val project: Project) extends LanguageServerWrapper {
 
   import LanguageServerWrapperImpl._
+  import ServerStatus._
 
   private val rootPath = project.getBasePath
   private val connectedEditors: mutable.Map[String, EditorEventManager] = mutable.HashMap()
@@ -104,9 +105,14 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       } catch {
         case e: TimeoutException =>
           notifyFailure(Timeouts.INIT)
-          if (System.currentTimeMillis - initializeStartTime > 10000) LOG.error("LanguageServer not initialized after 10s", e) //$NON-NLS-1$
+          val msg = "LanguageServer for definition\n " + serverDefinition + "\nnot initialized after " + Timeout.INIT_TIMEOUT / 1000 + "s\nCheck settings"
+          LOG.warn(msg, e)
+          ApplicationUtils.invokeLater(() => Messages.showErrorDialog(msg, "LSP error"))
+          stop()
+
         case e@(_: IOException | _: InterruptedException | _: ExecutionException) =>
           LOG.warn(e)
+          stop()
       }
       this.capabilitiesAlreadyRequested = true
       if (initializeResult != null) this.initializeResult.getCapabilities
@@ -151,36 +157,40 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     if (!this.connectedEditors.contains(uri)) {
       start()
       if (this.initializeFuture != null && editor != null) {
-        initializeFuture.thenRun(() => {
-          if (!this.connectedEditors.contains(uri)) {
-            val capabilities = getServerCapabilities
-            val syncOptions: Either[TextDocumentSyncKind, TextDocumentSyncOptions] = if (capabilities == null) null else capabilities.getTextDocumentSync
-            var syncKind: TextDocumentSyncKind = null
-            if (syncOptions != null) {
-              if (syncOptions.isRight) syncKind = syncOptions.getRight.getChange
-              else if (syncOptions.isLeft) syncKind = syncOptions.getLeft
-              val mouseListener = new EditorMouseListenerImpl
-              val mouseMotionListener = new EditorMouseMotionListenerImpl
-              val documentListener = new DocumentListenerImpl
-              val selectionListener = new SelectionListenerImpl
-              val serverOptions = ServerOptions(syncKind, capabilities.getCompletionProvider, capabilities.getSignatureHelpProvider, capabilities.getCodeLensProvider, capabilities.getDocumentOnTypeFormattingProvider, capabilities.getDocumentLinkProvider, capabilities.getExecuteCommandProvider)
-              val manager = new EditorEventManager(editor, mouseListener, mouseMotionListener, documentListener, selectionListener, requestManager, serverOptions, this)
-              mouseListener.setManager(manager)
-              mouseMotionListener.setManager(manager)
-              documentListener.setManager(manager)
-              selectionListener.setManager(manager)
-              manager.registerListeners()
-              this.connectedEditors.put(uri, manager)
-              editorToLanguageServerWrapper.put(editor, this)
-              uriToLanguageServerWrapper.put(uri, this)
-              manager.documentOpened()
-              LOG.info("Created a manager for " + uri)
+        val capabilities = getServerCapabilities
+        if (capabilities != null) {
+          initializeFuture.thenRun(() => {
+            if (!this.connectedEditors.contains(uri)) {
+              val syncOptions: Either[TextDocumentSyncKind, TextDocumentSyncOptions] = if (capabilities == null) null else capabilities.getTextDocumentSync
+              var syncKind: TextDocumentSyncKind = null
+              if (syncOptions != null) {
+                if (syncOptions.isRight) syncKind = syncOptions.getRight.getChange
+                else if (syncOptions.isLeft) syncKind = syncOptions.getLeft
+                val mouseListener = new EditorMouseListenerImpl
+                val mouseMotionListener = new EditorMouseMotionListenerImpl
+                val documentListener = new DocumentListenerImpl
+                val selectionListener = new SelectionListenerImpl
+                val serverOptions = ServerOptions(syncKind, capabilities.getCompletionProvider, capabilities.getSignatureHelpProvider, capabilities.getCodeLensProvider, capabilities.getDocumentOnTypeFormattingProvider, capabilities.getDocumentLinkProvider, capabilities.getExecuteCommandProvider)
+                val manager = new EditorEventManager(editor, mouseListener, mouseMotionListener, documentListener, selectionListener, requestManager, serverOptions, this)
+                mouseListener.setManager(manager)
+                mouseMotionListener.setManager(manager)
+                documentListener.setManager(manager)
+                selectionListener.setManager(manager)
+                manager.registerListeners()
+                this.connectedEditors.put(uri, manager)
+                editorToLanguageServerWrapper.put(editor, this)
+                uriToLanguageServerWrapper.put(uri, this)
+                manager.documentOpened()
+                LOG.info("Created a manager for " + uri)
+              }
             }
-          }
 
-        })
+          })
+        } else {
+          LOG.warn("Capabilities are null for " + serverDefinition)
+        }
       } else {
-        LOG.warn(if (editor == null) "editor is null" else "initializeFuture is null")
+        LOG.warn(if (editor == null) "editor is null for " + serverDefinition else "initializeFuture is null for " + serverDefinition)
       }
     }
   }
@@ -220,9 +230,8 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     */
   @throws[IOException]
   def start(): Unit = {
-    if (status == ServerStatus.STOPPED) {
-      status = ServerStatus.STARTING
-      statusWidget.setStatus(status)
+    if (status == STOPPED) {
+      setStatus(STARTING)
       try {
         val (inputStream, outputStream) = serverDefinition.start(rootPath)
         client = serverDefinition.createLanguageClient
@@ -263,13 +272,12 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
           initializeResult = res
           LOG.info("Got initializeResult for " + rootPath)
           requestManager = new SimpleRequestManager(this, languageServer, client, res.getCapabilities)
-          status = ServerStatus.STARTED
-          statusWidget.setStatus(status)
+          setStatus(STARTED)
           res
         })
         initializeStartTime = System.currentTimeMillis
       } catch {
-        case e: IOException =>
+        case e@(_: LSPException | _: IOException) =>
           LOG.warn(e)
           ApplicationUtils.invokeLater(() => Messages.showErrorDialog("Can't start server, please check settings\n" + e.getMessage, "LSP Error"))
           removeDefinition()
@@ -315,8 +323,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     if (this.serverDefinition != null) this.serverDefinition.stop(rootPath)
     connectedEditors.foreach(e => disconnect(e._1))
     this.languageServer = null
-    status = ServerStatus.STOPPED
-    statusWidget.setStatus(status)
+    setStatus(STOPPED)
   }
 
   override def registerCapability(params: RegistrationParams): CompletableFuture[Void] = {
@@ -352,6 +359,11 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   override def getProject: Project = project
 
   override def getStatus: ServerStatus = status
+
+  private def setStatus(status: ServerStatus): Unit = {
+    this.status = status
+    statusWidget.setStatus(status)
+  }
 
   override def crashed(e: Exception): Unit = {
     crashCount += 1

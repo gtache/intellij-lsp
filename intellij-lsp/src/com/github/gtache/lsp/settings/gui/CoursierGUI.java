@@ -1,8 +1,8 @@
 package com.github.gtache.lsp.settings.gui;
 
 import com.github.gtache.lsp.settings.LSPState;
-import com.github.gtache.lsp.utils.coursier.CoursierImpl$;
 import com.github.gtache.lsp.utils.Utils;
+import com.github.gtache.lsp.utils.coursier.CoursierImpl$;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
@@ -81,6 +81,9 @@ public final class CoursierGUI implements LSPGUI {
         final JScrollPane scrollPane1 = new JScrollPane();
         rootPanel.add(scrollPane1, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
         repositoriesTextArea = new JTextArea();
+        repositoriesTextArea.setMaximumSize(new Dimension(420, 2147483647));
+        repositoriesTextArea.setMinimumSize(new Dimension(300, 10));
+        repositoriesTextArea.setPreferredSize(new Dimension(300, 50));
         repositoriesTextArea.setText(ResourceBundle.getBundle("com/github/gtache/lsp/LSPBundle").getString("coursier.settings.textarea.basetext"));
         repositoriesTextArea.setToolTipText("Insert one resolver by line");
         scrollPane1.setViewportView(repositoriesTextArea);

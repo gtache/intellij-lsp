@@ -36,6 +36,9 @@
           <component id="984bb" class="javax.swing.JTextArea" binding="repositoriesTextArea">
             <constraints/>
             <properties>
+              <maximumSize width="420" height="2147483647"/>
+              <minimumSize width="300" height="10"/>
+              <preferredSize width="300" height="50"/>
               <text resource-bundle="com/github/gtache/lsp/LSPBundle" key="coursier.settings.textarea.basetext"/>
               <toolTipText value="Insert one resolver by line"/>
             </properties>

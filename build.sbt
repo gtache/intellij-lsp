@@ -39,8 +39,8 @@ lazy val `intellij-lsp` = (project in file("intellij-lsp")).
 
     libraryDependencies ++= Seq(
       "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.3.0",
-      "io.get-coursier" %% "coursier" % "1.0.0-RC12",
-      "io.get-coursier" %% "coursier-cache" % "1.0.0-RC12",
+      "io.get-coursier" %% "coursier" % "1.0.0-RC13",
+      "io.get-coursier" %% "coursier-cache" % "1.0.0-RC13",
     ),
   )
 

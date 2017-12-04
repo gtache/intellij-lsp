@@ -35,6 +35,28 @@ object FileUtils {
     LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
   }
 
+  def sanitizeURI(uri: String): String = {
+    val reconstructed: StringBuilder = StringBuilder.newBuilder
+    var uriCp = new String(uri)
+    if (!uri.startsWith("file:")) {
+      LOG.warn("Malformed uri : " + uri)
+      uri //Probably not an uri
+    } else {
+      uriCp = uriCp.drop(5).dropWhile(c => c == '/')
+      reconstructed.append("file:///")
+      if (os == OS.UNIX) {
+        reconstructed.append(uriCp).toString()
+      } else {
+        reconstructed.append(uriCp.takeWhile(c => c != '/'))
+        if (!reconstructed.endsWith(":")) {
+          reconstructed.append(":")
+        }
+        reconstructed.append(uriCp.dropWhile(c => c != '/')).toString()
+      }
+
+    }
+  }
+
   /**
     * Returns a file type given an editor
     *
@@ -118,28 +140,6 @@ object FileUtils {
       case e: MalformedURLException =>
         LOG.warn(e)
         null
-    }
-  }
-
-  def sanitizeURI(uri: String): String = {
-    val reconstructed: StringBuilder = StringBuilder.newBuilder
-    var uriCp = new String(uri)
-    if (!uri.startsWith("file:")) {
-      LOG.warn("Malformed uri : " + uri)
-      uri //Probably not an uri
-    } else {
-      uriCp = uriCp.drop(5).dropWhile(c => c == '/')
-      reconstructed.append("file:///")
-      if (os == OS.UNIX) {
-        reconstructed.append(uriCp).toString()
-      } else {
-        reconstructed.append(uriCp.takeWhile(c => c != '/'))
-        if (!reconstructed.endsWith(":")) {
-          reconstructed.append(":")
-        }
-        reconstructed.append(uriCp.dropWhile(c => c != '/')).toString()
-      }
-
     }
   }
 
