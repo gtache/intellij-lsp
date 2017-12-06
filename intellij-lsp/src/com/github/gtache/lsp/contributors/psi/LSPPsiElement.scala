@@ -448,6 +448,16 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
   override def getUseScope: SearchScope = getContainingFile.getResolveScope
 
   /**
+    * Returns the file containing the PSI element.
+    *
+    * @return the file instance, or null if the PSI element is not contained in a file (for example,
+    *         the element represents a package or directory).
+    * @throws PsiInvalidElementAccessException
+    * if this element is invalid
+    */
+  override def getContainingFile: PsiFile = file
+
+  /**
     * Returns the AST node corresponding to the element.
     *
     * @return the AST node instance.
@@ -477,6 +487,9 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     this
   }
 
+  import com.intellij.openapi.util.{KeyWithDefaultValue, UserDataHolderBase}
+  import com.intellij.util.keyFMap.KeyFMap
+
   override def putUserData[T](key: Key[T], @Nullable value: T): Unit = {
     var control = true
     while (control) {
@@ -485,9 +498,6 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
       if ((newMap eq map) || changeUserMap(map, newMap)) control = false
     }
   }
-
-  import com.intellij.openapi.util.{KeyWithDefaultValue, UserDataHolderBase}
-  import com.intellij.util.keyFMap.KeyFMap
 
   def getCopyableUserData[T](key: Key[T]): T = {
     val map = getUserData(COPYABLE_USER_MAP_KEY)
@@ -505,10 +515,6 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
       if ((newMap eq map) || changeUserMap(map, newMap)) control = false
     }
   }
-
-  protected def changeUserMap(oldMap: KeyFMap, newMap: KeyFMap): Boolean = updater.compareAndSet(this, oldMap, newMap)
-
-  protected def getUserMap: KeyFMap = myUserMap
 
   def replace[T](key: Key[T], @Nullable oldValue: T, @Nullable newValue: T): Boolean = {
     while (true) {
@@ -545,7 +551,11 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     null.asInstanceOf[T]
   }
 
+  protected def changeUserMap(oldMap: KeyFMap, newMap: KeyFMap): Boolean = updater.compareAndSet(this, oldMap, newMap)
+
   def isUserDataEmpty: Boolean = getUserMap.isEmpty
+
+  protected def getUserMap: KeyFMap = myUserMap
 
   override def getPresentation: ItemPresentation = new ItemPresentation {
     override def getPresentableText: String = getName
@@ -564,16 +574,6 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
       ApplicationUtils.invokeLater(() => ApplicationUtils.writeAction(() => FileEditorManager.getInstance(getProject).openTextEditor(descriptor, false)))
     }
   }
-
-  /**
-    * Returns the file containing the PSI element.
-    *
-    * @return the file instance, or null if the PSI element is not contained in a file (for example,
-    *         the element represents a package or directory).
-    * @throws PsiInvalidElementAccessException
-    * if this element is invalid
-    */
-  override def getContainingFile: PsiFile = file
 
   /**
     * Returns the project to which the PSI element belongs.

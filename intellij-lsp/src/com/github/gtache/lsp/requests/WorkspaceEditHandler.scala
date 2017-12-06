@@ -84,7 +84,7 @@ object WorkspaceEditHandler {
         */
       def manageUnopenedEditor(edits: Iterable[TextEdit], uri: String, version: Int = Int.MaxValue): Runnable = {
         val project = ProjectManager.getInstance().getOpenProjects()(0)
-        val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(uri).getPath))
+        val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(FileUtils.sanitizeURI(uri))))
         val fileEditorManager = FileEditorManager.getInstance(project)
         val descriptor = new OpenFileDescriptor(project, file)
         val editor: Editor = computableWriteAction(() => {
@@ -106,7 +106,7 @@ object WorkspaceEditHandler {
         dChanges.foreach(edit => {
           val doc = edit.getTextDocument
           val version = doc.getVersion
-          val uri = doc.getUri
+          val uri = FileUtils.sanitizeURI(doc.getUri)
           toApply += (EditorEventManager.forUri(uri) match {
             case Some(manager) =>
               curProject = manager.editor.getProject
@@ -116,7 +116,7 @@ object WorkspaceEditHandler {
         })
       } else {
         changes.foreach(edit => {
-          val uri = edit._1
+          val uri = FileUtils.sanitizeURI(edit._1)
           val changes = edit._2.asScala
           toApply += (EditorEventManager.forUri(uri) match {
             case Some(manager) =>

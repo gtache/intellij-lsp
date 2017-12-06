@@ -37,6 +37,7 @@ object LSPDefaultIconProvider extends LSPIconProvider {
       case CompletionItemKind.Unit => null
       case CompletionItemKind.Value => null
       case CompletionItemKind.Variable => Nodes.Variable
+      case _ => null
     }
   }
 
@@ -64,6 +65,7 @@ object LSPDefaultIconProvider extends LSPIconProvider {
       case SymbolKind.Property => Nodes.Property
       case SymbolKind.String => null
       case SymbolKind.Variable => Nodes.Variable
+      case _ => null
     }
   }
 

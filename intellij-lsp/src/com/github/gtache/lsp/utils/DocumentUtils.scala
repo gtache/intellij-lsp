@@ -1,5 +1,6 @@
 package com.github.gtache.lsp.utils
 
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.util.TextRange
 import org.eclipse.lsp4j.Position
@@ -8,6 +9,9 @@ import org.eclipse.lsp4j.Position
   * Various methods to convert offsets / logical position / server position
   */
 object DocumentUtils {
+
+  private val LOG: Logger = Logger.getInstance(this.getClass)
+
   /**
     * Gets the line at the given offset given an editor and bolds the text between the given offsets
     *
@@ -56,7 +60,12 @@ object DocumentUtils {
     * @return The offset
     */
   def LSPPosToOffset(editor: Editor, pos: Position): Int = {
-    math.min(math.max(editor.logicalPositionToOffset(LSPToLogicalPos(pos)), 0), editor.getDocument.getTextLength - 1)
+    val offset = editor.logicalPositionToOffset(LSPToLogicalPos(pos))
+    val docLength = editor.getDocument.getTextLength
+    if (offset > docLength) {
+      LOG.warn("Offset greater than text length : " + offset + " > " + docLength)
+    }
+    math.min(math.max(offset, 0), docLength)
   }
 
   /**

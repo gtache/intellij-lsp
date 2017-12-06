@@ -9,14 +9,14 @@ import org.eclipse.lsp4j.Command
 /**
   * The Quickfix for LSP
   *
-  * @param uri      The file in which the commands will be applied
-  * @param commands The commands to run
+  * @param uri     The file in which the commands will be applied
+  * @param command The command to run
   */
-class LSPQuickFix(uri: String, commands: Iterable[Command]) extends LocalQuickFix {
+class LSPQuickFix(uri: String, command: Command) extends LocalQuickFix {
   override def applyFix(project: Project, descriptor: ProblemDescriptor): Unit = {
     descriptor.getPsiElement match {
       case element: LSPPsiElement =>
-        EditorEventManager.forUri(uri).foreach(m => m.executeCommands(commands))
+        EditorEventManager.forUri(uri).foreach(m => m.executeCommands(Array(command)))
       case _ =>
     }
   }
@@ -24,7 +24,7 @@ class LSPQuickFix(uri: String, commands: Iterable[Command]) extends LocalQuickFi
   override def getFamilyName: String = "LSP Fixes"
 
   override def getName: String = {
-    commands.map(c => c.getTitle).mkString("\n")
+    command.getTitle
   }
 
 }

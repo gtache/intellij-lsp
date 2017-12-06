@@ -378,7 +378,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   }
 
   override def getConnectedFiles: Iterable[String] = {
-    connectedEditors.keys.map(s => new URI(s).getPath)
+    connectedEditors.keys.map(s => new URI(FileUtils.sanitizeURI(s)).toString)
   }
 
   private def removeDefinition(): Unit = {

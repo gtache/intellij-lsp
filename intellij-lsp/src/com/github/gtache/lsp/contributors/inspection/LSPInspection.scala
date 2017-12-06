@@ -41,11 +41,12 @@ class LSPInspection extends LocalInspectionTool {
               case DiagnosticSeverity.Warning => ProblemHighlightType.GENERIC_ERROR_OR_WARNING
               case DiagnosticSeverity.Information => ProblemHighlightType.INFORMATION
               case DiagnosticSeverity.Hint => ProblemHighlightType.INFORMATION
+              case _ => null
             }
             val element = LSPPsiElement(name, m.editor.getProject, start, end, file)
             val commands = m.codeAction(element)
             manager.createProblemDescriptor(element, null.asInstanceOf[TextRange], diagnostic.getMessage, severity, isOnTheFly,
-              if (commands != null) new LSPQuickFix(uri, commands) else null)
+              (if (commands != null) commands.map(c => new LSPQuickFix(uri, c)).toArray else null): _*)
           } else null
         }.toArray.filter(d => d != null)
       }
@@ -72,11 +73,11 @@ class LSPInspection extends LocalInspectionTool {
 
   override def getDisplayName: String = getShortName
 
+  override def getShortName: String = "LSP"
+
   override def createOptionsPanel(): JComponent = {
     new LSPInspectionPanel(getShortName, this)
   }
-
-  override def getShortName: String = "LSP"
 
   override def getID: String = "LSP"
 

@@ -35,28 +35,6 @@ object FileUtils {
     LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
   }
 
-  def sanitizeURI(uri: String): String = {
-    val reconstructed: StringBuilder = StringBuilder.newBuilder
-    var uriCp = new String(uri)
-    if (!uri.startsWith("file:")) {
-      LOG.warn("Malformed uri : " + uri)
-      uri //Probably not an uri
-    } else {
-      uriCp = uriCp.drop(5).dropWhile(c => c == '/')
-      reconstructed.append("file:///")
-      if (os == OS.UNIX) {
-        reconstructed.append(uriCp).toString()
-      } else {
-        reconstructed.append(uriCp.takeWhile(c => c != '/'))
-        if (!reconstructed.endsWith(":")) {
-          reconstructed.append(":")
-        }
-        reconstructed.append(uriCp.dropWhile(c => c != '/')).toString()
-      }
-
-    }
-  }
-
   /**
     * Returns a file type given an editor
     *
@@ -88,14 +66,53 @@ object FileUtils {
   }
 
   /**
+    * Returns the URI string corresponding to a VirtualFileSystem file
+    *
+    * @param file The file
+    * @return the URI
+    */
+  def VFSToURI(file: VirtualFile): String = {
+    try {
+      val uri = sanitizeURI(new URL(file.getUrl).toURI.toString)
+      uri
+    } catch {
+      case e: MalformedURLException =>
+        LOG.warn(e)
+        null
+    }
+  }
+
+  /**
     * Transforms an URI string into a VFS file
     *
     * @param uri The uri
     * @return The virtual file
     */
   def URIToVFS(uri: String): VirtualFile = {
-    val res = LocalFileSystem.getInstance().findFileByPath(new File(new URI(sanitizeURI(uri)).getPath).getAbsolutePath)
+    val res = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
     res
+  }
+
+  def sanitizeURI(uri: String): String = {
+    val reconstructed: StringBuilder = StringBuilder.newBuilder
+    var uriCp = new String(uri)
+    if (!uri.startsWith("file:")) {
+      LOG.warn("Malformed uri : " + uri)
+      uri //Probably not an uri
+    } else {
+      uriCp = uriCp.drop(5).dropWhile(c => c == '/')
+      reconstructed.append("file:///")
+      if (os == OS.UNIX) {
+        reconstructed.append(uriCp).toString()
+      } else {
+        reconstructed.append(uriCp.takeWhile(c => c != '/'))
+        if (!reconstructed.endsWith(":")) {
+          reconstructed.append(":")
+        }
+        reconstructed.append(uriCp.dropWhile(c => c != '/')).toString()
+      }
+
+    }
   }
 
   /**
@@ -124,23 +141,6 @@ object FileUtils {
 
   def documentToUri(document: Document): String = {
     sanitizeURI(VFSToURI(FileDocumentManager.getInstance().getFile(document)))
-  }
-
-  /**
-    * Returns the URI string corresponding to a VirtualFileSystem file
-    *
-    * @param file The file
-    * @return the URI
-    */
-  def VFSToURI(file: VirtualFile): String = {
-    try {
-      val uri = sanitizeURI(new URL(file.getUrl).toURI.toString)
-      uri
-    } catch {
-      case e: MalformedURLException =>
-        LOG.warn(e)
-        null
-    }
   }
 
   /**

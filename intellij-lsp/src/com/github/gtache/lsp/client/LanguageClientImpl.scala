@@ -1,10 +1,12 @@
 package com.github.gtache.lsp.client
 
-import java.util.concurrent.CompletableFuture
+import java.util.concurrent.{CompletableFuture, FutureTask}
 
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.requests.WorkspaceEditHandler
+import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils}
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.ui.Messages
 import com.intellij.util.ui.UIUtil
@@ -47,7 +49,7 @@ class LanguageClientImpl extends LanguageClient {
   }
 
   override def publishDiagnostics(publishDiagnosticsParams: PublishDiagnosticsParams): Unit = {
-    val uri = publishDiagnosticsParams.getUri
+    val uri = FileUtils.sanitizeURI(publishDiagnosticsParams.getUri)
     val diagnostics = publishDiagnosticsParams.getDiagnostics
     EditorEventManager.forUri(uri).foreach(e => e.diagnostics(diagnostics.asScala))
   }
@@ -55,12 +57,13 @@ class LanguageClientImpl extends LanguageClient {
   override def showMessage(messageParams: MessageParams): Unit = {
     val title = "Language Server message"
     val message = messageParams.getMessage
-    messageParams.getType match {
+    ApplicationUtils.invokeLater(() => messageParams.getType match {
       case MessageType.Error => Messages.showErrorDialog(message, title)
       case MessageType.Warning => Messages.showWarningDialog(message, title)
       case MessageType.Info => Messages.showInfoMessage(message, title)
       case MessageType.Log => Messages.showInfoMessage(message, title)
-    }
+      case _ => LOG.warn("No message type for " + message)
+    })
   }
 
   override def showMessageRequest(showMessageRequestParams: ShowMessageRequestParams): CompletableFuture[MessageActionItem] = {
@@ -72,9 +75,14 @@ class LanguageClientImpl extends LanguageClient {
       case MessageType.Warning => UIUtil.getWarningIcon
       case MessageType.Info => UIUtil.getInformationIcon
       case MessageType.Log => UIUtil.getInformationIcon
+      case _ =>
+        LOG.warn("No message type for " + message)
+        null
     }
 
-    val exitCode = Messages.showDialog(message, title, actions.asScala.map(a => a.getTitle).toArray, 0, icon)
+    val task = new FutureTask[Int](() => Messages.showDialog(message, title, actions.asScala.map(a => a.getTitle).toArray, 0, icon))
+    ApplicationManager.getApplication.invokeAndWait(task)
+    val exitCode = task.get()
 
     CompletableFuture.completedFuture(new MessageActionItem(actions.get(exitCode).getTitle))
   }
@@ -91,7 +99,7 @@ class LanguageClientImpl extends LanguageClient {
       case MessageType.Log =>
         LOG.debug(message)
       case _ =>
-        throw new IllegalArgumentException("Unknown message type")
+        LOG.warn("Unknown message type for " + message)
     }
   }
 }

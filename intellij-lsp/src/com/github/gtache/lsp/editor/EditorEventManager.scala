@@ -123,7 +123,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private val completionTriggers = if (serverOptions.completionOptions != null) serverOptions.completionOptions.getTriggerCharacters.asScala.toSet.filter(s => s != ".") else Set[String]()
   private val signatureTriggers = if (serverOptions.signatureHelpOptions != null) serverOptions.signatureHelpOptions.getTriggerCharacters.asScala.toSet else Set[String]()
   private val onTypeFormattingTriggers = if (serverOptions.documentOnTypeFormattingOptions != null)
-    (serverOptions.documentOnTypeFormattingOptions.getMoreTriggerCharacter.asScala +: serverOptions.documentOnTypeFormattingOptions.getFirstTriggerCharacter).toSet else Set[String]()
+    (serverOptions.documentOnTypeFormattingOptions.getMoreTriggerCharacter.asScala += serverOptions.documentOnTypeFormattingOptions.getFirstTriggerCharacter).toSet else Set[String]()
   private val project: Project = editor.getProject
   @volatile var needSave = false
   private var hoverThread = new Timer("Hover", true)
@@ -175,8 +175,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 val builder = StringBuilder.newBuilder
                 builder.append("<html>")
                 signatures.take(activeSignatureIndex).foreach(sig => builder.append(sig.getLabel).append("<br>"))
-                builder.append("<i>").append(signatures(activeSignatureIndex).getLabel
-                  .replace(activeParameter, "<b><font color=\"yellow\">" + activeParameter + "</font></b>")).append("</i>")
+                builder.append("<b>").append(signatures(activeSignatureIndex).getLabel
+                  .replace(activeParameter, "<font color=\"yellow\">" + activeParameter + "</font>")).append("</b>")
                 signatures.drop(activeSignatureIndex + 1).foreach(sig => builder.append("<br>").append(sig.getLabel))
                 builder.append("</html>")
                 invokeLater(() => currentHint = createAndShowEditorHint(editor, builder.toString(), point, HintManager.UNDER, HintManager.HIDE_BY_OTHER_HINT))
@@ -222,71 +222,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
-    * Applies the given edits to the document
-    *
-    * @param version    The version of the edits (will be discarded if older than current version)
-    * @param edits      The edits to apply
-    * @param name       The name of the edits (Rename, for example)
-    * @param closeAfter will close the file after edits if set to true
-    * @return True if the edits were applied, false otherwise
-    */
-  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
-    val runnable = getEditsRunnable(version, edits, name)
-    writeAction(() => {
-      if (runnable != null) CommandProcessor.getInstance().executeCommand(project, runnable, name, "LSPPlugin", editor.getDocument)
-      if (closeAfter) {
-        FileEditorManager.getInstance(project)
-          .closeFile(PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument).getVirtualFile)
-      }
-    })
-    if (runnable != null) true else false
-  }
-
-  /**
-    * Returns a Runnable used to apply the given edits and save the document
-    * Used by WorkspaceEditHandler (allows to revert a rename for example)
-    *
-    * @param version The edit version
-    * @param edits   The edits
-    * @param name    The name of the edit
-    * @return The runnable
-    */
-  def getEditsRunnable(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Runnable = {
-    if (version >= this.version) {
-      val document = editor.getDocument
-      if (document.isWritable) {
-        () => {
-          edits.foreach(edit => {
-            val text = edit.getNewText
-            val range = edit.getRange
-            val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
-            val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
-            val caretOffset = editor.getCaretModel.getCurrentCaret.getOffset
-            if (text == "" || text == null) {
-              document.deleteString(start, end)
-            } else if (end - start <= 0) {
-              document.insertString(start, text)
-            } else {
-              document.replaceString(start, end, text)
-            }
-          })
-          saveDocument()
-        }
-      } else {
-        LOG.warn("Document is not writable")
-        null
-      }
-    } else {
-      LOG.warn("Version " + version + " is older than " + this.version)
-      null
-    }
-  }
-
-  private def saveDocument(): Unit = {
-    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
-  }
-
-  /**
     * Retrieves the commands needed to apply a CodeAction
     *
     * @param element The element which needs the CodeAction
@@ -295,7 +230,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def codeAction(element: LSPPsiElement): Iterable[Command] = {
     val params = new CodeActionParams()
     params.setTextDocument(identifier)
-    params.setRange(computableReadAction(() => new Range(DocumentUtils.offsetToLSPPos(editor, element.start), DocumentUtils.offsetToLSPPos(editor, element.end))))
+    val range = computableReadAction(() => new Range(DocumentUtils.offsetToLSPPos(editor, element.start), DocumentUtils.offsetToLSPPos(editor, element.end)))
+    params.setRange(range)
     val context = new CodeActionContext(diagnosticsHighlights.map(_.diagnostic).toList.asJava)
     params.setContext(context)
     val future = requestManager.codeAction(params)
@@ -353,8 +289,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           val tailText = if (detail != null) detail else ""
           val iconProvider = GUIUtils.getIconProviderFor(wrapper.getServerDefinition)
           val icon = iconProvider.getCompletionIcon(kind)
-          val lookupElementBuilder = LookupElementBuilder.create(if (insertText != null && insertText != "") insertText else label)
-            .withPresentableText(presentableText).withTailText(tailText, true).withIcon(icon)
+          var lookupElementBuilder: LookupElementBuilder = null
           /*            .withRenderer((element: LookupElement, presentation: LookupElementPresentation) => { //TODO later
                       presentation match {
                         case realPresentation: RealLookupElementPresentation =>
@@ -365,24 +300,43 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           if (kind == CompletionItemKind.Keyword) lookupElementBuilder.withBoldness(true)
           if (textEdit != null) {
             if (addTextEdits != null) {
-              lookupElementBuilder.withInsertHandler((context: InsertionContext, item: LookupElement) => {
-                context.commitDocument()
-                invokeLater(() => applyEdit(edits = addTextEdits.asScala :+ textEdit, name = "Completion : " + label))
-              })
+              lookupElementBuilder = LookupElementBuilder.create("")
+                .withInsertHandler((context: InsertionContext, item: LookupElement) => {
+                  context.commitDocument()
+                  invokeLater(() => {
+                    applyEdit(edits = addTextEdits.asScala :+ textEdit, name = "Completion : " + label)
+                    if (command != null) executeCommands(Iterable(command))
+                  })
+                })
             } else {
-              lookupElementBuilder.withInsertHandler((context: InsertionContext, item: LookupElement) => {
-                context.commitDocument()
-                invokeLater(() => applyEdit(edits = Seq(textEdit), name = "Completion : " + label))
-              })
+              lookupElementBuilder = LookupElementBuilder.create("")
+                .withInsertHandler((context: InsertionContext, item: LookupElement) => {
+                  context.commitDocument()
+                  invokeLater(() => {
+                    applyEdit(edits = Seq(textEdit), name = "Completion : " + label)
+                    if (command != null) executeCommands(Iterable(command))
+                  })
+                })
             }
           } else if (addTextEdits != null) {
-            lookupElementBuilder.withInsertHandler((context: InsertionContext, item: LookupElement) => {
-              context.commitDocument()
-              invokeLater(() => applyEdit(edits = addTextEdits.asScala, name = "Completion : " + label))
-            })
+            lookupElementBuilder = LookupElementBuilder.create("")
+              .withInsertHandler((context: InsertionContext, item: LookupElement) => {
+                context.commitDocument()
+                invokeLater(() => {
+                  applyEdit(edits = addTextEdits.asScala, name = "Completion : " + label)
+                  if (command != null) executeCommands(Iterable(command))
+                })
+              })
           } else {
-            lookupElementBuilder.withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT)
+            lookupElementBuilder = LookupElementBuilder.create(if (insertText != null && insertText != "") insertText else label)
+            if (command != null) lookupElementBuilder = lookupElementBuilder.withInsertHandler((context: InsertionContext, item: LookupElement) => {
+              context.commitDocument()
+              invokeLater(() => {
+                executeCommands(Iterable(command))
+              })
+            })
           }
+          lookupElementBuilder.withPresentableText(presentableText).withTailText(tailText, true).withIcon(icon).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT)
         }
 
         completion match {
@@ -403,6 +357,39 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           Iterable.empty
       }
     } else Iterable.empty
+  }
+
+  /**
+    * Sends commands to execute to the server and applies the changes returned if the future returns a WorkspaceEdit
+    *
+    * @param commands The commands to execute
+    */
+  def executeCommands(commands: Iterable[Command]): Unit = {
+    pool(() => {
+      if (!editor.isDisposed) {
+        commands.map(c => {
+          val params = new ExecuteCommandParams()
+          params.setArguments(c.getArguments)
+          params.setCommand(c.getCommand)
+          requestManager.executeCommand(params)
+        }).foreach(f => {
+          if (f != null) {
+            try {
+              val ret = f.get(EXECUTE_COMMAND_TIMEOUT, TimeUnit.MILLISECONDS)
+              wrapper.notifySuccess(Timeouts.EXECUTE_COMMAND)
+              ret match {
+                case e: WorkspaceEdit => WorkspaceEditHandler.applyEdit(e, name = "Execute command")
+                case _ =>
+              }
+            } catch {
+              case e: TimeoutException =>
+                LOG.warn(e)
+                wrapper.notifyFailure(Timeouts.EXECUTE_COMMAND)
+            }
+          }
+        })
+      }
+    })
   }
 
   /**
@@ -577,6 +564,71 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
+    * Applies the given edits to the document
+    *
+    * @param version    The version of the edits (will be discarded if older than current version)
+    * @param edits      The edits to apply
+    * @param name       The name of the edits (Rename, for example)
+    * @param closeAfter will close the file after edits if set to true
+    * @return True if the edits were applied, false otherwise
+    */
+  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
+    val runnable = getEditsRunnable(version, edits, name)
+    writeAction(() => {
+      if (runnable != null) CommandProcessor.getInstance().executeCommand(project, runnable, name, "LSPPlugin", editor.getDocument)
+      if (closeAfter) {
+        FileEditorManager.getInstance(project)
+          .closeFile(PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument).getVirtualFile)
+      }
+    })
+    if (runnable != null) true else false
+  }
+
+  /**
+    * Returns a Runnable used to apply the given edits and save the document
+    * Used by WorkspaceEditHandler (allows to revert a rename for example)
+    *
+    * @param version The edit version
+    * @param edits   The edits
+    * @param name    The name of the edit
+    * @return The runnable
+    */
+  def getEditsRunnable(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Runnable = {
+    if (version >= this.version) {
+      val document = editor.getDocument
+      if (document.isWritable) {
+        () => {
+          edits.foreach(edit => {
+            val text = edit.getNewText
+            val range = edit.getRange
+            val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+            val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+            val caretOffset = editor.getCaretModel.getCurrentCaret.getOffset
+            if (text == "" || text == null) {
+              document.deleteString(start, end)
+            } else if (end - start <= 0) {
+              document.insertString(start, text)
+            } else {
+              document.replaceString(start, end, text)
+            }
+          })
+          saveDocument()
+        }
+      } else {
+        LOG.warn("Document is not writable")
+        null
+      }
+    } else {
+      LOG.warn("Version " + version + " is older than " + this.version)
+      null
+    }
+  }
+
+  private def saveDocument(): Unit = {
+    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
+  }
+
+  /**
     * Gets references, synchronously
     *
     * @param offset The offset of the element
@@ -612,39 +664,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     else {
       null
     }
-  }
-
-  /**
-    * Sends commands to execute to the server and applies the changes returned if the future returns a WorkspaceEdit
-    *
-    * @param commands The commands to execute
-    */
-  def executeCommands(commands: Iterable[Command]): Unit = {
-    pool(() => {
-      if (!editor.isDisposed) {
-        commands.map(c => {
-          val params = new ExecuteCommandParams()
-          params.setArguments(c.getArguments)
-          params.setCommand(c.getCommand)
-          requestManager.executeCommand(params)
-        }).foreach(f => {
-          if (f != null) {
-            try {
-              val ret = f.get(EXECUTE_COMMAND_TIMEOUT, TimeUnit.MILLISECONDS)
-              wrapper.notifySuccess(Timeouts.EXECUTE_COMMAND)
-              ret match {
-                case e: WorkspaceEdit => WorkspaceEditHandler.applyEdit(e, name = "Execute command")
-                case _ =>
-              }
-            } catch {
-              case e: TimeoutException =>
-                LOG.warn(e)
-                wrapper.notifyFailure(Timeouts.EXECUTE_COMMAND)
-            }
-          }
-        })
-      }
-    })
   }
 
   /**
@@ -695,7 +714,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             if (identifier.getUri == loc.getUri && DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) <= offset && offset <= DocumentUtils.LSPPosToOffset(editor, loc.getRange.getEnd)) {
               showReferences(offset)
             } else {
-              val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(loc.getUri).getPath))
+              val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(FileUtils.sanitizeURI(loc.getUri))))
               val descriptor = new OpenFileDescriptor(project, file)
               writeAction(() => {
                 val newEditor = FileEditorManager.getInstance(project).openTextEditor(descriptor, true)
@@ -795,7 +814,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         * Opens the editor to retrieve the offsets, line, etc if needed
         */
       def manageUnopenedEditor(): Unit = {
-        val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(l.getUri).getPath))
+        val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(FileUtils.sanitizeURI(l.getUri))))
         val fileEditorManager = FileEditorManager.getInstance(project)
         if (fileEditorManager.isFileOpen(file)) {
           val editors = fileEditorManager.getAllEditors(file).collect { case t: TextEditor => t.getEditor }
@@ -860,7 +879,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       locations.foreach(l => {
         val listener = new MouseAdapter() {
           override def mouseClicked(e: MouseEvent): Unit = {
-            val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(l._1).getPath))
+            val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(FileUtils.sanitizeURI(l._1))))
             val descriptor = new OpenFileDescriptor(project, file, l._2)
             writeAction(() => {
               val newEditor = FileEditorManager.getInstance(project).openTextEditor(descriptor, true)
@@ -870,7 +889,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             frame.dispose()
           }
         }
-        val fileLabel = new JLabel(new File(new URI(l._1).getPath).getName)
+        val fileLabel = new JLabel(new File(new URI(FileUtils.sanitizeURI(l._1))).getName)
         val spacer = new Spacer()
         val offsetLabel = new JLabel(l._2.toString)
         val sampleLabel = new JLabel("<html>" + l._4 + "</html>")
@@ -1084,7 +1103,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           val elements = res.asScala.map(l => {
             val start = l.getRange.getStart
             val end = l.getRange.getEnd
-            val uri = l.getUri
+            val uri = FileUtils.sanitizeURI(l.getUri)
             val file = FileUtils.virtualFileFromURI(uri)
             var curEditor = FileUtils.editorFromUri(uri, project)
             if (curEditor == null) {
@@ -1142,10 +1161,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val params = new DocumentRangeFormattingParams()
         params.setTextDocument(identifier)
         val selectionModel = editor.getSelectionModel
-        val start = selectionModel.getSelectionStart
-        val end = selectionModel.getSelectionEnd
-        val startingPos = DocumentUtils.offsetToLSPPos(editor, start)
-        val endPos = DocumentUtils.offsetToLSPPos(editor, end)
+        val start = computableReadAction(() => selectionModel.getSelectionStart)
+        val end = computableReadAction(() => selectionModel.getSelectionEnd)
+        val startingPos = computableReadAction(() => DocumentUtils.offsetToLSPPos(editor, start))
+        val endPos = computableReadAction(() => DocumentUtils.offsetToLSPPos(editor, end))
         params.setRange(new Range(startingPos, endPos))
         val options = new FormattingOptions() //TODO
         params.setOptions(options)
@@ -1182,7 +1201,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def rename(renameTo: String, offset: Int = editor.getCaretModel.getCurrentCaret.getOffset): Unit = {
     pool(() => {
-      val servPos = DocumentUtils.logicalToLSPPos(editor.offsetToLogicalPosition(offset))
+      val servPos = computableReadAction(() => DocumentUtils.logicalToLSPPos(editor.offsetToLogicalPosition(offset)))
       if (!editor.isDisposed) {
         val params = new RenameParams(identifier, servPos, renameTo)
         val request = requestManager.rename(params)

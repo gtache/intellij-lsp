@@ -31,7 +31,7 @@ object HoverHandler {
             s"""```${markedString.getLanguage}
 ${markedString.getValue}
 ```""" else markedString.getValue
-          renderer.render(parser.parse(string))
+          "<html>" + renderer.render(parser.parse(string)) + "</html>"
         } else ""
       }).filter(s => !s.isEmpty).reduce((a, b) => a + "\n\n" + b)
     }
