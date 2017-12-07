@@ -248,7 +248,7 @@ public final class ServersGUI implements LSPGUI {
         final TextFieldWithBrowseButton pathField = new TextFieldWithBrowseButton();
         pathField.setToolTipText("e.g. C:\\rustLS\\rls.exe");
         pathField.setText(path);
-        pathField.addBrowseFolderListener(new TextBrowseFolderListener(new FileChooserDescriptor(true, false, true, true, true, false)));
+        pathField.addBrowseFolderListener(new TextBrowseFolderListener(new FileChooserDescriptor(true, false, true, true, true, false).withShowHiddenFiles(true)));
         final JLabel argsLabel = new JLabel("Args");
         final JTextField argsField = new JTextField();
         argsField.setToolTipText("e.g. -stdio");
@@ -273,7 +273,7 @@ public final class ServersGUI implements LSPGUI {
         final TextFieldWithBrowseButton commandField = new TextFieldWithBrowseButton();
         commandField.setText(command);
         commandField.setToolTipText("e.g. python.exe -m C:\\python-ls\\pyls");
-        commandField.addBrowseFolderListener(new TextBrowseFolderListener(new FileChooserDescriptor(true, false, true, true, true, false)));
+        commandField.addBrowseFolderListener(new TextBrowseFolderListener(new FileChooserDescriptor(true, false, true, true, true, false).withShowHiddenFiles(true)));
 
         final List<JComponent> components = Arrays.asList(extLabel, extField, commandLabel, commandField);
         final JPanel panel = createRow(components, RawCommandServerDefinition$.MODULE$.getPresentableTyp());
