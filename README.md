@@ -46,8 +46,10 @@ Shift+Alt+F7 :
 ![Diagnostic](https://github.com/gtache/intellij-lsp/blob/master/doc/images/diagnostic.gif "DiagnosticGif")    
 - You can see the server(s) status in the status bar, and click on the icon to see the connected files and the timeouts    
 ![ServerStatus](https://github.com/gtache/intellij-lsp/blob/master/doc/images/server_status.gif "StatusGif")    
-- Format a document / a selection (Ctrl+Alt(+Shift)+L by default) - untested     
--  Get the signature help when typing - untested     
+- Format a document / a selection (Ctrl+Alt(+Shift)+L by default) - tested with TestServer, should work     
+- Format while typing - tested with TestServer    
+- Get the signature help when typing - tested with TestServer     
+- Apply quickfixes (lightbulb icon) - tested with TestServer     
 
 ## Add a Language Server
 This plugin supports communicating with multiple and different language servers at the same time.    
