@@ -4,8 +4,11 @@ import com.github.gtache.lsp.client.languageserver.serverdefinition.*;
 import com.github.gtache.lsp.settings.LSPState;
 import com.github.gtache.lsp.utils.Utils;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.ui.TextBrowseFolderListener;
+import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
@@ -32,6 +35,7 @@ public final class ServersGUI implements LSPGUI {
     private static final String COMMAND = "command";
     private static final String PATH = "path";
     private static final Logger LOG = Logger.getInstance(ServersGUI.class);
+    private static final String FILE_PATH_LABEL = "Path";
     private final LSPState state = state();
     private final JPanel rootPanel;
     private final List<ServersGUIRow> rows = new ArrayList<>(5);
@@ -240,10 +244,11 @@ public final class ServersGUI implements LSPGUI {
         final JTextField extField = new JTextField();
         extField.setToolTipText(EXT_TOOLTIP);
         extField.setText(ext);
-        final JLabel pathLabel = new JLabel("Path");
-        final JTextField pathField = new JTextField();
+        final JLabel pathLabel = new JLabel(FILE_PATH_LABEL);
+        final TextFieldWithBrowseButton pathField = new TextFieldWithBrowseButton();
         pathField.setToolTipText("e.g. C:\\rustLS\\rls.exe");
         pathField.setText(path);
+        pathField.addBrowseFolderListener(new TextBrowseFolderListener(new FileChooserDescriptor(true, false, true, true, true, false)));
         final JLabel argsLabel = new JLabel("Args");
         final JTextField argsField = new JTextField();
         argsField.setToolTipText("e.g. -stdio");
@@ -265,9 +270,10 @@ public final class ServersGUI implements LSPGUI {
         extField.setToolTipText(EXT_TOOLTIP);
         extField.setText(ext);
         final JLabel commandLabel = new JLabel("Command");
-        final JTextField commandField = new JTextField();
+        final TextFieldWithBrowseButton commandField = new TextFieldWithBrowseButton();
         commandField.setText(command);
         commandField.setToolTipText("e.g. python.exe -m C:\\python-ls\\pyls");
+        commandField.addBrowseFolderListener(new TextBrowseFolderListener(new FileChooserDescriptor(true, false, true, true, true, false)));
 
         final List<JComponent> components = Arrays.asList(extLabel, extField, commandLabel, commandField);
         final JPanel panel = createRow(components, RawCommandServerDefinition$.MODULE$.getPresentableTyp());

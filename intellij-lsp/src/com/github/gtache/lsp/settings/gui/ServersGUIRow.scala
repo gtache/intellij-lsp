@@ -3,6 +3,7 @@ package com.github.gtache.lsp.settings.gui
 import javax.swing.{JComboBox, JComponent, JPanel, JTextField}
 
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.ui.TextFieldWithBrowseButton
 
 import scala.collection.mutable
 
@@ -28,6 +29,7 @@ case class ServersGUIRow(panel: JPanel, typ: String, fields: mutable.LinkedHashM
   def getText(label: String): String = {
     fields.get(label).fold("") {
       case t: JTextField => t.getText().trim
+      case tb: TextFieldWithBrowseButton => tb.getText.trim
       case b: JComboBox[String@unchecked] => b.getSelectedItem.asInstanceOf[String]
       case u: JComponent => LOG.error("Unknown JComponent : " + u)
         ""
@@ -40,6 +42,7 @@ case class ServersGUIRow(panel: JPanel, typ: String, fields: mutable.LinkedHashM
   def toStringArray: Array[String] = {
     Array(typ) ++ fields.values.map {
       case t: JTextField => t.getText().trim
+      case tb: TextFieldWithBrowseButton => tb.getText.trim
       case b: JComboBox[String@unchecked] => b.getSelectedItem.asInstanceOf[String]
       case u: JComponent => LOG.error("Unknown JComponent : " + u)
         ""
