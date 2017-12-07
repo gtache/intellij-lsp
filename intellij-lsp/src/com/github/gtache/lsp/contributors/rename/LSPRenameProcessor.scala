@@ -81,6 +81,7 @@ class LSPRenameProcessor extends RenamePsiElementProcessor {
 
   override def isInplaceRenameSupported: Boolean = true
 
+  //TODO may rename invalid elements
   override def renameElement(element: PsiElement, newName: String, usages: Array[UsageInfo], listener: RefactoringElementListener): Unit = {
     WorkspaceEditHandler.applyEdit(element, newName, usages, listener, openedEditors.clone())
     openedEditors.clear()

@@ -270,7 +270,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         initParams.setInitializationOptions(this.serverDefinition.getInitializationOptions(URI.create(initParams.getRootUri)))
         initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
           initializeResult = res
-          LOG.info("Got initializeResult for " + rootPath)
+          LOG.info("Got initializeResult for " + serverDefinition + " ; " + rootPath)
           requestManager = new SimpleRequestManager(this, languageServer, client, res.getCapabilities)
           setStatus(STARTED)
           res
@@ -373,7 +373,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       editors.foreach(uri => connect(uri))
     } else {
       removeDefinition()
-      Messages.showErrorDialog("LanguageServer for definition " + serverDefinition + " keeps crashing due to \n" + e.getMessage + "\nCheck settings", "LSP Error")
+      ApplicationUtils.invokeLater(() => Messages.showErrorDialog("LanguageServer for definition " + serverDefinition + " keeps crashing due to \n" + e.getMessage + "\nCheck settings", "LSP Error"))
     }
   }
 

@@ -120,10 +120,26 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private val selectedSymbHighlights: mutable.Set[RangeHighlighter] = mutable.HashSet()
   private val diagnosticsHighlights: mutable.Set[DiagnosticRangeHighlighter] = mutable.HashSet()
   private val syncKind = serverOptions.syncKind
-  private val completionTriggers = if (serverOptions.completionOptions != null) serverOptions.completionOptions.getTriggerCharacters.asScala.toSet.filter(s => s != ".") else Set[String]()
-  private val signatureTriggers = if (serverOptions.signatureHelpOptions != null) serverOptions.signatureHelpOptions.getTriggerCharacters.asScala.toSet else Set[String]()
-  private val onTypeFormattingTriggers = if (serverOptions.documentOnTypeFormattingOptions != null)
-    (serverOptions.documentOnTypeFormattingOptions.getMoreTriggerCharacter.asScala += serverOptions.documentOnTypeFormattingOptions.getFirstTriggerCharacter).toSet else Set[String]()
+
+  private val completionTriggers =
+    if (serverOptions.completionOptions != null && serverOptions.completionOptions.getTriggerCharacters != null)
+      serverOptions.completionOptions.getTriggerCharacters.asScala.toSet.filter(s => s != ".")
+    else Set[String]()
+
+  private val signatureTriggers =
+    if (serverOptions.signatureHelpOptions != null && serverOptions.signatureHelpOptions.getTriggerCharacters != null)
+      serverOptions.signatureHelpOptions.getTriggerCharacters.asScala.toSet
+    else Set[String]()
+
+  private val documentOnTypeFormattingOptions = serverOptions.documentOnTypeFormattingOptions
+  private val onTypeFormattingTriggers =
+    if (documentOnTypeFormattingOptions != null && documentOnTypeFormattingOptions.getMoreTriggerCharacter != null)
+      (documentOnTypeFormattingOptions.getMoreTriggerCharacter.asScala += documentOnTypeFormattingOptions.getFirstTriggerCharacter).toSet
+    else if (documentOnTypeFormattingOptions != null)
+      Set(documentOnTypeFormattingOptions.getFirstTriggerCharacter)
+    else
+      Set[String]()
+
   private val project: Project = editor.getProject
   @volatile var needSave = false
   private var hoverThread = new Timer("Hover", true)
@@ -167,17 +183,18 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             val signature = future.get(SIGNATURE_TIMEOUT, TimeUnit.MILLISECONDS)
             wrapper.notifySuccess(Timeouts.SIGNATURE)
             if (signature != null) {
-              val signatures = signature.getSignatures.asScala
-              if (signatures != null && signatures.nonEmpty) {
+              val signatures = signature.getSignatures
+              if (signatures != null && !signatures.isEmpty) {
+                val scalaSignatures = signatures.asScala
                 val activeSignatureIndex = signature.getActiveSignature
                 val activeParameterIndex = signature.getActiveParameter
-                val activeParameter = signatures(activeSignatureIndex).getParameters.get(activeParameterIndex).getLabel
+                val activeParameter = scalaSignatures(activeSignatureIndex).getParameters.get(activeParameterIndex).getLabel
                 val builder = StringBuilder.newBuilder
                 builder.append("<html>")
-                signatures.take(activeSignatureIndex).foreach(sig => builder.append(sig.getLabel).append("<br>"))
-                builder.append("<b>").append(signatures(activeSignatureIndex).getLabel
+                scalaSignatures.take(activeSignatureIndex).foreach(sig => builder.append(sig.getLabel).append("<br>"))
+                builder.append("<b>").append(scalaSignatures(activeSignatureIndex).getLabel
                   .replace(activeParameter, "<font color=\"yellow\">" + activeParameter + "</font>")).append("</b>")
-                signatures.drop(activeSignatureIndex + 1).foreach(sig => builder.append("<br>").append(sig.getLabel))
+                scalaSignatures.drop(activeSignatureIndex + 1).foreach(sig => builder.append("<br>").append(sig.getLabel))
                 builder.append("</html>")
                 invokeLater(() => currentHint = createAndShowEditorHint(editor, builder.toString(), point, HintManager.UNDER, HintManager.HIDE_BY_OTHER_HINT))
               }
@@ -210,7 +227,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           try {
             val edits = future.get(FORMATTING_TIMEOUT, TimeUnit.MILLISECONDS)
             wrapper.notifySuccess(Timeouts.FORMATTING)
-            invokeLater(() => applyEdit(edits = edits.asScala, name = "On type formatting"))
+            if (edits != null) invokeLater(() => applyEdit(edits = edits.asScala, name = "On type formatting"))
           } catch {
             case e: TimeoutException =>
               LOG.warn(e)
@@ -263,92 +280,93 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       try {
         val res = request.get(COMPLETION_TIMEOUT, TimeUnit.MILLISECONDS)
         wrapper.notifySuccess(Timeouts.COMPLETION)
-        import scala.collection.JavaConverters._
-        val completion /*: CompletionList | List[CompletionItem] */ = if (res.isLeft) res.getLeft.asScala else res.getRight
+        if (res != null) {
+          import scala.collection.JavaConverters._
+          val completion /*: CompletionList | List[CompletionItem] */ = if (res.isLeft) res.getLeft.asScala else res.getRight
 
-        /**
-          * Creates a LookupElement given a CompletionItem
-          *
-          * @param item The CompletionItem
-          * @return The corresponding LookupElement
-          */
-        def createLookupItem(item: CompletionItem): LookupElement = {
-          val addTextEdits = item.getAdditionalTextEdits
-          val command = item.getCommand
-          val data = item.getData
-          val detail = item.getDetail
-          val doc = item.getDocumentation
-          val filterText = item.getFilterText
-          val insertText = item.getInsertText
-          val insertFormat = item.getInsertTextFormat
-          val kind = item.getKind
-          val label = item.getLabel
-          val textEdit = item.getTextEdit
-          val sortText = item.getSortText
-          val presentableText = if (label != null && label != "") label else if (insertText != null) insertText else ""
-          val tailText = if (detail != null) detail else ""
-          val iconProvider = GUIUtils.getIconProviderFor(wrapper.getServerDefinition)
-          val icon = iconProvider.getCompletionIcon(kind)
-          var lookupElementBuilder: LookupElementBuilder = null
-          /*            .withRenderer((element: LookupElement, presentation: LookupElementPresentation) => { //TODO later
+          /**
+            * Creates a LookupElement given a CompletionItem
+            *
+            * @param item The CompletionItem
+            * @return The corresponding LookupElement
+            */
+          def createLookupItem(item: CompletionItem): LookupElement = {
+            val addTextEdits = item.getAdditionalTextEdits
+            val command = item.getCommand
+            val data = item.getData
+            val detail = item.getDetail
+            val doc = item.getDocumentation
+            val filterText = item.getFilterText
+            val insertText = item.getInsertText
+            val insertFormat = item.getInsertTextFormat
+            val kind = item.getKind
+            val label = item.getLabel
+            val textEdit = item.getTextEdit
+            val sortText = item.getSortText
+            val presentableText = if (label != null && label != "") label else if (insertText != null) insertText else ""
+            val tailText = if (detail != null) detail else ""
+            val iconProvider = GUIUtils.getIconProviderFor(wrapper.getServerDefinition)
+            val icon = iconProvider.getCompletionIcon(kind)
+            var lookupElementBuilder: LookupElementBuilder = null
+            /*            .withRenderer((element: LookupElement, presentation: LookupElementPresentation) => { //TODO later
                       presentation match {
                         case realPresentation: RealLookupElementPresentation =>
                           if (!realPresentation.hasEnoughSpaceFor(presentation.getItemText, presentation.isItemTextBold)) {
                           }
                       }
                     })*/
-          if (kind == CompletionItemKind.Keyword) lookupElementBuilder.withBoldness(true)
-          if (textEdit != null) {
-            if (addTextEdits != null) {
+            if (kind == CompletionItemKind.Keyword) lookupElementBuilder.withBoldness(true)
+            if (textEdit != null) {
+              if (addTextEdits != null) {
+                lookupElementBuilder = LookupElementBuilder.create("")
+                  .withInsertHandler((context: InsertionContext, item: LookupElement) => {
+                    context.commitDocument()
+                    invokeLater(() => {
+                      applyEdit(edits = addTextEdits.asScala :+ textEdit, name = "Completion : " + label)
+                      if (command != null) executeCommands(Iterable(command))
+                    })
+                  })
+              } else {
+                lookupElementBuilder = LookupElementBuilder.create("")
+                  .withInsertHandler((context: InsertionContext, item: LookupElement) => {
+                    context.commitDocument()
+                    invokeLater(() => {
+                      applyEdit(edits = Seq(textEdit), name = "Completion : " + label)
+                      if (command != null) executeCommands(Iterable(command))
+                    })
+                  })
+              }
+            } else if (addTextEdits != null) {
               lookupElementBuilder = LookupElementBuilder.create("")
                 .withInsertHandler((context: InsertionContext, item: LookupElement) => {
                   context.commitDocument()
                   invokeLater(() => {
-                    applyEdit(edits = addTextEdits.asScala :+ textEdit, name = "Completion : " + label)
+                    applyEdit(edits = addTextEdits.asScala, name = "Completion : " + label)
                     if (command != null) executeCommands(Iterable(command))
                   })
                 })
             } else {
-              lookupElementBuilder = LookupElementBuilder.create("")
-                .withInsertHandler((context: InsertionContext, item: LookupElement) => {
-                  context.commitDocument()
-                  invokeLater(() => {
-                    applyEdit(edits = Seq(textEdit), name = "Completion : " + label)
-                    if (command != null) executeCommands(Iterable(command))
-                  })
-                })
-            }
-          } else if (addTextEdits != null) {
-            lookupElementBuilder = LookupElementBuilder.create("")
-              .withInsertHandler((context: InsertionContext, item: LookupElement) => {
+              lookupElementBuilder = LookupElementBuilder.create(if (insertText != null && insertText != "") insertText else label)
+              if (command != null) lookupElementBuilder = lookupElementBuilder.withInsertHandler((context: InsertionContext, item: LookupElement) => {
                 context.commitDocument()
                 invokeLater(() => {
-                  applyEdit(edits = addTextEdits.asScala, name = "Completion : " + label)
-                  if (command != null) executeCommands(Iterable(command))
+                  executeCommands(Iterable(command))
                 })
               })
-          } else {
-            lookupElementBuilder = LookupElementBuilder.create(if (insertText != null && insertText != "") insertText else label)
-            if (command != null) lookupElementBuilder = lookupElementBuilder.withInsertHandler((context: InsertionContext, item: LookupElement) => {
-              context.commitDocument()
-              invokeLater(() => {
-                executeCommands(Iterable(command))
-              })
-            })
+            }
+            lookupElementBuilder.withPresentableText(presentableText).withTailText(tailText, true).withIcon(icon).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT)
           }
-          lookupElementBuilder.withPresentableText(presentableText).withTailText(tailText, true).withIcon(icon).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT)
-        }
 
-        completion match {
-          case c: CompletionList =>
-            c.getItems.asScala.map(item => {
+          completion match {
+            case c: CompletionList =>
+              c.getItems.asScala.map(item => {
+                createLookupItem(item)
+              })
+            case l: Iterable[CompletionItem@unchecked] => l.map(item => {
               createLookupItem(item)
             })
-          case l: Iterable[CompletionItem@unchecked] => l.map(item => {
-            createLookupItem(item)
-          })
-
-        }
+          }
+        } else Iterable()
       }
       catch {
         case e: TimeoutException =>
@@ -681,10 +699,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         try {
           val res = future.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
           wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
-          res.asScala.map(dh => new TextRange(DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart), DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)))
-            .find(range => range.getStartOffset <= offset && offset <= range.getEndOffset)
-            .map(range => LSPPsiElement(editor.getDocument.getText(range), project, range.getStartOffset, range.getEndOffset, PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument)))
-            .orNull
+          if (res != null)
+            res.asScala.map(dh => new TextRange(DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart), DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)))
+              .find(range => range.getStartOffset <= offset && offset <= range.getEndOffset)
+              .map(range => LSPPsiElement(editor.getDocument.getText(range), project, range.getStartOffset, range.getEndOffset, PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument)))
+              .orNull
+          else null
         } catch {
           case e: TimeoutException =>
             wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
@@ -1027,10 +1047,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             if (future != null) {
               try {
                 val highlights = future.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
-                wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
-                val offset = DocumentUtils.LSPPosToOffset(editor, serverPos)
-                highlights.asScala.find(dh => DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart) <= offset
-                  && offset <= DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)).fold(new Range(serverPos, serverPos))(dh => dh.getRange)
+                if (highlights != null) {
+                  wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
+                  val offset = DocumentUtils.LSPPosToOffset(editor, serverPos)
+                  highlights.asScala.find(dh => DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart) <= offset
+                    && offset <= DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)).fold(new Range(serverPos, serverPos))(dh => dh.getRange)
+                } else new Range(serverPos, serverPos)
               } catch {
                 case e: TimeoutException =>
                   LOG.warn(e)
@@ -1063,10 +1085,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     val request = requestManager.definition(params)
     if (request != null) {
       try {
-        val definition = request.get(DEFINITION_TIMEOUT, TimeUnit.MILLISECONDS).asScala
+        val definition = request.get(DEFINITION_TIMEOUT, TimeUnit.MILLISECONDS)
         wrapper.notifySuccess(Timeouts.DEFINITION)
-        if (definition != null && definition.nonEmpty) {
-          definition.head
+        if (definition != null && !definition.isEmpty) {
+          definition.get(0)
         } else {
           null
         }
@@ -1145,9 +1167,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val options = new FormattingOptions()
         params.setOptions(options)
         val request = requestManager.formatting(params)
-        if (request != null) request.thenAccept(formatting =>
-          invokeLater(() =>
-            applyEdit(edits = formatting.asScala, name = "Reformat document", closeAfter = closeAfter)))
+        if (request != null) request.thenAccept(formatting => if (formatting != null) invokeLater(() =>
+          applyEdit(edits = formatting.asScala, name = "Reformat document", closeAfter = closeAfter)))
       }
     })
   }
@@ -1169,7 +1190,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val options = new FormattingOptions() //TODO
         params.setOptions(options)
         val request = requestManager.rangeFormatting(params)
-        if (request != null) request.thenAccept(formatting => invokeLater(() => applyEdit(edits = formatting.asScala, name = "Reformat selection")))
+        if (request != null) request.thenAccept(formatting => if (formatting != null) invokeLater(() => applyEdit(edits = formatting.asScala, name = "Reformat selection")))
       }
     })
   }
@@ -1266,19 +1287,21 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             pool(() => {
               if (!editor.isDisposed) {
                 try {
-                  val resp = request.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS).asScala
+                  val resp = request.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
                   wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
-                  invokeLater(() => resp.foreach(dh => {
-                    if (!editor.isDisposed) {
-                      val range = dh.getRange
-                      val kind = dh.getKind
-                      val startOffset = DocumentUtils.LSPPosToOffset(editor, range.getStart)
-                      val endOffset = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
-                      val colorScheme = editor.getColorsScheme
-                      val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION - 1, colorScheme.getAttributes(EditorColors.IDENTIFIER_UNDER_CARET_ATTRIBUTES), HighlighterTargetArea.EXACT_RANGE)
-                      selectedSymbHighlights.add(highlight)
-                    }
-                  }))
+                  if (resp != null) {
+                    invokeLater(() => resp.asScala.foreach(dh => {
+                      if (!editor.isDisposed) {
+                        val range = dh.getRange
+                        val kind = dh.getKind
+                        val startOffset = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+                        val endOffset = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+                        val colorScheme = editor.getColorsScheme
+                        val highlight = editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.SELECTION - 1, colorScheme.getAttributes(EditorColors.IDENTIFIER_UNDER_CARET_ATTRIBUTES), HighlighterTargetArea.EXACT_RANGE)
+                        selectedSymbHighlights.add(highlight)
+                      }
+                    }))
+                  }
                 } catch {
                   case e: TimeoutException =>
                     LOG.warn(e)
