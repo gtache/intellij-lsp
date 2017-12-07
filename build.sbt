@@ -20,6 +20,17 @@ lazy val commonSettings = Seq(
   javacOptions ++= Seq(
     "-Xlint:deprecation"
   ),
+
+  mainClass in (Compile, run) := Some("com.intellij.idea.Main"),
+  // Add tools.jar, from https://stackoverflow.com/a/12508163/348497
+  unmanagedJars in Compile ~= {uj =>
+    Attributed.blank(file(System.getProperty("java.home").dropRight(3) + "lib/tools.jar")) +: uj
+  },
+  fork in run := true,
+  javaOptions in run := Seq(
+    "-ea", // enable Java assertions
+    s"-Didea.home.path=${ideaBaseDirectory.value}",
+  ),
 )
 
 lazy val root = (project in file(".")).
@@ -58,15 +69,5 @@ lazy val `intellij-lsp-dotty` = (project in file("intellij-lsp-dotty")).
       scalaOrganization.value % "scala-reflect" % scalaVersion.value,
       "org.scalameta" %% "scalameta" % "1.8.0",
       "org.scalastyle" %% "scalastyle" % "1.0.0",
-    ),
-    mainClass in (Compile, run) := Some("com.intellij.idea.Main"),
-    // Add tools.jar, from https://stackoverflow.com/a/12508163/348497
-    unmanagedJars in Compile ~= {uj =>
-      Seq(Attributed.blank(file(System.getProperty("java.home").dropRight(3) + "lib/tools.jar")))
-    },
-    fork in run := true,
-    javaOptions in run := Seq(
-      "-ea", // enable Java assertions
-      s"-Didea.home.path=${ideaBaseDirectory.value}",
     ),
   )
