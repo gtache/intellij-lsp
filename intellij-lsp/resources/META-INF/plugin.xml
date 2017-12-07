@@ -8,20 +8,11 @@
 
     <change-notes>
         <![CDATA[
-        -Adds actions to see timeouts and connected files by clicking on the icon in the status bar<br>
-        -Adds Coursier repositories setting<br>
-        -Updates Coursier<br>
-        -Highlights (like hyperlink) symbol when pressing Ctrl (same behavior as IntelliJ)<br>
-        -Allows rename through refactor shortcut (Shift+F6 by default)<br>
-        -Rename action now uses inplace renaming if all symbols are in the same file<br>
-        -QuickDocAction (Ctrl+Q) now uses IntelliJ doc window<br>
-        -Adds icons extensions for Goto symbol/class<br>
-        -Adds default icons for completion and Goto<br>
-        -Finds usages (Shift+Alt+F7) now opens in the IntelliJ find usages window<br>
-        -Fixes not being able to instantiate multiple times the same server (working on multiple projects for example)<br>
-        -Fixes Ctrl being considered pressed after some actions (like Undo, Ctrl+Z)<br>
-        -Handles server crashing<br>
-        -Improves error handling
+        -formatting, rangeFormatting, onTypeFormatting seem to be working<br>
+        -signatureHelp seems to be working<br>
+        -codeAction seems to be working<br>
+        -showMessage, showMessageRequest seem to be working<br>
+        -Better handling of null responses from servers
 ]]>
     </change-notes>
 
