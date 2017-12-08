@@ -10,7 +10,7 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.{FileEditorManager, TextEditor}
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.{PsiElement, PsiFile, PsiReference}
+import com.intellij.psi.{PsiElement, PsiFile, PsiNamedElement, PsiReference}
 import com.intellij.refactoring.listeners.RefactoringElementListener
 import com.intellij.refactoring.rename.{RenameDialog, RenamePsiElementProcessor}
 import com.intellij.usageView.UsageInfo
@@ -43,6 +43,7 @@ class LSPRenameProcessor extends RenamePsiElementProcessor {
                 val end = range.getEndOffset
                 start <= offset && offset <= end
               }).orNull
+              this.elements = this.elements.filter(elem => elem.asInstanceOf[PsiNamedElement].getName == curElem.asInstanceOf[PsiNamedElement].getName)
               true
             } else false
           case None => false
