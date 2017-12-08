@@ -84,7 +84,14 @@ object WorkspaceEditHandler {
           * @return The runnable containing the edits
           */
         def manageUnopenedEditor(edits: Iterable[TextEdit], uri: String, version: Int = Int.MaxValue): Runnable = {
-          val project = ProjectManager.getInstance().getOpenProjects()(0)
+          val projects = ProjectManager.getInstance().getOpenProjects
+          val project = projects //Infer the project from the uri
+            .map(p => (FileUtils.VFSToURI(p.getBaseDir), p))
+            .filter(p => uri.startsWith(p._1))
+            .sortBy(s => s._1.length).reverse
+            .map(p => p._2)
+            .headOption
+            .getOrElse(projects(0))
           val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(FileUtils.sanitizeURI(uri))))
           val fileEditorManager = FileEditorManager.getInstance(project)
           val descriptor = new OpenFileDescriptor(project, file)

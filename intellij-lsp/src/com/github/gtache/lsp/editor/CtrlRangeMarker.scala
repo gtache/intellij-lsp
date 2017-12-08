@@ -25,6 +25,11 @@ case class CtrlRangeMarker(loc: Location, editor: Editor, range: RangeHighlighte
   }
 
   /**
+    * If the marker points to the definition itself
+    */
+  def isDefinition: Boolean = range == null
+
+  /**
     * Removes the highlighter and restores the default cursor
     */
   def dispose(): Unit = {
@@ -33,10 +38,5 @@ case class CtrlRangeMarker(loc: Location, editor: Editor, range: RangeHighlighte
       editor.getContentComponent.setCursor(Cursor.getDefaultCursor)
     }
   }
-
-  /**
-    * If the marker points to the definition itself
-    */
-  def isDefinition: Boolean = range == null
 
 }

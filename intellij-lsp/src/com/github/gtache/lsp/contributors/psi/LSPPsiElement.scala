@@ -68,6 +68,16 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
   override def getParent: PsiElement = getContainingFile
 
   /**
+    * Returns the file containing the PSI element.
+    *
+    * @return the file instance, or null if the PSI element is not contained in a file (for example,
+    *         the element represents a package or directory).
+    * @throws PsiInvalidElementAccessException
+    * if this element is invalid
+    */
+  override def getContainingFile: PsiFile = file
+
+  /**
     * Returns the first child of the PSI element.
     *
     * @return the first child, or null if the element has no children.
@@ -162,6 +172,8 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     */
   override def getOriginalElement: PsiElement = null
 
+  //Q: get rid of these methods?
+
   /**
     * Checks if the text of this PSI element is equal to the specified character sequence.
     *
@@ -170,7 +182,12 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     */
   override def textMatches(text: CharSequence): Boolean = getText == text
 
-  //Q: get rid of these methods?
+  /**
+    * Returns the text of the PSI element.
+    *
+    * @return the element text.
+    */
+  override def getText: String = name
 
   /**
     * Checks if the text of this PSI element is equal to the text of the specified PSI element.
@@ -187,13 +204,6 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     * @return true if the character is found, false otherwise.
     */
   override def textContains(c: Char): Boolean = getText.contains(c)
-
-  /**
-    * Returns the text of the PSI element.
-    *
-    * @return the element text.
-    */
-  override def getText: String = name
 
   /**
     * Passes the element to the specified visitor.
@@ -448,16 +458,6 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
   override def getUseScope: SearchScope = getContainingFile.getResolveScope
 
   /**
-    * Returns the file containing the PSI element.
-    *
-    * @return the file instance, or null if the PSI element is not contained in a file (for example,
-    *         the element represents a package or directory).
-    * @throws PsiInvalidElementAccessException
-    * if this element is invalid
-    */
-  override def getContainingFile: PsiFile = file
-
-  /**
     * Returns the AST node corresponding to the element.
     *
     * @return the AST node instance.
@@ -530,6 +530,10 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     false
   }
 
+  protected def changeUserMap(oldMap: KeyFMap, newMap: KeyFMap): Boolean = updater.compareAndSet(this, oldMap, newMap)
+
+  protected def getUserMap: KeyFMap = myUserMap
+
   def copyCopyableDataTo(clone: UserDataHolderBase): Unit = {
     clone.putUserData(COPYABLE_USER_MAP_KEY, getUserData(COPYABLE_USER_MAP_KEY))
   }
@@ -551,11 +555,7 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     null.asInstanceOf[T]
   }
 
-  protected def changeUserMap(oldMap: KeyFMap, newMap: KeyFMap): Boolean = updater.compareAndSet(this, oldMap, newMap)
-
   def isUserDataEmpty: Boolean = getUserMap.isEmpty
-
-  protected def getUserMap: KeyFMap = myUserMap
 
   override def getPresentation: ItemPresentation = new ItemPresentation {
     override def getPresentableText: String = getName

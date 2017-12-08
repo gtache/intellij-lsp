@@ -1,5 +1,6 @@
 package com.github.gtache.lsp.settings.gui;
 
+import com.github.gtache.lsp.PluginMain$;
 import com.github.gtache.lsp.client.languageserver.serverdefinition.*;
 import com.github.gtache.lsp.settings.LSPState;
 import com.github.gtache.lsp.utils.Utils;
@@ -89,7 +90,7 @@ public final class ServersGUI implements LSPGUI {
             Messages.showWarningDialog(extensions.stream().reduce((f, s) -> "Duplicate : " + f + Utils.lineSeparator() + s).orElse("Error while getting extensions") + Utils.lineSeparator() + "Unexpected behavior may occur", "Duplicate Extensions");
         }
         //TODO manage without restarting
-        Messages.showInfoMessage("The changes will be applied after restarting the IDE.", "LSP Settings");
+        //Messages.showInfoMessage("The changes will be applied after restarting the IDE.", "LSP Settings");
         serverDefinitions.clear();
         for (final ServersGUIRow row : rows) {
             final String[] arr = row.toStringArray();
@@ -100,6 +101,7 @@ public final class ServersGUI implements LSPGUI {
             }
         }
         LSPState.getInstance().setExtToServ(serverDefinitions);
+        PluginMain$.MODULE$.setExtToServerDefinition(serverDefinitions);
     }
 
     @Override

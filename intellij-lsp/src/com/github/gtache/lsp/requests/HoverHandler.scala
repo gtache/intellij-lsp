@@ -19,7 +19,7 @@ object HoverHandler {
     */
   def getHoverString(@NonNull hover: Hover): String = {
     import scala.collection.JavaConverters._
-    if(hover != null && hover.getContents != null) {
+    if (hover != null && hover.getContents != null) {
       val contents = hover.getContents.asScala
       if (contents == null || contents.isEmpty) "" else {
         contents.map(c => {

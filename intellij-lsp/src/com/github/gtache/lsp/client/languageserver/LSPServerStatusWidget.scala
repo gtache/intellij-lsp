@@ -18,10 +18,11 @@ import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.Consumer
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 object LSPServerStatusWidget {
 
-  private var lastWidgetID: String = _
+  private val widgetIDs: mutable.Map[Project, ListBuffer[String]] = mutable.Map()
 
   /**
     * Creates a widget given a LanguageServerWrapper and adds it to the status bar
@@ -31,10 +32,21 @@ object LSPServerStatusWidget {
     */
   def createWidgetFor(wrapper: LanguageServerWrapper): LSPServerStatusWidget = {
     val widget = new LSPServerStatusWidget(wrapper)
-    val statusBar = WindowManager.getInstance().getStatusBar(wrapper.getProject)
-    if (lastWidgetID != null) statusBar.addWidget(widget, "before " + lastWidgetID) else statusBar.addWidget(widget, "before Position")
-    lastWidgetID = widget.ID()
+    val project = wrapper.getProject
+    val statusBar = WindowManager.getInstance().getStatusBar(project)
+    widgetIDs.get(project) match {
+      case Some(_) =>
+      case None =>
+        widgetIDs.put(project, ListBuffer("Position"))
+    }
+    statusBar.addWidget(widget, "before " + widgetIDs(project).head)
+    widgetIDs(project).prepend(widget.ID())
     widget
+  }
+
+  def removeWidgetID(widget: LSPServerStatusWidget): Unit = {
+    val project = widget.wrapper.getProject
+    widgetIDs(project) -= widget.ID()
   }
 
 }
@@ -44,7 +56,7 @@ object LSPServerStatusWidget {
   *
   * @param wrapper The wrapper corresponding to the server
   */
-class LSPServerStatusWidget(wrapper: LanguageServerWrapper) extends StatusBarWidget {
+class LSPServerStatusWidget(val wrapper: LanguageServerWrapper) extends StatusBarWidget {
 
   private val timeouts: mutable.Map[Timeouts, (Int, Int)] = mutable.HashMap()
   Timeouts.values().foreach(t => timeouts.put(t, (0, 0)))
@@ -137,6 +149,7 @@ class LSPServerStatusWidget(wrapper: LanguageServerWrapper) extends StatusBarWid
     val manager = WindowManager.getInstance()
     if (manager != null && project != null && !project.isDisposed) {
       val statusBar = manager.getStatusBar(project)
+      LSPServerStatusWidget.removeWidgetID(this)
       if (statusBar != null) ApplicationUtils.invokeLater(() => statusBar.removeWidget(ID()))
     }
   }

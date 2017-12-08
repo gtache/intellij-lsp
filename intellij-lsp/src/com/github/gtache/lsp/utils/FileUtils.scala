@@ -82,17 +82,6 @@ object FileUtils {
     }
   }
 
-  /**
-    * Transforms an URI string into a VFS file
-    *
-    * @param uri The uri
-    * @return The virtual file
-    */
-  def URIToVFS(uri: String): VirtualFile = {
-    val res = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
-    res
-  }
-
   def sanitizeURI(uri: String): String = {
     val reconstructed: StringBuilder = StringBuilder.newBuilder
     var uriCp = new String(uri)
@@ -113,6 +102,17 @@ object FileUtils {
       }
 
     }
+  }
+
+  /**
+    * Transforms an URI string into a VFS file
+    *
+    * @param uri The uri
+    * @return The virtual file
+    */
+  def URIToVFS(uri: String): VirtualFile = {
+    val res = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
+    res
   }
 
   /**

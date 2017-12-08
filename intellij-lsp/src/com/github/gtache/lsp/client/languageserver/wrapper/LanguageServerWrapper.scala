@@ -138,5 +138,7 @@ trait LanguageServerWrapper {
     */
   def crashed(e: Exception): Unit
 
+  def removeWidget(): Unit
+
 
 }

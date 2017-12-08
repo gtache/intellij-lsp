@@ -16,8 +16,8 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.ApplicationComponent
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, EditorFactory}
-import com.intellij.openapi.fileEditor.FileDocumentManager
-import com.intellij.openapi.project.Project
+import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, TextEditor}
+import com.intellij.openapi.project.{Project, ProjectManager}
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.{VirtualFile, VirtualFileManager}
 import org.eclipse.lsp4j._
@@ -68,27 +68,23 @@ object PluginMain {
     */
   def setExtToServerDefinition(newExt: collection.Map[String, _ <: LanguageServerDefinition]): Unit = {
     val nullDef = newExt.filter(d => d._2 == null)
-    nullDef.foreach(ext => LOG.error("Definition for " + ext + " is null"))
+    val oldServerDef = extToServerDefinition
     extToServerDefinition = newExt.toMap.filter(d => d._2 != null)
+    nullDef.foreach(ext => LOG.error("Definition for " + ext + " is null"))
+    ApplicationUtils.pool(() => {
+      val added = newExt.keys.filter(e => !oldServerDef.contains(e)).toSet
+      val removed = oldServerDef.keys.filter(e => !newExt.contains(e)).toSet
+      extToLanguageWrapper.keys.filter(k => removed.contains(k._1)).foreach(k => {
+        val wrapper = extToLanguageWrapper(k)
+        wrapper.stop()
+        wrapper.removeWidget()
+        extToLanguageWrapper.remove(k)
+      })
+      val openedEditors: Iterable[Editor] = ApplicationUtils.computableReadAction(() => ProjectManager.getInstance().getOpenProjects.flatMap(proj => FileEditorManager.getInstance(proj).getAllEditors()).collect { case t: TextEditor => t.getEditor })
+      val files = openedEditors.map(e => FileDocumentManager.getInstance().getFile(e.getDocument))
+      files.zip(openedEditors).foreach(f => if (added.contains(f._1.getExtension)) editorOpened(f._2))
+    })
   }
-
-  /**
-    * Returns the extensions->languageServer mapping
-    *
-    * @return the Scala map
-    */
-  def getExtToServerDefinition: Map[String, LanguageServerDefinition] = extToServerDefinition
-
-  /**
-    * Returns the extensions->languageServer mapping
-    *
-    * @return The Java map
-    */
-  def getExtToServerDefinitionJava: java.util.Map[String, LanguageServerDefinition] = {
-    import scala.collection.JavaConverters._
-    extToServerDefinition.asJava
-  }
-
 
   /**
     * Called when an editor is opened. Instantiates a LanguageServerWrapper if necessary, and adds the Editor to the Wrapper
@@ -138,6 +134,22 @@ object PluginMain {
     }
   }
 
+  /**
+    * Returns the extensions->languageServer mapping
+    *
+    * @return the Scala map
+    */
+  def getExtToServerDefinition: Map[String, LanguageServerDefinition] = extToServerDefinition
+
+  /**
+    * Returns the extensions->languageServer mapping
+    *
+    * @return The Java map
+    */
+  def getExtToServerDefinitionJava: java.util.Map[String, LanguageServerDefinition] = {
+    import scala.collection.JavaConverters._
+    extToServerDefinition.asJava
+  }
 
   /**
     * Called when an editor is closed. Notifies the LanguageServerWrapper if needed

@@ -67,6 +67,8 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private val statusWidget: LSPServerStatusWidget = LSPServerStatusWidget.createWidgetFor(this)
   private val registrations: mutable.Map[String, DynamicRegistrationMethods] = mutable.HashMap()
   private var crashCount = 0
+  @volatile private var alreadyShownTimeout = false
+  @volatile private var alreadyShownCrash = false
   @volatile private var status: ServerStatus = ServerStatus.STOPPED
   private var languageServer: LanguageServer = _
   private var client: LanguageClientImpl = _
@@ -107,7 +109,10 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
           notifyFailure(Timeouts.INIT)
           val msg = "LanguageServer for definition\n " + serverDefinition + "\nnot initialized after " + Timeout.INIT_TIMEOUT / 1000 + "s\nCheck settings"
           LOG.warn(msg, e)
-          ApplicationUtils.invokeLater(() => Messages.showErrorDialog(msg, "LSP error"))
+          ApplicationUtils.invokeLater(() => if (!alreadyShownTimeout) {
+            Messages.showErrorDialog(msg, "LSP error")
+            alreadyShownTimeout = true
+          })
           stop()
 
         case e@(_: IOException | _: InterruptedException | _: ExecutionException) =>
@@ -144,7 +149,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   /**
     * @return whether the underlying connection to language languageServer is still active
     */
-  def isActive: Boolean = this.launcherFuture != null && !this.launcherFuture.isDone && !this.launcherFuture.isCancelled
+  def isActive: Boolean = this.launcherFuture != null && !this.launcherFuture.isDone && !this.launcherFuture.isCancelled && !alreadyShownTimeout && !alreadyShownCrash
 
   /**
     * Connects an editor to the languageServer
@@ -230,7 +235,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     */
   @throws[IOException]
   def start(): Unit = {
-    if (status == STOPPED) {
+    if (status == STOPPED && !alreadyShownCrash && !alreadyShownTimeout) {
       setStatus(STARTING)
       try {
         val (inputStream, outputStream) = serverDefinition.start(rootPath)
@@ -373,7 +378,10 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       editors.foreach(uri => connect(uri))
     } else {
       removeDefinition()
-      ApplicationUtils.invokeLater(() => Messages.showErrorDialog("LanguageServer for definition " + serverDefinition + " keeps crashing due to \n" + e.getMessage + "\nCheck settings", "LSP Error"))
+      if (!alreadyShownCrash) ApplicationUtils.invokeLater(() => if (!alreadyShownCrash) {
+        Messages.showErrorDialog("LanguageServer for definition " + serverDefinition + ", project " + project + " keeps crashing due to \n" + e.getMessage + "\nCheck settings", "LSP Error")
+        alreadyShownCrash = true
+      })
     }
   }
 
@@ -381,9 +389,13 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     connectedEditors.keys.map(s => new URI(FileUtils.sanitizeURI(s)).toString)
   }
 
+  override def removeWidget(): Unit = {
+    statusWidget.dispose()
+  }
+
   private def removeDefinition(): Unit = {
     stop()
-    statusWidget.dispose()
+    removeWidget()
     PluginMain.setExtToServerDefinition(PluginMain.getExtToServerDefinition - serverDefinition.ext) //Remove so that the user isn't disturbed anymore
   }
 
