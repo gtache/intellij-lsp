@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.github.gtache.lsp</id>
     <name>LSP Support</name>
-    <version>1.3</version>
+    <version>1.3.0</version>
     <vendor email="guillaume.tache@epfl.ch" url="https://github.com/gtache">gtache</vendor>
 
     <description>Adds LSP (Language Server Protocol) support for IntelliJ</description>
@@ -12,11 +12,12 @@
         -signatureHelp seems to be working<br>
         -codeAction seems to be working<br>
         -showMessage, showMessageRequest seem to be working<br>
-        -Doesn't need to restart IntelliJ anymore after changing server settings<br>
+        -No need to restart IntelliJ anymore after changing server settings<br>
         -Now uses TextFieldWithBrowseButton for server definitions<br>
         -Better handling of null responses from servers<br>
         -Better handling of server crashes<br>
-        -Fixes server icons position on multiple projects
+        -Fixes server icons position on multiple projects<br>
+        -Updates Coursier and Flexmark
 ]]>
     </change-notes>
 
