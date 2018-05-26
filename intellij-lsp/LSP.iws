@@ -93,20 +93,20 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="EditorEventManager.scala" pinned="false" current-in-tab="false">
+      <file leaf-file-name="EditorEventManager.scala" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/com/github/gtache/lsp/editor/EditorEventManager.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-56">
-              <caret line="1010" column="20" selection-start-line="1010" selection-start-column="15" selection-end-line="1010" selection-end-column="20" />
+            <state relative-caret-position="222">
+              <caret line="254" column="84" selection-start-line="254" selection-start-column="84" selection-end-line="254" selection-end-column="84" />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="HoverHandler.scala" pinned="false" current-in-tab="true">
+      <file leaf-file-name="HoverHandler.scala" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/com/github/gtache/lsp/requests/HoverHandler.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="321">
-              <caret line="35" column="19" lean-forward="true" selection-start-line="35" selection-start-column="19" selection-end-line="35" selection-end-column="19" />
+            <state relative-caret-position="446">
+              <caret line="35" column="19" selection-start-line="35" selection-start-column="19" selection-end-line="35" selection-end-column="19" />
             </state>
           </provider>
         </entry>
@@ -135,6 +135,7 @@
       <list>
         <option value="$PROJECT_DIR$/src/com/github/gtache/lsp/settings/LSPState.java" />
         <option value="$PROJECT_DIR$/src/com/github/gtache/lsp/requests/HoverHandler.scala" />
+        <option value="$PROJECT_DIR$/src/com/github/gtache/lsp/editor/EditorEventManager.scala" />
       </list>
     </option>
   </component>
@@ -348,7 +349,7 @@
     <layout>
       <window_info anchor="right" id="Palette" order="3" />
       <window_info anchor="bottom" id="TODO" order="6" />
-      <window_info anchor="bottom" id="Messages" order="7" visible="true" weight="0.32896462" />
+      <window_info anchor="bottom" id="Messages" order="7" weight="0.32896462" />
       <window_info anchor="right" id="sbt" order="3" />
       <window_info anchor="right" id="Palette&#9;" order="3" />
       <window_info id="Image Layers" order="2" />
@@ -433,17 +434,17 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/com/github/gtache/lsp/editor/EditorEventManager.scala">
+    <entry file="file://$PROJECT_DIR$/src/com/github/gtache/lsp/requests/HoverHandler.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-56">
-          <caret line="1010" column="20" selection-start-line="1010" selection-start-column="15" selection-end-line="1010" selection-end-column="20" />
+        <state relative-caret-position="446">
+          <caret line="35" column="19" selection-start-line="35" selection-start-column="19" selection-end-line="35" selection-end-column="19" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/com/github/gtache/lsp/requests/HoverHandler.scala">
+    <entry file="file://$PROJECT_DIR$/src/com/github/gtache/lsp/editor/EditorEventManager.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="321">
-          <caret line="35" column="19" lean-forward="true" selection-start-line="35" selection-start-column="19" selection-end-line="35" selection-end-column="19" />
+        <state relative-caret-position="222">
+          <caret line="254" column="84" selection-start-line="254" selection-start-column="84" selection-end-line="254" selection-end-column="84" />
         </state>
       </provider>
     </entry>

@@ -246,6 +246,20 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     })
   }
 
+  def within(inner: Range, outer: Range) : Boolean = {
+    val is = inner.getStart;
+    val os = outer.getStart;
+    if (os.getLine < is.getLine || (os.getLine == is.getLine && os.getCharacter <= is.getCharacter)) {
+      val ie = inner.getEnd;
+      val oe = outer.getEnd;
+      if (oe.getLine > ie.getLine || (oe.getLine == ie.getLine && oe.getCharacter >= ie.getCharacter)) {
+        return true
+      }
+    }
+
+    return false
+  }
+
   /**
     * Retrieves the commands needed to apply a CodeAction
     *
@@ -257,7 +271,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     params.setTextDocument(identifier)
     val range = computableReadAction(() => new Range(DocumentUtils.offsetToLSPPos(editor, element.start), DocumentUtils.offsetToLSPPos(editor, element.end)))
     params.setRange(range)
-    val context = new CodeActionContext(diagnosticsHighlights.map(_.diagnostic).toList.asJava)
+    val context = new CodeActionContext(diagnosticsHighlights.map(_.diagnostic).filter(p => within(p.getRange, range)).toList.asJava)
     params.setContext(context)
     val future = requestManager.codeAction(params)
     if (future != null) {
