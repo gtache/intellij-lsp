@@ -9,7 +9,6 @@ import com.intellij.openapi.ui.Messages
 import coursier.ivy.IvyRepository
 import coursier.maven.MavenRepository
 import coursier.{Cache, Dependency, Fetch, Module, Repository, Resolution}
-
 import scalaz.concurrent.Task
 
 /**
@@ -74,18 +73,6 @@ object CoursierImpl {
     } else true
   }
 
-  private def getAdditionalRepositories: Iterable[Repository] = {
-    import scala.collection.JavaConverters._
-    val repos = LSPState.getInstance().coursierResolvers.asScala
-    if (!checkRepositories(repos, showErrorMessage = false)) {
-      ApplicationUtils.invokeLater(() => Messages.showErrorDialog("Malformed Coursier repositories, please check LSP settings", "Coursier error"))
-      Seq()
-    } else {
-      val additionalRepos = repos.map(r => r.split(separator)).partition(arr => arr(0).equalsIgnoreCase(Repositories.IVY.name()))
-      additionalRepos._1.map(arr => IvyRepository.parse(arr(1)).toOption).collect { case Some(repo) => repo } ++ additionalRepos._2.map(arr => MavenRepository(arr(1)))
-    }
-  }
-
   def checkRepositories(repos: Iterable[String], showErrorMessage: Boolean): Boolean = {
     val errMsg: StringBuilder = new StringBuilder(0)
     if (showErrorMessage) {
@@ -104,6 +91,18 @@ object CoursierImpl {
         arr.length == 2 && Repositories.values.map(v => v.name.toLowerCase).contains(arr(0).toLowerCase)
       })
       res
+    }
+  }
+
+  private def getAdditionalRepositories: Iterable[Repository] = {
+    import scala.collection.JavaConverters._
+    val repos = LSPState.getInstance().coursierResolvers.asScala
+    if (!checkRepositories(repos, showErrorMessage = false)) {
+      ApplicationUtils.invokeLater(() => Messages.showErrorDialog("Malformed Coursier repositories, please check LSP settings", "Coursier error"))
+      Seq()
+    } else {
+      val additionalRepos = repos.map(r => r.split(separator)).partition(arr => arr(0).equalsIgnoreCase(Repositories.IVY.name()))
+      additionalRepos._1.map(arr => IvyRepository.parse(arr(1)).toOption).collect { case Some(repo) => repo } ++ additionalRepos._2.map(arr => MavenRepository(arr(1)))
     }
   }
 }

@@ -1,7 +1,7 @@
 package com.github.gtache.lsp.utils
 
 import java.io.File
-import java.net.{MalformedURLException, URI, URL}
+import java.net.{URI, URL}
 
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Document, Editor}
@@ -26,16 +26,17 @@ object FileUtils {
   def extFromPsiFile(psiFile: PsiFile): String = {
     psiFile.getVirtualFile.getExtension
   }
+
   def editorFromPsiFile(psiFile: PsiFile): Editor = {
     editorFromVirtualFile(psiFile.getVirtualFile, psiFile.getProject)
   }
 
-  def editorFromVirtualFile(file: VirtualFile, project: Project): Editor = {
-    FileEditorManager.getInstance(project).getAllEditors(file).collectFirst { case t: TextEditor => t.getEditor }.orNull
-  }
-
   def editorFromUri(uri: String, project: Project): Editor = {
     editorFromVirtualFile(virtualFileFromURI(uri), project)
+  }
+
+  def editorFromVirtualFile(file: VirtualFile, project: Project): Editor = {
+    FileEditorManager.getInstance(project).getAllEditors(file).collectFirst { case t: TextEditor => t.getEditor }.orNull
   }
 
   def virtualFileFromURI(uri: String): VirtualFile = {
@@ -70,6 +71,23 @@ object FileUtils {
     */
   def editorToURIString(editor: Editor): String = {
     sanitizeURI(VFSToURI(FileDocumentManager.getInstance().getFile(editor.getDocument)))
+  }
+
+  /**
+    * Returns the URI string corresponding to a VirtualFileSystem file
+    *
+    * @param file The file
+    * @return the URI
+    */
+  def VFSToURI(file: VirtualFile): String = {
+    try {
+      val uri = sanitizeURI(new URL(file.getUrl).toURI.toString)
+      uri
+    } catch {
+      case e: Exception =>
+        LOG.warn(e)
+        null
+    }
   }
 
   /**
@@ -144,23 +162,6 @@ object FileUtils {
 
   def documentToUri(document: Document): String = {
     sanitizeURI(VFSToURI(FileDocumentManager.getInstance().getFile(document)))
-  }
-
-  /**
-    * Returns the URI string corresponding to a VirtualFileSystem file
-    *
-    * @param file The file
-    * @return the URI
-    */
-  def VFSToURI(file: VirtualFile): String = {
-    try {
-      val uri = sanitizeURI(new URL(file.getUrl).toURI.toString)
-      uri
-    } catch {
-      case e: Exception =>
-        LOG.warn(e)
-        null
-    }
   }
 
   /**

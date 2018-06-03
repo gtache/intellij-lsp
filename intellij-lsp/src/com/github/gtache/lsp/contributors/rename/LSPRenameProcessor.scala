@@ -19,9 +19,10 @@ import scala.collection.mutable
 
 class LSPRenameProcessor extends RenamePsiElementProcessor {
 
+  import LSPRenameProcessor.openedEditors
+
   private var curElem: PsiElement = _
   private var elements: mutable.Set[PsiElement] = mutable.Set()
-  private var openedEditors: mutable.Set[VirtualFile] = mutable.Set()
 
   override def canProcessElement(element: PsiElement): Boolean = {
     element match {
@@ -36,7 +37,7 @@ class LSPRenameProcessor extends RenamePsiElementProcessor {
               val offset = editor.getCaretModel.getCurrentCaret.getOffset
               val (elements, openedEditors) = m.references(offset, getOriginalElement = true)
               this.elements ++= elements.toSet
-              this.openedEditors ++= openedEditors.toSet
+              LSPRenameProcessor.openedEditors ++= openedEditors.toSet
               this.curElem = elements.find(e => {
                 val range = e.getTextRange
                 val start = range.getStartOffset
@@ -72,7 +73,10 @@ class LSPRenameProcessor extends RenamePsiElementProcessor {
     element match {
       case lsp: LSPPsiElement => if (elements.contains(lsp)) elements.map(e => e.getReference).asJava else {
         EditorEventManager.forEditor(FileUtils.editorFromPsiFile(lsp.getContainingFile)) match {
-          case Some(m) => m.references(lsp.getTextOffset, getOriginalElement = true)._1.map(p => p.getReference).toList.asJava
+          case Some(m) =>
+            val refs = m.references(lsp.getTextOffset, getOriginalElement = true)
+            openedEditors ++= refs._2
+            refs._1.map(p => p.getReference).toList.asJava
           case None => Seq().asJava
         }
       }
@@ -88,5 +92,19 @@ class LSPRenameProcessor extends RenamePsiElementProcessor {
     openedEditors.clear()
     elements.clear()
     curElem = null
+  }
+}
+
+object LSPRenameProcessor {
+  private var openedEditors: mutable.Set[VirtualFile] = mutable.Set()
+
+  def clearEditors(): Unit = {
+    openedEditors.clear()
+  }
+
+  def getEditors: Set[VirtualFile] = openedEditors.toSet
+
+  def addEditors(toAdd: Iterable[VirtualFile]): Unit = {
+    openedEditors ++= toAdd
   }
 }

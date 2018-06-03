@@ -11,6 +11,7 @@ import com.github.gtache.lsp.client.languageserver.ServerOptions
 import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapperImpl
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
+import com.github.gtache.lsp.contributors.rename.LSPRenameProcessor
 import com.github.gtache.lsp.requests.{HoverHandler, Timeouts, WorkspaceEditHandler}
 import com.github.gtache.lsp.utils.{DocumentUtils, FileUtils, GUIUtils}
 import com.intellij.codeInsight.CodeInsightSettings
@@ -78,6 +79,11 @@ object EditorEventManager {
     uriToManager.get(uri)
   }
 
+  private def prune(): Unit = {
+    editorToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(editorToManager.remove)
+    uriToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(uriToManager.remove)
+  }
+
   /**
     * @param editor An editor
     * @return The manager for the given editor, or None
@@ -85,11 +91,6 @@ object EditorEventManager {
   def forEditor(editor: Editor): Option[EditorEventManager] = {
     prune()
     editorToManager.get(editor)
-  }
-
-  private def prune(): Unit = {
-    editorToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(editorToManager.remove)
-    uriToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(uriToManager.remove)
   }
 
   /**
@@ -389,70 +390,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
-    * Applies the given edits to the document
-    *
-    * @param version    The version of the edits (will be discarded if older than current version)
-    * @param edits      The edits to apply
-    * @param name       The name of the edits (Rename, for example)
-    * @param closeAfter will close the file after edits if set to true
-    * @return True if the edits were applied, false otherwise
-    */
-  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
-    val runnable = getEditsRunnable(version, edits, name)
-    writeAction(() => {
-      if (runnable != null) CommandProcessor.getInstance().executeCommand(project, runnable, name, "LSPPlugin", editor.getDocument)
-      if (closeAfter) {
-        FileEditorManager.getInstance(project)
-          .closeFile(PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument).getVirtualFile)
-      }
-    })
-    if (runnable != null) true else false
-  }
-
-  /**
-    * Returns a Runnable used to apply the given edits and save the document
-    * Used by WorkspaceEditHandler (allows to revert a rename for example)
-    *
-    * @param version The edit version
-    * @param edits   The edits
-    * @param name    The name of the edit
-    * @return The runnable
-    */
-  def getEditsRunnable(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Runnable = {
-    if (version >= this.version) {
-      val document = editor.getDocument
-      if (document.isWritable) {
-        () => {
-          edits.foreach(edit => {
-            val text = edit.getNewText
-            val range = edit.getRange
-            val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
-            val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
-            if (text == "" || text == null) {
-              document.deleteString(start, end)
-            } else if (end - start <= 0) {
-              document.insertString(start, text)
-            } else {
-              document.replaceString(start, end, text)
-            }
-          })
-          saveDocument()
-        }
-      } else {
-        LOG.warn("Document is not writable")
-        null
-      }
-    } else {
-      LOG.warn("Edit version " + version + " is older than current version " + this.version)
-      null
-    }
-  }
-
-  private def saveDocument(): Unit = {
-    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
-  }
-
-  /**
     * Sends commands to execute to the server and applies the changes returned if the future returns a WorkspaceEdit
     *
     * @param commands The commands to execute
@@ -503,6 +440,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           val source = diagnostic.getSource
           val range = diagnostic.getRange
           val severity = diagnostic.getSeverity
+          LOG.info("code : " + code + " message : " + message + " source : " + source + " range : " + range)
           val (start, end) = computableReadAction(() => (DocumentUtils.LSPPosToOffset(editor, range.getStart), DocumentUtils.LSPPosToOffset(editor, range.getEnd)))
 
           val markupModel = editor.getMarkupModel
@@ -534,46 +472,46 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param event The DocumentEvent
     */
   def documentChanged(event: DocumentEvent): Unit = {
-      if (!editor.isDisposed) {
-        if (event.getDocument == editor.getDocument) {
-          predTime = System.nanoTime() //So that there are no hover events while typing
-          changesParams.getTextDocument.setVersion({
-            version += 1
-            version - 1
-          })
-          syncKind match {
-            case TextDocumentSyncKind.None =>
-            case TextDocumentSyncKind.Incremental =>
-              val changeEvent = changesParams.getContentChanges.get(0)
-              val newText = event.getNewFragment
-              val offset = event.getOffset
-              val newTextLength = event.getNewLength
-              val lspPosition: Position = DocumentUtils.offsetToLSPPos(editor, offset)
-              val startLine = lspPosition.getLine
-              val startColumn = lspPosition.getCharacter
-              val oldText = event.getOldFragment
+    if (!editor.isDisposed) {
+      if (event.getDocument == editor.getDocument) {
+        predTime = System.nanoTime() //So that there are no hover events while typing
+        changesParams.getTextDocument.setVersion({
+          version += 1
+          version - 1
+        })
+        syncKind match {
+          case TextDocumentSyncKind.None =>
+          case TextDocumentSyncKind.Incremental =>
+            val changeEvent = changesParams.getContentChanges.get(0)
+            val newText = event.getNewFragment
+            val offset = event.getOffset
+            val newTextLength = event.getNewLength
+            val lspPosition: Position = DocumentUtils.offsetToLSPPos(editor, offset)
+            val startLine = lspPosition.getLine
+            val startColumn = lspPosition.getCharacter
+            val oldText = event.getOldFragment
 
-              //if text was deleted/replaced, calculate the end position of inserted/deleted text
-              val (endLine, endColumn) = if (oldText.length() > 0) {
-                val line = startLine + StringUtil.countNewLines(oldText)
-                val oldLines = oldText.toString.split('\n')
-                val oldTextLength = if (oldLines.isEmpty) 0 else oldLines.last.length
-                val column = if (oldLines.length == 1) startColumn + oldTextLength else oldTextLength
-                (line, column)
-              } else (startLine, startColumn) //if insert or no text change, the end position is the same
-            val range = new Range(new Position(startLine, startColumn), new Position(endLine, endColumn))
-              changeEvent.setRange(range)
-              changeEvent.setRangeLength(newTextLength)
-              changeEvent.setText(newText.toString)
+            //if text was deleted/replaced, calculate the end position of inserted/deleted text
+            val (endLine, endColumn) = if (oldText.length() > 0) {
+              val line = startLine + StringUtil.countNewLines(oldText)
+              val oldLines = oldText.toString.split('\n')
+              val oldTextLength = if (oldLines.isEmpty) 0 else oldLines.last.length
+              val column = if (oldLines.length == 1) startColumn + oldTextLength else oldTextLength
+              (line, column)
+            } else (startLine, startColumn) //if insert or no text change, the end position is the same
+          val range = new Range(new Position(startLine, startColumn), new Position(endLine, endColumn))
+            changeEvent.setRange(range)
+            changeEvent.setRangeLength(newTextLength)
+            changeEvent.setText(newText.toString)
 
-            case TextDocumentSyncKind.Full =>
-              changesParams.getContentChanges.get(0).setText(editor.getDocument.getText())
-          }
-          requestManager.didChange(changesParams)
-        } else {
-          LOG.error("Wrong document for the EditorEventManager")
+          case TextDocumentSyncKind.Full =>
+            changesParams.getContentChanges.get(0).setText(editor.getDocument.getText())
         }
+        requestManager.didChange(changesParams)
+      } else {
+        LOG.error("Wrong document for the EditorEventManager")
       }
+    }
   }
 
   /**
@@ -666,6 +604,70 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       needSave = true
       saveDocument()
     }
+  }
+
+  /**
+    * Applies the given edits to the document
+    *
+    * @param version    The version of the edits (will be discarded if older than current version)
+    * @param edits      The edits to apply
+    * @param name       The name of the edits (Rename, for example)
+    * @param closeAfter will close the file after edits if set to true
+    * @return True if the edits were applied, false otherwise
+    */
+  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
+    val runnable = getEditsRunnable(version, edits, name)
+    writeAction(() => {
+      if (runnable != null) CommandProcessor.getInstance().executeCommand(project, runnable, name, "LSPPlugin", editor.getDocument)
+      if (closeAfter) {
+        FileEditorManager.getInstance(project)
+          .closeFile(PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument).getVirtualFile)
+      }
+    })
+    if (runnable != null) true else false
+  }
+
+  /**
+    * Returns a Runnable used to apply the given edits and save the document
+    * Used by WorkspaceEditHandler (allows to revert a rename for example)
+    *
+    * @param version The edit version
+    * @param edits   The edits
+    * @param name    The name of the edit
+    * @return The runnable
+    */
+  def getEditsRunnable(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Runnable = {
+    if (version >= this.version) {
+      val document = editor.getDocument
+      if (document.isWritable) {
+        () => {
+          edits.foreach(edit => {
+            val text = edit.getNewText
+            val range = edit.getRange
+            val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+            val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+            if (text == "" || text == null) {
+              document.deleteString(start, end)
+            } else if (end - start <= 0) {
+              document.insertString(start, text)
+            } else {
+              document.replaceString(start, end, text)
+            }
+          })
+          saveDocument()
+        }
+      } else {
+        LOG.warn("Document is not writable")
+        null
+      }
+    } else {
+      LOG.warn("Edit version " + version + " is older than current version " + this.version)
+      null
+    }
+  }
+
+  private def saveDocument(): Unit = {
+    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
   }
 
   /**
@@ -1254,7 +1256,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val params = new RenameParams(identifier, servPos, renameTo)
         val request = requestManager.rename(params)
         if (request != null) request.thenAccept(res => {
-          WorkspaceEditHandler.applyEdit(res, "Rename to " + renameTo)
+          WorkspaceEditHandler.applyEdit(res, "Rename to " + renameTo, LSPRenameProcessor.getEditors.toList)
+          LSPRenameProcessor.clearEditors()
         })
       }
     })

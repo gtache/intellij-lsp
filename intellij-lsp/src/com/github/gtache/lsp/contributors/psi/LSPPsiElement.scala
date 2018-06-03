@@ -1,7 +1,5 @@
 package com.github.gtache.lsp.contributors.psi
 
-import javax.swing.Icon
-
 import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils}
 import com.intellij.lang.{ASTNode, Language}
 import com.intellij.navigation.ItemPresentation
@@ -15,6 +13,7 @@ import com.intellij.psi.search.{GlobalSearchScope, SearchScope}
 import com.intellij.util.IncorrectOperationException
 import com.intellij.util.concurrency.AtomicFieldUpdater
 import com.intellij.util.keyFMap.KeyFMap
+import javax.swing.Icon
 import org.jetbrains.annotations.Nullable
 
 /**
@@ -66,16 +65,6 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     * @return the parent of the element, or null if the element has no parent.
     */
   override def getParent: PsiElement = getContainingFile
-
-  /**
-    * Returns the file containing the PSI element.
-    *
-    * @return the file instance, or null if the PSI element is not contained in a file (for example,
-    *         the element represents a package or directory).
-    * @throws PsiInvalidElementAccessException
-    * if this element is invalid
-    */
-  override def getContainingFile: PsiFile = file
 
   /**
     * Returns the first child of the PSI element.
@@ -172,8 +161,6 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     */
   override def getOriginalElement: PsiElement = null
 
-  //Q: get rid of these methods?
-
   /**
     * Checks if the text of this PSI element is equal to the specified character sequence.
     *
@@ -182,12 +169,7 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     */
   override def textMatches(text: CharSequence): Boolean = getText == text
 
-  /**
-    * Returns the text of the PSI element.
-    *
-    * @return the element text.
-    */
-  override def getText: String = name
+  //Q: get rid of these methods?
 
   /**
     * Checks if the text of this PSI element is equal to the text of the specified PSI element.
@@ -196,6 +178,13 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     * @return true if the text is equal, false otherwise.
     */
   override def textMatches(element: PsiElement): Boolean = getText == element.getText
+
+  /**
+    * Returns the text of the PSI element.
+    *
+    * @return the element text.
+    */
+  override def getText: String = name
 
   /**
     * Checks if the text of this element contains the specified character.
@@ -458,6 +447,16 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
   override def getUseScope: SearchScope = getContainingFile.getResolveScope
 
   /**
+    * Returns the file containing the PSI element.
+    *
+    * @return the file instance, or null if the PSI element is not contained in a file (for example,
+    *         the element represents a package or directory).
+    * @throws PsiInvalidElementAccessException
+    * if this element is invalid
+    */
+  override def getContainingFile: PsiFile = file
+
+  /**
     * Returns the AST node corresponding to the element.
     *
     * @return the AST node instance.
@@ -499,6 +498,10 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     }
   }
 
+  protected def changeUserMap(oldMap: KeyFMap, newMap: KeyFMap): Boolean = updater.compareAndSet(this, oldMap, newMap)
+
+  protected def getUserMap: KeyFMap = myUserMap
+
   def getCopyableUserData[T](key: Key[T]): T = {
     val map = getUserData(COPYABLE_USER_MAP_KEY)
     if (map == null) null.asInstanceOf[T] else map.get(key)
@@ -529,10 +532,6 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     }
     false
   }
-
-  protected def changeUserMap(oldMap: KeyFMap, newMap: KeyFMap): Boolean = updater.compareAndSet(this, oldMap, newMap)
-
-  protected def getUserMap: KeyFMap = myUserMap
 
   def copyCopyableDataTo(clone: UserDataHolderBase): Unit = {
     clone.putUserData(COPYABLE_USER_MAP_KEY, getUserData(COPYABLE_USER_MAP_KEY))

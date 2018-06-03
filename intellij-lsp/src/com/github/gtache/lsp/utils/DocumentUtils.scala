@@ -34,6 +34,17 @@ object DocumentUtils {
   }
 
   /**
+    * Transforms a LogicalPosition (IntelliJ) to an LSP Position
+    *
+    * @param position the LogicalPosition
+    * @param editor   The editor
+    * @return the Position
+    */
+  def logicalToLSPPos(position: LogicalPosition, editor: Editor): Position = {
+    offsetToLSPPos(editor, editor.logicalPositionToOffset(position))
+  }
+
+  /**
     * Calculates a Position given an editor and an offset
     *
     * @param editor The editor
@@ -47,17 +58,6 @@ object DocumentUtils {
     val lineTextBeforeOffset = doc.getText(TextRange.create(lineStart, offset))
     val column = lineTextBeforeOffset.length
     new Position(line, column)
-  }
-
-  /**
-    * Transforms a LogicalPosition (IntelliJ) to an LSP Position
-    *
-    * @param position the LogicalPosition
-    * @param editor   The editor
-    * @return the Position
-    */
-  def logicalToLSPPos(position: LogicalPosition, editor: Editor): Position = {
-    offsetToLSPPos(editor, editor.logicalPositionToOffset(position))
   }
 
   /**

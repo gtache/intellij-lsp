@@ -210,6 +210,13 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
         null
     } else null
 
+  private def checkStatus: Boolean = wrapper.getStatus == ServerStatus.STARTED
+
+  private def crashed(e: Exception): Unit = {
+    LOG.warn(e)
+    wrapper.crashed(e)
+  }
+
   override def rangeFormatting(params: DocumentRangeFormattingParams): CompletableFuture[java.util.List[_ <: TextEdit]] =
     if (checkStatus) try {
       if (serverCapabilities.getDocumentRangeFormattingProvider) textDocumentService.rangeFormatting(params) else null
@@ -217,13 +224,6 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
       case e: Exception => crashed(e)
         null
     } else null
-
-  private def checkStatus: Boolean = wrapper.getStatus == ServerStatus.STARTED
-
-  private def crashed(e: Exception): Unit = {
-    LOG.warn(e)
-    wrapper.crashed(e)
-  }
 
   override def onTypeFormatting(params: DocumentOnTypeFormattingParams): CompletableFuture[java.util.List[_ <: TextEdit]] =
     if (checkStatus) try {

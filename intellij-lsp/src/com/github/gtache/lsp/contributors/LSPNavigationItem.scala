@@ -1,12 +1,11 @@
 package com.github.gtache.lsp.contributors
 
-import javax.swing.Icon
-
 import com.intellij.navigation.{ItemPresentation, NavigationItem}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import javax.swing.Icon
 
 /**
   * An LSP NavigationItem

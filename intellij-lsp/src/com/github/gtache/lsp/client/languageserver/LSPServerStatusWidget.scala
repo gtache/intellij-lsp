@@ -2,7 +2,6 @@ package com.github.gtache.lsp.client.languageserver
 
 import java.awt.Point
 import java.awt.event.MouseEvent
-import javax.swing.Icon
 
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.requests.Timeouts
@@ -16,6 +15,7 @@ import com.intellij.openapi.wm.StatusBarWidget.IconPresentation
 import com.intellij.openapi.wm.{StatusBar, StatusBarWidget, WindowManager}
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.Consumer
+import javax.swing.Icon
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -145,6 +145,8 @@ class LSPServerStatusWidget(val wrapper: LanguageServerWrapper) extends StatusBa
     }
   }
 
+  override def ID(): String = projectName + "_" + ext
+
   override def dispose(): Unit = {
     val manager = WindowManager.getInstance()
     if (manager != null && project != null && !project.isDisposed) {
@@ -153,8 +155,6 @@ class LSPServerStatusWidget(val wrapper: LanguageServerWrapper) extends StatusBa
       if (statusBar != null) ApplicationUtils.invokeLater(() => statusBar.removeWidget(ID()))
     }
   }
-
-  override def ID(): String = projectName + "_" + ext
 }
 
 
