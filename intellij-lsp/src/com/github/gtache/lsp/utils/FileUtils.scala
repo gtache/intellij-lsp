@@ -91,41 +91,6 @@ object FileUtils {
   }
 
   /**
-    * Transforms an URI string into a VFS file
-    *
-    * @param uri The uri
-    * @return The virtual file
-    */
-  def URIToVFS(uri: String): VirtualFile = {
-    val res = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
-    res
-  }
-
-  /**
-    * Returns the project base dir uri given an editor
-    *
-    * @param editor The editor
-    * @return The project whose the editor belongs
-    */
-  def editorToProjectFolderUri(editor: Editor): String = {
-    pathToUri(editorToProjectFolderPath(editor))
-  }
-
-  def editorToProjectFolderPath(editor: Editor): String = {
-    new File(editor.getProject.getBasePath).getAbsolutePath
-  }
-
-  /**
-    * Transforms a path into an URI string
-    *
-    * @param path The path
-    * @return The uri
-    */
-  def pathToUri(path: String): String = {
-    sanitizeURI(new File(path).toURI.toString)
-  }
-
-  /**
     * Fixes common problems in uri, mainly related to Windows
     *
     * @param uri The uri to sanitize
@@ -158,6 +123,41 @@ object FileUtils {
       }
 
     }
+  }
+
+  /**
+    * Transforms an URI string into a VFS file
+    *
+    * @param uri The uri
+    * @return The virtual file
+    */
+  def URIToVFS(uri: String): VirtualFile = {
+    val res = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
+    res
+  }
+
+  /**
+    * Returns the project base dir uri given an editor
+    *
+    * @param editor The editor
+    * @return The project whose the editor belongs
+    */
+  def editorToProjectFolderUri(editor: Editor): String = {
+    pathToUri(editorToProjectFolderPath(editor))
+  }
+
+  def editorToProjectFolderPath(editor: Editor): String = {
+    new File(editor.getProject.getBasePath).getAbsolutePath
+  }
+
+  /**
+    * Transforms a path into an URI string
+    *
+    * @param path The path
+    * @return The uri
+    */
+  def pathToUri(path: String): String = {
+    sanitizeURI(new File(path).toURI.toString)
   }
 
   def documentToUri(document: Document): String = {

@@ -255,6 +255,8 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         workspaceClientCapabilities.setExecuteCommand(new ExecuteCommandCapabilities)
         workspaceClientCapabilities.setWorkspaceEdit(new WorkspaceEditCapabilities(true))
         workspaceClientCapabilities.setSymbol(new SymbolCapabilities)
+        workspaceClientCapabilities.setWorkspaceFolders(false)
+        workspaceClientCapabilities.setConfiguration(false)
         val textDocumentClientCapabilities = new TextDocumentClientCapabilities
         textDocumentClientCapabilities.setCodeAction(new CodeActionCapabilities)
         //textDocumentClientCapabilities.setCodeLens(new CodeLensCapabilities)
@@ -265,12 +267,14 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         //textDocumentClientCapabilities.setDocumentSymbol(new DocumentSymbolCapabilities)
         textDocumentClientCapabilities.setFormatting(new FormattingCapabilities)
         textDocumentClientCapabilities.setHover(new HoverCapabilities)
+        //textDocumentClientCapabilities.setImplementation(new ImplementationCapabilities())
         textDocumentClientCapabilities.setOnTypeFormatting(new OnTypeFormattingCapabilities)
         textDocumentClientCapabilities.setRangeFormatting(new RangeFormattingCapabilities)
         textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
         textDocumentClientCapabilities.setRename(new RenameCapabilities)
         textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
         textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, true, true))
+        //textDocumentClientCapabilities.setTypeDefinition(new TypeDefinitionCapabilities())
         initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilities, textDocumentClientCapabilities, null))
         initParams.setInitializationOptions(this.serverDefinition.getInitializationOptions(URI.create(initParams.getRootUri)))
         initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {

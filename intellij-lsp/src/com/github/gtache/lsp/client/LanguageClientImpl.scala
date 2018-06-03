@@ -1,5 +1,6 @@
 package com.github.gtache.lsp.client
 
+import java.util
 import java.util.concurrent.{CompletableFuture, FutureTask}
 
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
@@ -39,6 +40,10 @@ class LanguageClientImpl extends LanguageClient {
       new ApplyWorkspaceEditResponse(WorkspaceEditHandler.applyEdit(params.getEdit))
     })
   }
+
+  override def configuration(configurationParams: ConfigurationParams): CompletableFuture[util.List[AnyRef]] = super.configuration(configurationParams)
+
+  override def workspaceFolders(): CompletableFuture[util.List[WorkspaceFolder]] = super.workspaceFolders()
 
   override def registerCapability(params: RegistrationParams): CompletableFuture[Void] = wrapper.registerCapability(params)
 

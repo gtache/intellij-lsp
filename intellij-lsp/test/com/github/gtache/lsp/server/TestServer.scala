@@ -133,9 +133,9 @@ class TestServer extends LanguageServer with LanguageClientAware with TextDocume
   override def hover(position: TextDocumentPositionParams): CompletableFuture[Hover] = {
     val uri = position.getTextDocument.getUri
     if (uri.contains("test1")) {
-      CompletableFuture.completedFuture(new Hover(createList(Either.forRight(new MarkedString(null, "**Bold** *Italic*"))), ranges(1)))
+      CompletableFuture.completedFuture(new Hover(createList(Either.forRight(new MarkedString(null, "**Bold** *Italic*"))).asInstanceOf[util.List[Either[String, MarkedString]]], ranges(1)))
     } else {
-      CompletableFuture.completedFuture(new Hover(createList(Either.forLeft("This is hover"))))
+      CompletableFuture.completedFuture(new Hover(createList(Either.forLeft("This is hover")).asInstanceOf[util.List[Either[String, MarkedString]]]))
     }
   }
 
@@ -178,7 +178,8 @@ class TestServer extends LanguageServer with LanguageClientAware with TextDocume
     CompletableFuture.completedFuture(unresolved)
   }
 
-  override def completion(position: TextDocumentPositionParams): CompletableFuture[messages.Either[util.List[CompletionItem], CompletionList]] = {
+
+  override def completion(position: CompletionParams): CompletableFuture[messages.Either[util.List[CompletionItem], CompletionList]] = {
     CompletableFuture.completedFuture(Either.forRight(new CompletionList(completionItems.toIndexedSeq.asJava)))
   }
 

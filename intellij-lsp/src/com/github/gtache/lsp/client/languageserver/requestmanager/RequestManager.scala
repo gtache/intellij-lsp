@@ -48,6 +48,7 @@ trait RequestManager {
 
   def executeCommand(params: ExecuteCommandParams): CompletableFuture[AnyRef]
 
+
   //Document
   def didOpen(params: DidOpenTextDocumentParams): Unit
 
@@ -61,7 +62,7 @@ trait RequestManager {
 
   def didClose(params: DidCloseTextDocumentParams): Unit
 
-  def completion(params: TextDocumentPositionParams): CompletableFuture[jsonrpc.messages.Either[java.util.List[CompletionItem], CompletionList]]
+  def completion(params: CompletionParams): CompletableFuture[jsonrpc.messages.Either[java.util.List[CompletionItem], CompletionList]]
 
   def completionItemResolve(unresolved: CompletionItem): CompletableFuture[CompletionItem]
 
@@ -94,5 +95,13 @@ trait RequestManager {
   def documentLinkResolve(unresolved: DocumentLink): CompletableFuture[DocumentLink]
 
   def rename(params: RenameParams): CompletableFuture[WorkspaceEdit]
+
+  def implementation(params: TextDocumentPositionParams): CompletableFuture[java.util.List[_ <: Location]]
+
+  def typeDefinition(params: TextDocumentPositionParams): CompletableFuture[java.util.List[_ <: Location]]
+
+  def documentColor(params: DocumentColorParams): CompletableFuture[java.util.List[ColorInformation]]
+
+  def colorPresentation(params: ColorPresentationParams): CompletableFuture[java.util.List[ColorPresentation]]
 
 }
