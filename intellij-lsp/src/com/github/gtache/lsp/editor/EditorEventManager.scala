@@ -30,6 +30,7 @@ import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, 
 import com.intellij.openapi.fileTypes.PlainTextLanguage
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
 import com.intellij.psi.{PsiDocumentManager, PsiElement}
 import com.intellij.ui.Hint
@@ -182,7 +183,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def signatureHelp(): Unit = {
     val lPos = editor.getCaretModel.getCurrentCaret.getLogicalPosition
     val point = editor.logicalPositionToXY(lPos)
-    val params = new TextDocumentPositionParams(identifier, DocumentUtils.logicalToLSPPos(lPos))
+    val params = new TextDocumentPositionParams(identifier, computableReadAction(() => DocumentUtils.logicalToLSPPos(lPos, editor)))
     pool(() => {
       if (!editor.isDisposed) {
         val future = requestManager.signatureHelp(params)
@@ -227,7 +228,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       if (!editor.isDisposed) {
         val params = new DocumentOnTypeFormattingParams()
         params.setCh(c)
-        params.setPosition(computableReadAction(() => DocumentUtils.logicalToLSPPos(editor.getCaretModel.getCurrentCaret.getLogicalPosition)))
+        params.setPosition(computableReadAction(() => DocumentUtils.logicalToLSPPos(editor.getCaretModel.getCurrentCaret.getLogicalPosition, editor)))
         params.setTextDocument(identifier)
         params.setOptions(new FormattingOptions())
         val future = requestManager.onTypeFormatting(params)
@@ -255,7 +256,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def codeAction(element: LSPPsiElement): Iterable[Command] = {
     val params = new CodeActionParams()
     params.setTextDocument(identifier)
-    val range = computableReadAction(() => new Range(DocumentUtils.offsetToLSPPos(editor, element.start), DocumentUtils.offsetToLSPPos(editor, element.end)))
+    val range = new Range(DocumentUtils.offsetToLSPPos(editor, element.start), DocumentUtils.offsetToLSPPos(editor, element.end))
     params.setRange(range)
     val context = new CodeActionContext(diagnosticsHighlights.map(_.diagnostic).toList.asJava)
     params.setContext(context)
@@ -467,7 +468,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param event The DocumentEvent
     */
   def documentChanged(event: DocumentEvent): Unit = {
-    pool(() =>
       if (!editor.isDisposed) {
         if (event.getDocument == editor.getDocument) {
           predTime = System.nanoTime() //So that there are no hover events while typing
@@ -481,10 +481,23 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               val changeEvent = changesParams.getContentChanges.get(0)
               val newText = event.getNewFragment
               val offset = event.getOffset
-              val length = event.getNewLength
-              val range = computableReadAction(() => new Range(DocumentUtils.offsetToLSPPos(editor, offset), DocumentUtils.offsetToLSPPos(editor, offset + length)))
+              val newTextLength = event.getNewLength
+              val lspPosition: Position = DocumentUtils.offsetToLSPPos(editor, offset)
+              val startLine = lspPosition.getLine
+              val startColumn = lspPosition.getCharacter
+              val oldText = event.getOldFragment
+
+              //if text was deleted/replaced, calculate the end position of inserted/deleted text
+              val (endLine, endColumn) = if (oldText.length() > 0) {
+                val line = startLine + StringUtil.countNewLines(oldText)
+                val oldLines = oldText.toString.split('\n')
+                val oldTextLength = if (oldLines.isEmpty) 0 else oldLines.last.length
+                val column = if (oldLines.length == 1) startColumn + oldTextLength else oldTextLength
+                (line, column)
+              } else (startLine, startColumn) //if insert or no text change, the end position is the same
+            val range = new Range(new Position(startLine, startColumn), new Position(endLine, endColumn))
               changeEvent.setRange(range)
-              changeEvent.setRangeLength(length)
+              changeEvent.setRangeLength(newTextLength)
               changeEvent.setText(newText.toString)
 
             case TextDocumentSyncKind.Full =>
@@ -494,7 +507,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         } else {
           LOG.error("Wrong document for the EditorEventManager")
         }
-      })
+      }
   }
 
   /**
@@ -600,7 +613,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     val context = new ReferenceContext()
     context.setIncludeDeclaration(true)
     params.setContext(context)
-    params.setPosition(computableReadAction(() => DocumentUtils.offsetToLSPPos(editor, offset)))
+    params.setPosition(DocumentUtils.offsetToLSPPos(editor, offset))
     params.setTextDocument(identifier)
     val future = requestManager.references(params)
     if (future != null) {
@@ -667,7 +680,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def mouseClicked(e: EditorMouseEvent): Unit = {
     if (isCtrlDown) {
       if (ctrlRange != null) {
-        createCtrlRange(DocumentUtils.logicalToLSPPos(editor.xyToLogicalPosition(e.getMouseEvent.getPoint)), null)
+        createCtrlRange(computableReadAction(() => DocumentUtils.logicalToLSPPos(editor.xyToLogicalPosition(e.getMouseEvent.getPoint), editor)), null)
       }
       if (ctrlRange != null) {
         val loc = ctrlRange.loc
@@ -718,7 +731,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val params = new ReferenceParams(context)
         params.setTextDocument(identifier)
         val serverPos = computableReadAction(() => {
-          DocumentUtils.logicalToLSPPos(editor.getCaretModel.getCurrentCaret.getLogicalPosition)
+          DocumentUtils.logicalToLSPPos(editor.getCaretModel.getCurrentCaret.getLogicalPosition, editor)
         })
         params.setPosition(serverPos)
         val future = requestManager.references(params)
@@ -1015,7 +1028,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param point     The point at which to show the hint
     */
   private def requestAndShowDoc(curTime: Long, editorPos: LogicalPosition, point: Point): Unit = {
-    val serverPos = DocumentUtils.logicalToLSPPos(editorPos)
+    val serverPos = computableReadAction[Position](() => DocumentUtils.logicalToLSPPos(editorPos, editor))
     val request = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
     if (request != null) {
       try {
@@ -1192,8 +1205,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val selectionModel = editor.getSelectionModel
         val start = computableReadAction(() => selectionModel.getSelectionStart)
         val end = computableReadAction(() => selectionModel.getSelectionEnd)
-        val startingPos = computableReadAction(() => DocumentUtils.offsetToLSPPos(editor, start))
-        val endPos = computableReadAction(() => DocumentUtils.offsetToLSPPos(editor, end))
+        val startingPos = DocumentUtils.offsetToLSPPos(editor, start)
+        val endPos = DocumentUtils.offsetToLSPPos(editor, end)
         params.setRange(new Range(startingPos, endPos))
         val options = new FormattingOptions() //TODO
         params.setOptions(options)
@@ -1230,7 +1243,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def rename(renameTo: String, offset: Int = editor.getCaretModel.getCurrentCaret.getOffset): Unit = {
     pool(() => {
-      val servPos = computableReadAction(() => DocumentUtils.logicalToLSPPos(editor.offsetToLogicalPosition(offset)))
+      val servPos = DocumentUtils.offsetToLSPPos(editor, offset)
       if (!editor.isDisposed) {
         val params = new RenameParams(identifier, servPos, renameTo)
         val request = requestManager.rename(params)
@@ -1251,7 +1264,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def requestDoc(editor: Editor, offset: Int): String = {
     if (editor == this.editor) {
       if (offset != -1) {
-        val serverPos = DocumentUtils.logicalToLSPPos(editor.offsetToLogicalPosition(offset))
+        val serverPos = DocumentUtils.offsetToLSPPos(editor, offset)
         val request = requestManager.hover(new TextDocumentPositionParams(identifier, serverPos))
         if (request != null) {
           try {
