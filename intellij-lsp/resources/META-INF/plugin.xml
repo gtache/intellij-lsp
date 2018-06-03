@@ -1,28 +1,22 @@
 <idea-plugin>
     <id>com.github.gtache.lsp</id>
     <name>LSP Support</name>
-    <version>1.3.0</version>
+    <version>1.4.0</version>
     <vendor email="guillaume.tache@epfl.ch" url="https://github.com/gtache">gtache</vendor>
 
     <description>Adds LSP (Language Server Protocol) support for IntelliJ</description>
 
     <change-notes>
         <![CDATA[
-        -formatting, rangeFormatting, onTypeFormatting seem to be working<br>
-        -signatureHelp seems to be working<br>
-        -codeAction seems to be working<br>
-        -showMessage, showMessageRequest seem to be working<br>
-        -No need to restart IntelliJ anymore after changing server settings<br>
-        -Now uses TextFieldWithBrowseButton for server definitions<br>
-        -Better handling of null responses from servers<br>
-        -Better handling of server crashes<br>
-        -Fixes server icons position on multiple projects<br>
-        -Updates Coursier to 1.0.0 and Flexmark to 0.28.18
+        -better URI handling
+        -less hover requests spamming when holding ctrl down
+        -Fixes some issues with IntelliJ 2018 (QuickDoc, rename)
+
 ]]>
     </change-notes>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
-    <idea-version since-build="171.0"/>
+    <idea-version since-build="173.0"/>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
          on how to target different products -->
@@ -66,7 +60,7 @@
         <renamePsiElementProcessor implementation="com.github.gtache.lsp.contributors.rename.LSPRenameProcessor"
                                    id="LSPRenameProcessor" order="first"/>
         <lang.documentationProvider implementationClass="com.github.gtache.lsp.contributors.LSPDocumentationProvider"
-                                    id="LSPDocumentationProvider" language="TEXT"/>
+                                    id="LSPDocumentationProvider" language="TEXT" order="first"/>
 
         <!--        <lang.findUsagesProvider implementationClass="com.github.gtache.lsp.contributors.LSPFindUsagesProvider" id="LSPFindUsagesProvider" language="TEXT" order="first" />
                 <findUsagesHandlerFactory implementation="com.github.gtache.lsp.contributors.LSPFindUsagesHandlerFactory" id="LSPFindUsagesHandlerFactory" />-->

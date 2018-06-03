@@ -243,6 +243,7 @@ class TestServer extends LanguageServer with LanguageClientAware with TextDocume
     }
   }
 
+  @SuppressWarnings(Array("deprecation"))
   override def initialized(): Unit = super.initialized()
 
   override def rangeFormatting(params: DocumentRangeFormattingParams): CompletableFuture[util.List[_ <: TextEdit]] = {

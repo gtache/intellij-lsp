@@ -1,7 +1,9 @@
 package com.github.gtache.lsp.contributors.rename
 
+import com.github.gtache.lsp.PluginMain
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.editor.EditorEventManager
+import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.openapi.actionSystem.{CommonDataKeys, DataContext}
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
@@ -30,9 +32,10 @@ class LSPRenameHandler extends MemberInplaceRenameHandler {
 
   override def isAvailable(psiElement: PsiElement, editor: Editor, psiFile: PsiFile): Boolean = {
     psiElement match {
-      case p: PsiFile => true
-      case l: LSPPsiElement => true
-      case _ => false
+      case _: PsiFile => true
+      case _: LSPPsiElement => true
+        //IntelliJ 2018 returns psiElement null for unsupported languages
+      case _ => psiElement == null && PluginMain.isExtensionSupported(FileUtils.extFromPsiFile(psiFile))
     }
   }
 

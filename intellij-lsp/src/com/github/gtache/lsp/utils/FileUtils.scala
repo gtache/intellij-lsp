@@ -17,8 +17,15 @@ import org.eclipse.lsp4j.TextDocumentIdentifier
   */
 object FileUtils {
   val os: OS.Value = if (System.getProperty("os.name").toLowerCase.contains("win")) OS.WINDOWS else OS.UNIX
+  val COLON_ENCODED: String = "%3A"
+  val URI_FILE_BEGIN = "file:"
+  val URI_VALID_FILE_BEGIN: String = "file:///"
+  val URI_PATH_SEP: Char = '/'
   private val LOG: Logger = Logger.getInstance(this.getClass)
 
+  def extFromPsiFile(psiFile: PsiFile): String = {
+    psiFile.getVirtualFile.getExtension
+  }
   def editorFromPsiFile(psiFile: PsiFile): Editor = {
     editorFromVirtualFile(psiFile.getVirtualFile, psiFile.getProject)
   }
@@ -66,45 +73,6 @@ object FileUtils {
   }
 
   /**
-    * Returns the URI string corresponding to a VirtualFileSystem file
-    *
-    * @param file The file
-    * @return the URI
-    */
-  def VFSToURI(file: VirtualFile): String = {
-    try {
-      val uri = sanitizeURI(new URL(file.getUrl).toURI.toString)
-      uri
-    } catch {
-      case e: MalformedURLException =>
-        LOG.warn(e)
-        null
-    }
-  }
-
-  def sanitizeURI(uri: String): String = {
-    val reconstructed: StringBuilder = StringBuilder.newBuilder
-    var uriCp = new String(uri)
-    if (!uri.startsWith("file:")) {
-      LOG.warn("Malformed uri : " + uri)
-      uri //Probably not an uri
-    } else {
-      uriCp = uriCp.drop(5).dropWhile(c => c == '/')
-      reconstructed.append("file:///")
-      if (os == OS.UNIX) {
-        reconstructed.append(uriCp).toString()
-      } else {
-        reconstructed.append(uriCp.takeWhile(c => c != '/'))
-        if (!reconstructed.endsWith(":")) {
-          reconstructed.append(":")
-        }
-        reconstructed.append(uriCp.dropWhile(c => c != '/')).toString()
-      }
-
-    }
-  }
-
-  /**
     * Transforms an URI string into a VFS file
     *
     * @param uri The uri
@@ -139,8 +107,60 @@ object FileUtils {
     sanitizeURI(new File(path).toURI.toString)
   }
 
+  /**
+    * Fixes common problems in uri, mainly related to Windows
+    *
+    * @param uri The uri to sanitize
+    * @return The sanitized uri
+    */
+  def sanitizeURI(uri: String): String = {
+    val reconstructed: StringBuilder = StringBuilder.newBuilder
+    var uriCp = new String(uri)
+    if (!uri.startsWith(URI_FILE_BEGIN)) {
+      LOG.warn("Malformed uri : " + uri)
+      uri //Probably not an uri
+    } else {
+      uriCp = uriCp.drop(URI_FILE_BEGIN.length).dropWhile(c => c == URI_PATH_SEP)
+      reconstructed.append(URI_VALID_FILE_BEGIN)
+      if (os == OS.UNIX) {
+        reconstructed.append(uriCp).toString()
+      } else {
+        reconstructed.append(uriCp.takeWhile(c => c != URI_PATH_SEP))
+        val driveLetter = reconstructed.charAt(URI_VALID_FILE_BEGIN.length)
+        if (driveLetter.isLower) {
+          reconstructed.setCharAt(URI_VALID_FILE_BEGIN.length, driveLetter.toUpper)
+        }
+        if (reconstructed.endsWith(COLON_ENCODED)) {
+          reconstructed.dropRight(3)
+        }
+        if (!reconstructed.endsWith(":")) {
+          reconstructed.append(":")
+        }
+        reconstructed.append(uriCp.dropWhile(c => c != URI_PATH_SEP)).toString()
+      }
+
+    }
+  }
+
   def documentToUri(document: Document): String = {
     sanitizeURI(VFSToURI(FileDocumentManager.getInstance().getFile(document)))
+  }
+
+  /**
+    * Returns the URI string corresponding to a VirtualFileSystem file
+    *
+    * @param file The file
+    * @return the URI
+    */
+  def VFSToURI(file: VirtualFile): String = {
+    try {
+      val uri = sanitizeURI(new URL(file.getUrl).toURI.toString)
+      uri
+    } catch {
+      case e: Exception =>
+        LOG.warn(e)
+        null
+    }
   }
 
   /**

@@ -6,7 +6,6 @@ import java.io.File
 import java.net.URI
 import java.util.concurrent.{TimeUnit, TimeoutException}
 import java.util.{Collections, Timer, TimerTask}
-import javax.swing.{JFrame, JLabel, JPanel}
 
 import com.github.gtache.lsp.client.languageserver.ServerOptions
 import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
@@ -34,6 +33,7 @@ import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
 import com.intellij.psi.{PsiDocumentManager, PsiElement}
 import com.intellij.ui.Hint
 import com.intellij.uiDesigner.core.{GridConstraints, GridLayoutManager, Spacer}
+import javax.swing.{JFrame, JLabel, JPanel}
 import org.eclipse.lsp4j._
 
 import scala.collection.mutable
@@ -42,6 +42,7 @@ object EditorEventManager {
   private val HOVER_TIME_THRES: Long = EditorSettingsExternalizable.getInstance().getQuickDocOnMouseOverElementDelayMillis * 1000000
   private val SCHEDULE_THRES = 10000000 //Time before the Timer is scheduled
   private val POPUP_THRES = HOVER_TIME_THRES / 1000000 + 20
+  private val CTRL_THRES = 500000000 //Time between requests when ctrl is pressed (500ms)
 
   private val uriToManager: mutable.Map[String, EditorEventManager] = mutable.HashMap()
   private val editorToManager: mutable.Map[Editor, EditorEventManager] = mutable.HashMap()
@@ -76,11 +77,6 @@ object EditorEventManager {
     uriToManager.get(uri)
   }
 
-  private def prune(): Unit = {
-    editorToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(editorToManager.remove)
-    uriToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(uriToManager.remove)
-  }
-
   /**
     * @param editor An editor
     * @return The manager for the given editor, or None
@@ -88,6 +84,11 @@ object EditorEventManager {
   def forEditor(editor: Editor): Option[EditorEventManager] = {
     prune()
     editorToManager.get(editor)
+  }
+
+  private def prune(): Unit = {
+    editorToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(editorToManager.remove)
+    uriToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(uriToManager.remove)
   }
 
   /**
@@ -153,6 +154,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private var hoverThread = new Timer("Hover", true)
   private var version: Int = -1
   private var predTime: Long = -1L
+  private var ctrlTime: Long = -1L
   private var isOpen: Boolean = false
   private var mouseInEditor: Boolean = true
   private var currentHint: Hint = _
@@ -323,7 +325,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                           }
                       }
                     })*/
-            if (kind == CompletionItemKind.Keyword) lookupElementBuilder.withBoldness(true)
             if (textEdit != null) {
               if (addTextEdits != null) {
                 lookupElementBuilder = LookupElementBuilder.create("")
@@ -362,6 +363,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 })
               })
             }
+            if (kind == CompletionItemKind.Keyword) lookupElementBuilder = lookupElementBuilder.withBoldness(true)
             lookupElementBuilder.withPresentableText(presentableText).withTailText(tailText, true).withIcon(icon).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT)
           }
 
@@ -383,6 +385,70 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           Iterable.empty
       }
     } else Iterable.empty
+  }
+
+  /**
+    * Applies the given edits to the document
+    *
+    * @param version    The version of the edits (will be discarded if older than current version)
+    * @param edits      The edits to apply
+    * @param name       The name of the edits (Rename, for example)
+    * @param closeAfter will close the file after edits if set to true
+    * @return True if the edits were applied, false otherwise
+    */
+  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
+    val runnable = getEditsRunnable(version, edits, name)
+    writeAction(() => {
+      if (runnable != null) CommandProcessor.getInstance().executeCommand(project, runnable, name, "LSPPlugin", editor.getDocument)
+      if (closeAfter) {
+        FileEditorManager.getInstance(project)
+          .closeFile(PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument).getVirtualFile)
+      }
+    })
+    if (runnable != null) true else false
+  }
+
+  /**
+    * Returns a Runnable used to apply the given edits and save the document
+    * Used by WorkspaceEditHandler (allows to revert a rename for example)
+    *
+    * @param version The edit version
+    * @param edits   The edits
+    * @param name    The name of the edit
+    * @return The runnable
+    */
+  def getEditsRunnable(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Runnable = {
+    if (version >= this.version) {
+      val document = editor.getDocument
+      if (document.isWritable) {
+        () => {
+          edits.foreach(edit => {
+            val text = edit.getNewText
+            val range = edit.getRange
+            val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+            val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+            if (text == "" || text == null) {
+              document.deleteString(start, end)
+            } else if (end - start <= 0) {
+              document.insertString(start, text)
+            } else {
+              document.replaceString(start, end, text)
+            }
+          })
+          saveDocument()
+        }
+      } else {
+        LOG.warn("Document is not writable")
+        null
+      }
+    } else {
+      LOG.warn("Edit version " + version + " is older than current version " + this.version)
+      null
+    }
+  }
+
+  private def saveDocument(): Unit = {
+    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
   }
 
   /**
@@ -636,25 +702,28 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   def getElementAtOffset(offset: Int): LSPPsiElement = {
     computableReadAction(() => {
-      val params = new TextDocumentPositionParams(identifier, DocumentUtils.offsetToLSPPos(editor, offset))
-      val future = requestManager.documentHighlight(params)
-      if (future != null) {
-        try {
-          val res = future.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
-          wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
-          if (res != null)
-            res.asScala.map(dh => new TextRange(DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart), DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)))
-              .find(range => range.getStartOffset <= offset && offset <= range.getEndOffset)
-              .map(range => LSPPsiElement(editor.getDocument.getText(range), project, range.getStartOffset, range.getEndOffset, PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument)))
-              .orNull
-          else null
-        } catch {
-          case e: TimeoutException =>
-            wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
-            LOG.warn(e)
-            null
-        }
-      } else null
+      if (!editor.isDisposed) {
+        val params = new TextDocumentPositionParams(identifier, DocumentUtils.offsetToLSPPos(editor, offset))
+        val future = requestManager.documentHighlight(params)
+        if (future != null) {
+          try {
+            val res = future.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
+            wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
+            if (res != null && !editor.isDisposed)
+              res.asScala.map(dh => new TextRange(DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart), DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)))
+                .find(range => range.getStartOffset <= offset && offset <= range.getEndOffset)
+                .map(range => LSPPsiElement(editor.getDocument.getText(range), project, range.getStartOffset, range.getEndOffset, PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument)))
+                .orNull
+            else null
+          } catch {
+            case e: TimeoutException =>
+              wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
+              LOG.warn(e)
+              null
+          }
+        } else null
+      }
+      else null
     })
   }
 
@@ -879,73 +948,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
-  private def createCtrlRange(serverPos: Position, range: Range): Unit = {
-    val loc = requestDefinition(serverPos)
-    if (loc != null) {
-      invokeLater(() => {
-        if (!editor.isDisposed) {
-          val corRange = if (range == null) {
-            val params = new TextDocumentPositionParams(identifier, serverPos)
-            val future = requestManager.documentHighlight(params)
-            if (future != null) {
-              try {
-                val highlights = future.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
-                if (highlights != null) {
-                  wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
-                  val offset = DocumentUtils.LSPPosToOffset(editor, serverPos)
-                  highlights.asScala.find(dh => DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart) <= offset
-                    && offset <= DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)).fold(new Range(serverPos, serverPos))(dh => dh.getRange)
-                } else new Range(serverPos, serverPos)
-              } catch {
-                case e: TimeoutException =>
-                  LOG.warn(e)
-                  wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
-                  new Range(serverPos, serverPos)
-              }
-            } else new Range(serverPos, serverPos)
-
-          } else range
-          val startOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getStart)
-          val endOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getEnd)
-          val isDefinition = DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) == startOffset
-          if (ctrlRange != null) ctrlRange.dispose()
-          ctrlRange = CtrlRangeMarker(loc, editor,
-            if (!isDefinition) editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.HYPERLINK, editor.getColorsScheme.getAttributes(EditorColors.REFERENCE_HYPERLINK_COLOR), HighlighterTargetArea.EXACT_RANGE)
-            else null)
-        }
-      })
-    }
-  }
-
-  /**
-    * Returns the position of the definition given a position in the editor
-    *
-    * @param position The position
-    * @return The location of the definition
-    */
-  private def requestDefinition(position: Position): Location = {
-    val params = new TextDocumentPositionParams(identifier, position)
-    val request = requestManager.definition(params)
-    if (request != null) {
-      try {
-        val definition = request.get(DEFINITION_TIMEOUT, TimeUnit.MILLISECONDS)
-        wrapper.notifySuccess(Timeouts.DEFINITION)
-        if (definition != null && !definition.isEmpty) {
-          definition.get(0)
-        } else {
-          null
-        }
-      } catch {
-        case e: TimeoutException =>
-          LOG.warn(e)
-          wrapper.notifyFailure(Timeouts.DEFINITION)
-          null
-      }
-    } else {
-      null
-    }
-  }
-
   /**
     * Will show documentation if the mouse doesn't move for a given time (Hover)
     *
@@ -957,14 +959,15 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       if ((EditorSettingsExternalizable.getInstance().isShowQuickDocOnMouseOverElement && //Fixes double doc if documentation provider is present
         (LanguageDocumentation.INSTANCE.allForLanguage(language).isEmpty || language.equals(PlainTextLanguage.INSTANCE))) || isCtrlDown) {
         val curTime = System.nanoTime()
-        if (predTime == (-1L)) {
+        if (predTime == (-1L) || ctrlTime == (-1L)) {
           predTime = curTime
+          ctrlTime = curTime
         } else {
           val lPos = getPos(e)
           if (lPos != null) {
             if (!isKeyPressed || isCtrlDown) {
               val offset = editor.logicalPositionToOffset(lPos)
-              if (isCtrlDown) {
+              if (isCtrlDown && curTime - ctrlTime > CTRL_THRES) {
                 if (ctrlRange == null || !ctrlRange.highlightContainsOffset(offset)) {
                   if (currentHint != null) currentHint.hide()
                   currentHint = null
@@ -976,6 +979,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 } else {
                   editor.getContentComponent.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))
                 }
+                ctrlTime = curTime
               } else {
                 scheduleDocumentation(curTime, lPos, e.getMouseEvent.getPoint)
               }
@@ -1046,6 +1050,73 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   }
 
+  private def createCtrlRange(serverPos: Position, range: Range): Unit = {
+    val loc = requestDefinition(serverPos)
+    if (loc != null) {
+      invokeLater(() => {
+        if (!editor.isDisposed) {
+          val corRange = if (range == null) {
+            val params = new TextDocumentPositionParams(identifier, serverPos)
+            val future = requestManager.documentHighlight(params)
+            if (future != null) {
+              try {
+                val highlights = future.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
+                if (highlights != null) {
+                  wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
+                  val offset = DocumentUtils.LSPPosToOffset(editor, serverPos)
+                  highlights.asScala.find(dh => DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart) <= offset
+                    && offset <= DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)).fold(new Range(serverPos, serverPos))(dh => dh.getRange)
+                } else new Range(serverPos, serverPos)
+              } catch {
+                case e: TimeoutException =>
+                  LOG.warn(e)
+                  wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
+                  new Range(serverPos, serverPos)
+              }
+            } else new Range(serverPos, serverPos)
+
+          } else range
+          val startOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getStart)
+          val endOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getEnd)
+          val isDefinition = DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) == startOffset
+          if (ctrlRange != null) ctrlRange.dispose()
+          ctrlRange = CtrlRangeMarker(loc, editor,
+            if (!isDefinition) editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.HYPERLINK, editor.getColorsScheme.getAttributes(EditorColors.REFERENCE_HYPERLINK_COLOR), HighlighterTargetArea.EXACT_RANGE)
+            else null)
+        }
+      })
+    }
+  }
+
+  /**
+    * Returns the position of the definition given a position in the editor
+    *
+    * @param position The position
+    * @return The location of the definition
+    */
+  private def requestDefinition(position: Position): Location = {
+    val params = new TextDocumentPositionParams(identifier, position)
+    val request = requestManager.definition(params)
+    if (request != null) {
+      try {
+        val definition = request.get(DEFINITION_TIMEOUT, TimeUnit.MILLISECONDS)
+        wrapper.notifySuccess(Timeouts.DEFINITION)
+        if (definition != null && !definition.isEmpty) {
+          definition.get(0)
+        } else {
+          null
+        }
+      } catch {
+        case e: TimeoutException =>
+          LOG.warn(e)
+          wrapper.notifyFailure(Timeouts.DEFINITION)
+          null
+      }
+    } else {
+      null
+    }
+  }
+
   /**
     * Returns the references given the position of the word to search for
     * Must be called from main thread
@@ -1114,71 +1185,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           applyEdit(edits = formatting.asScala, name = "Reformat document", closeAfter = closeAfter)))
       }
     })
-  }
-
-  /**
-    * Applies the given edits to the document
-    *
-    * @param version    The version of the edits (will be discarded if older than current version)
-    * @param edits      The edits to apply
-    * @param name       The name of the edits (Rename, for example)
-    * @param closeAfter will close the file after edits if set to true
-    * @return True if the edits were applied, false otherwise
-    */
-  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
-    val runnable = getEditsRunnable(version, edits, name)
-    writeAction(() => {
-      if (runnable != null) CommandProcessor.getInstance().executeCommand(project, runnable, name, "LSPPlugin", editor.getDocument)
-      if (closeAfter) {
-        FileEditorManager.getInstance(project)
-          .closeFile(PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument).getVirtualFile)
-      }
-    })
-    if (runnable != null) true else false
-  }
-
-  /**
-    * Returns a Runnable used to apply the given edits and save the document
-    * Used by WorkspaceEditHandler (allows to revert a rename for example)
-    *
-    * @param version The edit version
-    * @param edits   The edits
-    * @param name    The name of the edit
-    * @return The runnable
-    */
-  def getEditsRunnable(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Runnable = {
-    if (version >= this.version) {
-      val document = editor.getDocument
-      if (document.isWritable) {
-        () => {
-          edits.foreach(edit => {
-            val text = edit.getNewText
-            val range = edit.getRange
-            val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
-            val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
-            val caretOffset = editor.getCaretModel.getCurrentCaret.getOffset
-            if (text == "" || text == null) {
-              document.deleteString(start, end)
-            } else if (end - start <= 0) {
-              document.insertString(start, text)
-            } else {
-              document.replaceString(start, end, text)
-            }
-          })
-          saveDocument()
-        }
-      } else {
-        LOG.warn("Document is not writable")
-        null
-      }
-    } else {
-      LOG.warn("Version " + version + " is older than " + this.version)
-      null
-    }
-  }
-
-  private def saveDocument(): Unit = {
-    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
   }
 
   /**

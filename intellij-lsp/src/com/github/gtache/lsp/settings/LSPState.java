@@ -15,7 +15,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-@State(name = "LSPState", storages = @Storage(id = "LSPState", file = "LSPState.xml"))
+@State(name = "LSPState", storages = @Storage(file = "LSPState.xml"))
 
 /**
  * Class representing the state of the LSP settings
