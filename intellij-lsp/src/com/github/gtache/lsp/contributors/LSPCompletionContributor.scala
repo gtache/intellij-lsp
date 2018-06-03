@@ -15,7 +15,7 @@ class LSPCompletionContributor extends CompletionContributor {
     import scala.collection.JavaConverters._
     val editor = parameters.getEditor
     val offset = parameters.getOffset
-    val serverPos = DocumentUtils.logicalToLSPPos(editor.offsetToLogicalPosition(offset))
+    val serverPos = DocumentUtils.offsetToLSPPos(editor, offset)
     val toAdd = EditorEventManager.forEditor(editor).map(e => e.completion(serverPos)).getOrElse(Iterable()).asJava
 
     result.addAllElements(toAdd)
