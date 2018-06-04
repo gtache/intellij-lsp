@@ -89,17 +89,17 @@ object EditorEventManager {
     editorToManager.get(editor)
   }
 
-  private def prune(): Unit = {
-    editorToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(editorToManager.remove)
-    uriToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(uriToManager.remove)
-  }
-
   /**
     * Tells the server that all the documents will be saved
     */
   def willSaveAll(): Unit = {
     prune()
     editorToManager.foreach(e => e._2.willSave())
+  }
+
+  private def prune(): Unit = {
+    editorToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(editorToManager.remove)
+    uriToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(uriToManager.remove)
   }
 }
 
@@ -996,81 +996,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
   }
 
-  private def createCtrlRange(serverPos: Position, range: Range): Unit = {
-    val loc = requestDefinition(serverPos)
-    if (loc != null) {
-      invokeLater(() => {
-        if (!editor.isDisposed) {
-          val corRange = if (range == null) {
-            val params = new TextDocumentPositionParams(identifier, serverPos)
-            val future = requestManager.documentHighlight(params)
-            if (future != null) {
-              try {
-                val highlights = future.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
-                if (highlights != null) {
-                  wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
-                  val offset = DocumentUtils.LSPPosToOffset(editor, serverPos)
-                  highlights.asScala.find(dh => DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart) <= offset
-                    && offset <= DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)).fold(new Range(serverPos, serverPos))(dh => dh.getRange)
-                } else new Range(serverPos, serverPos)
-              } catch {
-                case e: TimeoutException =>
-                  LOG.warn(e)
-                  wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
-                  new Range(serverPos, serverPos)
-                case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
-                  LOG.warn(e)
-                  wrapper.crashed(e.asInstanceOf[Exception])
-                  new Range(serverPos, serverPos)
-              }
-            } else new Range(serverPos, serverPos)
-
-          } else range
-          val startOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getStart)
-          val endOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getEnd)
-          val isDefinition = DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) == startOffset
-          if (ctrlRange != null) ctrlRange.dispose()
-          ctrlRange = CtrlRangeMarker(loc, editor,
-            if (!isDefinition) editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.HYPERLINK, editor.getColorsScheme.getAttributes(EditorColors.REFERENCE_HYPERLINK_COLOR), HighlighterTargetArea.EXACT_RANGE)
-            else null)
-        }
-      })
-    }
-  }
-
-  /**
-    * Returns the position of the definition given a position in the editor
-    *
-    * @param position The position
-    * @return The location of the definition
-    */
-  private def requestDefinition(position: Position): Location = {
-    val params = new TextDocumentPositionParams(identifier, position)
-    val request = requestManager.definition(params)
-    if (request != null) {
-      try {
-        val definition = request.get(DEFINITION_TIMEOUT, TimeUnit.MILLISECONDS)
-        wrapper.notifySuccess(Timeouts.DEFINITION)
-        if (definition != null && !definition.isEmpty) {
-          definition.get(0)
-        } else {
-          null
-        }
-      } catch {
-        case e: TimeoutException =>
-          LOG.warn(e)
-          wrapper.notifyFailure(Timeouts.DEFINITION)
-          null
-        case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
-          LOG.warn(e)
-          wrapper.crashed(e.asInstanceOf[Exception])
-          null
-      }
-    } else {
-      null
-    }
-  }
-
   /**
     * Will show documentation if the mouse doesn't move for a given time (Hover)
     *
@@ -1174,6 +1099,81 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     }
 
 
+  }
+
+  private def createCtrlRange(serverPos: Position, range: Range): Unit = {
+    val loc = requestDefinition(serverPos)
+    if (loc != null) {
+      invokeLater(() => {
+        if (!editor.isDisposed) {
+          val corRange = if (range == null) {
+            val params = new TextDocumentPositionParams(identifier, serverPos)
+            val future = requestManager.documentHighlight(params)
+            if (future != null) {
+              try {
+                val highlights = future.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
+                if (highlights != null) {
+                  wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
+                  val offset = DocumentUtils.LSPPosToOffset(editor, serverPos)
+                  highlights.asScala.find(dh => DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart) <= offset
+                    && offset <= DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)).fold(new Range(serverPos, serverPos))(dh => dh.getRange)
+                } else new Range(serverPos, serverPos)
+              } catch {
+                case e: TimeoutException =>
+                  LOG.warn(e)
+                  wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
+                  new Range(serverPos, serverPos)
+                case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
+                  LOG.warn(e)
+                  wrapper.crashed(e.asInstanceOf[Exception])
+                  new Range(serverPos, serverPos)
+              }
+            } else new Range(serverPos, serverPos)
+
+          } else range
+          val startOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getStart)
+          val endOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getEnd)
+          val isDefinition = DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) == startOffset
+          if (ctrlRange != null) ctrlRange.dispose()
+          ctrlRange = CtrlRangeMarker(loc, editor,
+            if (!isDefinition) editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.HYPERLINK, editor.getColorsScheme.getAttributes(EditorColors.REFERENCE_HYPERLINK_COLOR), HighlighterTargetArea.EXACT_RANGE)
+            else null)
+        }
+      })
+    }
+  }
+
+  /**
+    * Returns the position of the definition given a position in the editor
+    *
+    * @param position The position
+    * @return The location of the definition
+    */
+  private def requestDefinition(position: Position): Location = {
+    val params = new TextDocumentPositionParams(identifier, position)
+    val request = requestManager.definition(params)
+    if (request != null) {
+      try {
+        val definition = request.get(DEFINITION_TIMEOUT, TimeUnit.MILLISECONDS)
+        wrapper.notifySuccess(Timeouts.DEFINITION)
+        if (definition != null && !definition.isEmpty) {
+          definition.get(0)
+        } else {
+          null
+        }
+      } catch {
+        case e: TimeoutException =>
+          LOG.warn(e)
+          wrapper.notifyFailure(Timeouts.DEFINITION)
+          null
+        case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
+          LOG.warn(e)
+          wrapper.crashed(e.asInstanceOf[Exception])
+          null
+      }
+    } else {
+      null
+    }
   }
 
   /**

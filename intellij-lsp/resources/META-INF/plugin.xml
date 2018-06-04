@@ -11,6 +11,7 @@
         -Add support for multiple extensions per server
         -Better URI handling, fixes spaces in uris
         -Fixes NPE on LookupItem
+        -Fixes position/range IJ-LSP translation thanks to ant-druha
         -Better server crash handling
         -Fixes some issues with IntelliJ 2018 (QuickDoc, rename)
         -Less hover requests spamming when holding ctrl down
