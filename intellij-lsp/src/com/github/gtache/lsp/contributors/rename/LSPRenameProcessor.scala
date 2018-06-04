@@ -95,7 +95,7 @@ class LSPRenameProcessor extends RenamePsiElementProcessor {
   }
 }
 
-object LSPRenameProcessor {
+object LSPRenameProcessor { //TODO something better ?
   private var openedEditors: mutable.Set[VirtualFile] = mutable.Set()
 
   def clearEditors(): Unit = {

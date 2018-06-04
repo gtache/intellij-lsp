@@ -187,6 +187,13 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
         null
     } else null
 
+  private def checkStatus: Boolean = wrapper.getStatus == ServerStatus.STARTED
+
+  private def crashed(e: Exception): Unit = {
+    LOG.warn(e)
+    wrapper.crashed(e)
+  }
+
   override def documentHighlight(params: TextDocumentPositionParams): CompletableFuture[java.util.List[_ <: DocumentHighlight]] =
     if (checkStatus) try {
       if (serverCapabilities.getDocumentHighlightProvider) textDocumentService.documentHighlight(params) else null
@@ -194,13 +201,6 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
       case e: Exception => crashed(e)
         null
     } else null
-
-  private def checkStatus: Boolean = wrapper.getStatus == ServerStatus.STARTED
-
-  private def crashed(e: Exception): Unit = {
-    LOG.warn(e)
-    wrapper.crashed(e)
-  }
 
   override def documentSymbol(params: DocumentSymbolParams): CompletableFuture[java.util.List[_ <: SymbolInformation]] =
     if (checkStatus) try {

@@ -8,12 +8,13 @@
 
     <change-notes>
         <![CDATA[
-        -better URI handling, fixes space in uris
-        -less hover requests spamming when holding ctrl down
+        -Add support for multiple extensions per server
+        -Better URI handling, fixes space in uris
+        -Better crash handling
         -Fixes some issues with IntelliJ 2018 (QuickDoc, rename)
+        -Less hover requests spamming when holding ctrl down
         -Dirty hack to make rename close opened windows after renaming
         -Update to lsp4j 0.4.1 and Coursier 1.0.3
-        -Better crash handling
 
 ]]>
     </change-notes>

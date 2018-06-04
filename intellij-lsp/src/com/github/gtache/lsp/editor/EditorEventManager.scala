@@ -1103,7 +1103,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         case e: TimeoutException =>
           LOG.warn(e)
           wrapper.notifyFailure(Timeouts.HOVER)
-        case e @ (_: java.io.IOException | _:JsonRpcException | _:ExecutionException) =>
+        case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
           LOG.warn(e)
           wrapper.crashed(e.asInstanceOf[Exception])
       }
@@ -1161,7 +1161,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           LOG.warn(e)
           wrapper.notifyFailure(Timeouts.REFERENCES)
           (Seq.empty, Seq.empty)
-        case e @ (_: java.io.IOException | _:JsonRpcException | _:ExecutionException) =>
+        case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
           LOG.warn(e)
           wrapper.crashed(e.asInstanceOf[Exception])
           (Seq.empty, Seq.empty)
