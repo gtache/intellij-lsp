@@ -18,6 +18,7 @@ import org.eclipse.lsp4j.TextDocumentIdentifier
 object FileUtils {
   val os: OS.Value = if (System.getProperty("os.name").toLowerCase.contains("win")) OS.WINDOWS else OS.UNIX
   val COLON_ENCODED: String = "%3A"
+  val SPACE_ENCODED: String = "%20"
   val URI_FILE_BEGIN = "file:"
   val URI_VALID_FILE_BEGIN: String = "file:///"
   val URI_PATH_SEP: Char = '/'
@@ -31,12 +32,12 @@ object FileUtils {
     editorFromVirtualFile(psiFile.getVirtualFile, psiFile.getProject)
   }
 
-  def editorFromUri(uri: String, project: Project): Editor = {
-    editorFromVirtualFile(virtualFileFromURI(uri), project)
-  }
-
   def editorFromVirtualFile(file: VirtualFile, project: Project): Editor = {
     FileEditorManager.getInstance(project).getAllEditors(file).collectFirst { case t: TextEditor => t.getEditor }.orNull
+  }
+
+  def editorFromUri(uri: String, project: Project): Editor = {
+    editorFromVirtualFile(virtualFileFromURI(uri), project)
   }
 
   def virtualFileFromURI(uri: String): VirtualFile = {
@@ -81,47 +82,12 @@ object FileUtils {
     */
   def VFSToURI(file: VirtualFile): String = {
     try {
-      val uri = sanitizeURI(new URL(file.getUrl).toURI.toString)
+      val uri = sanitizeURI(new URL(file.getUrl.replace(" ", SPACE_ENCODED)).toURI.toString)
       uri
     } catch {
       case e: Exception =>
         LOG.warn(e)
         null
-    }
-  }
-
-  /**
-    * Fixes common problems in uri, mainly related to Windows
-    *
-    * @param uri The uri to sanitize
-    * @return The sanitized uri
-    */
-  def sanitizeURI(uri: String): String = {
-    val reconstructed: StringBuilder = StringBuilder.newBuilder
-    var uriCp = new String(uri)
-    if (!uri.startsWith(URI_FILE_BEGIN)) {
-      LOG.warn("Malformed uri : " + uri)
-      uri //Probably not an uri
-    } else {
-      uriCp = uriCp.drop(URI_FILE_BEGIN.length).dropWhile(c => c == URI_PATH_SEP)
-      reconstructed.append(URI_VALID_FILE_BEGIN)
-      if (os == OS.UNIX) {
-        reconstructed.append(uriCp).toString()
-      } else {
-        reconstructed.append(uriCp.takeWhile(c => c != URI_PATH_SEP))
-        val driveLetter = reconstructed.charAt(URI_VALID_FILE_BEGIN.length)
-        if (driveLetter.isLower) {
-          reconstructed.setCharAt(URI_VALID_FILE_BEGIN.length, driveLetter.toUpper)
-        }
-        if (reconstructed.endsWith(COLON_ENCODED)) {
-          reconstructed.dropRight(3)
-        }
-        if (!reconstructed.endsWith(":")) {
-          reconstructed.append(":")
-        }
-        reconstructed.append(uriCp.dropWhile(c => c != URI_PATH_SEP)).toString()
-      }
-
     }
   }
 
@@ -157,7 +123,42 @@ object FileUtils {
     * @return The uri
     */
   def pathToUri(path: String): String = {
-    sanitizeURI(new File(path).toURI.toString)
+    sanitizeURI(new File(path.replace(" ", SPACE_ENCODED)).toURI.toString)
+  }
+
+  /**
+    * Fixes common problems in uri, mainly related to Windows
+    *
+    * @param uri The uri to sanitize
+    * @return The sanitized uri
+    */
+  def sanitizeURI(uri: String): String = {
+    val reconstructed: StringBuilder = StringBuilder.newBuilder
+    var uriCp = new String(uri).replace(" ",SPACE_ENCODED) //Don't trust servers
+    if (!uri.startsWith(URI_FILE_BEGIN)) {
+      LOG.warn("Malformed uri : " + uri)
+      uri //Probably not an uri
+    } else {
+      uriCp = uriCp.drop(URI_FILE_BEGIN.length).dropWhile(c => c == URI_PATH_SEP)
+      reconstructed.append(URI_VALID_FILE_BEGIN)
+      if (os == OS.UNIX) {
+        reconstructed.append(uriCp).toString()
+      } else {
+        reconstructed.append(uriCp.takeWhile(c => c != URI_PATH_SEP))
+        val driveLetter = reconstructed.charAt(URI_VALID_FILE_BEGIN.length)
+        if (driveLetter.isLower) {
+          reconstructed.setCharAt(URI_VALID_FILE_BEGIN.length, driveLetter.toUpper)
+        }
+        if (reconstructed.endsWith(COLON_ENCODED)) {
+          reconstructed.dropRight(3)
+        }
+        if (!reconstructed.endsWith(":")) {
+          reconstructed.append(":")
+        }
+        reconstructed.append(uriCp.dropWhile(c => c != URI_PATH_SEP)).toString()
+      }
+
+    }
   }
 
   def documentToUri(document: Document): String = {

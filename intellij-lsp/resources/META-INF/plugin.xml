@@ -12,6 +12,7 @@
         -less hover requests spamming when holding ctrl down
         -Fixes some issues with IntelliJ 2018 (QuickDoc, rename)
         -Dirty hack to make rename close opened windows after renaming
+        -Update to lsp4j 0.4.1 and Coursier 1.0.3
 
 ]]>
     </change-notes>
