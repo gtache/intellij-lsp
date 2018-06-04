@@ -80,11 +80,6 @@ object EditorEventManager {
     uriToManager.get(uri)
   }
 
-  private def prune(): Unit = {
-    editorToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(editorToManager.remove)
-    uriToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(uriToManager.remove)
-  }
-
   /**
     * @param editor An editor
     * @return The manager for the given editor, or None
@@ -92,6 +87,11 @@ object EditorEventManager {
   def forEditor(editor: Editor): Option[EditorEventManager] = {
     prune()
     editorToManager.get(editor)
+  }
+
+  private def prune(): Unit = {
+    editorToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(editorToManager.remove)
+    uriToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(uriToManager.remove)
   }
 
   /**
@@ -216,7 +216,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             case e: TimeoutException =>
               LOG.warn(e)
               wrapper.notifyFailure(Timeouts.SIGNATURE)
-            case e: java.io.IOException =>
+            case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
               LOG.warn(e)
               wrapper.crashed(e.asInstanceOf[Exception])
           }
@@ -248,13 +248,77 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             case e: TimeoutException =>
               LOG.warn(e)
               wrapper.notifyFailure(Timeouts.FORMATTING)
-            case e: java.io.IOException =>
+            case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
               LOG.warn(e)
               wrapper.crashed(e.asInstanceOf[Exception])
           }
         }
       }
     })
+  }
+
+  /**
+    * Applies the given edits to the document
+    *
+    * @param version    The version of the edits (will be discarded if older than current version)
+    * @param edits      The edits to apply
+    * @param name       The name of the edits (Rename, for example)
+    * @param closeAfter will close the file after edits if set to true
+    * @return True if the edits were applied, false otherwise
+    */
+  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
+    val runnable = getEditsRunnable(version, edits, name)
+    writeAction(() => {
+      if (runnable != null) CommandProcessor.getInstance().executeCommand(project, runnable, name, "LSPPlugin", editor.getDocument)
+      if (closeAfter) {
+        FileEditorManager.getInstance(project)
+          .closeFile(PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument).getVirtualFile)
+      }
+    })
+    if (runnable != null) true else false
+  }
+
+  /**
+    * Returns a Runnable used to apply the given edits and save the document
+    * Used by WorkspaceEditHandler (allows to revert a rename for example)
+    *
+    * @param version The edit version
+    * @param edits   The edits
+    * @param name    The name of the edit
+    * @return The runnable
+    */
+  def getEditsRunnable(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Runnable = {
+    if (version >= this.version) {
+      val document = editor.getDocument
+      if (document.isWritable) {
+        () => {
+          edits.foreach(edit => {
+            val text = edit.getNewText
+            val range = edit.getRange
+            val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+            val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+            if (text == "" || text == null) {
+              document.deleteString(start, end)
+            } else if (end - start <= 0) {
+              document.insertString(start, text)
+            } else {
+              document.replaceString(start, end, text)
+            }
+          })
+          saveDocument()
+        }
+      } else {
+        LOG.warn("Document is not writable")
+        null
+      }
+    } else {
+      LOG.warn("Edit version " + version + " is older than current version " + this.version)
+      null
+    }
+  }
+
+  private def saveDocument(): Unit = {
+    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
   }
 
   /**
@@ -281,7 +345,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           LOG.warn(e)
           wrapper.notifyFailure(Timeouts.CODEACTION)
           null
-        case e: java.io.IOException =>
+        case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
           LOG.warn(e)
           wrapper.crashed(e.asInstanceOf[Exception])
           null
@@ -397,7 +461,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           LOG.warn(e)
           wrapper.notifyFailure(Timeouts.COMPLETION)
           Iterable.empty
-        case e: java.io.IOException =>
+        case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
           LOG.warn(e)
           wrapper.crashed(e.asInstanceOf[Exception])
           Iterable.empty
@@ -431,7 +495,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               case e: TimeoutException =>
                 LOG.warn(e)
                 wrapper.notifyFailure(Timeouts.EXECUTE_COMMAND)
-              case e: java.io.IOException =>
+              case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
                 LOG.warn(e)
                 wrapper.crashed(e.asInstanceOf[Exception])
             }
@@ -608,7 +672,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               case e: TimeoutException =>
                 LOG.warn(e)
                 wrapper.notifyFailure(Timeouts.WILLSAVE)
-              case e: java.io.IOException =>
+              case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
                 LOG.warn(e)
                 wrapper.crashed(e.asInstanceOf[Exception])
             } finally {
@@ -659,7 +723,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           LOG.warn(e)
           wrapper.notifyFailure(Timeouts.REFERENCES)
           null
-        case e: java.io.IOException =>
+        case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
           LOG.warn(e)
           wrapper.crashed(e.asInstanceOf[Exception])
           null
@@ -697,7 +761,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
               LOG.warn(e)
               null
-            case e: java.io.IOException =>
+            case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
               LOG.warn(e)
               wrapper.crashed(e.asInstanceOf[Exception])
               null
@@ -785,7 +849,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             case e: TimeoutException =>
               LOG.warn(e)
               wrapper.notifyFailure(Timeouts.REFERENCES)
-            case e: java.io.IOException =>
+            case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
               LOG.warn(e)
               wrapper.crashed(e.asInstanceOf[Exception])
           }
@@ -954,7 +1018,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                   LOG.warn(e)
                   wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
                   new Range(serverPos, serverPos)
-                case e: java.io.IOException =>
+                case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
                   LOG.warn(e)
                   wrapper.crashed(e.asInstanceOf[Exception])
                   new Range(serverPos, serverPos)
@@ -997,7 +1061,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           LOG.warn(e)
           wrapper.notifyFailure(Timeouts.DEFINITION)
           null
-        case e: java.io.IOException =>
+        case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
           LOG.warn(e)
           wrapper.crashed(e.asInstanceOf[Exception])
           null
@@ -1209,70 +1273,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
-    * Applies the given edits to the document
-    *
-    * @param version    The version of the edits (will be discarded if older than current version)
-    * @param edits      The edits to apply
-    * @param name       The name of the edits (Rename, for example)
-    * @param closeAfter will close the file after edits if set to true
-    * @return True if the edits were applied, false otherwise
-    */
-  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
-    val runnable = getEditsRunnable(version, edits, name)
-    writeAction(() => {
-      if (runnable != null) CommandProcessor.getInstance().executeCommand(project, runnable, name, "LSPPlugin", editor.getDocument)
-      if (closeAfter) {
-        FileEditorManager.getInstance(project)
-          .closeFile(PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument).getVirtualFile)
-      }
-    })
-    if (runnable != null) true else false
-  }
-
-  /**
-    * Returns a Runnable used to apply the given edits and save the document
-    * Used by WorkspaceEditHandler (allows to revert a rename for example)
-    *
-    * @param version The edit version
-    * @param edits   The edits
-    * @param name    The name of the edit
-    * @return The runnable
-    */
-  def getEditsRunnable(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Runnable = {
-    if (version >= this.version) {
-      val document = editor.getDocument
-      if (document.isWritable) {
-        () => {
-          edits.foreach(edit => {
-            val text = edit.getNewText
-            val range = edit.getRange
-            val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
-            val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
-            if (text == "" || text == null) {
-              document.deleteString(start, end)
-            } else if (end - start <= 0) {
-              document.insertString(start, text)
-            } else {
-              document.replaceString(start, end, text)
-            }
-          })
-          saveDocument()
-        }
-      } else {
-        LOG.warn("Document is not writable")
-        null
-      }
-    } else {
-      LOG.warn("Edit version " + version + " is older than current version " + this.version)
-      null
-    }
-  }
-
-  private def saveDocument(): Unit = {
-    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
-  }
-
-  /**
     * Adds all the listeners
     */
   def registerListeners(): Unit = {
@@ -1333,7 +1333,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               LOG.warn(e)
               wrapper.notifyFailure(Timeouts.HOVER)
               ""
-            case e: java.io.IOException =>
+            case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
               LOG.warn(e)
               wrapper.crashed(e.asInstanceOf[Exception])
               ""
@@ -1388,7 +1388,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                   case e: TimeoutException =>
                     LOG.warn(e)
                     wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
-                  case e: java.io.IOException =>
+                  case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
                     LOG.warn(e)
                     wrapper.crashed(e.asInstanceOf[Exception])
                 }
