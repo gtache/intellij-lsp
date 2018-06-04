@@ -172,19 +172,19 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
   //Q: get rid of these methods?
 
   /**
-    * Returns the text of the PSI element.
-    *
-    * @return the element text.
-    */
-  override def getText: String = name
-
-  /**
     * Checks if the text of this PSI element is equal to the text of the specified PSI element.
     *
     * @param element the element to compare the text with.
     * @return true if the text is equal, false otherwise.
     */
   override def textMatches(element: PsiElement): Boolean = getText == element.getText
+
+  /**
+    * Returns the text of the PSI element.
+    *
+    * @return the element text.
+    */
+  override def getText: String = name
 
   /**
     * Checks if the text of this element contains the specified character.
@@ -493,23 +493,6 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     if (map == null) null.asInstanceOf[T] else map.get(key)
   }
 
-  def getUserData[T](key: Key[T]): T = {
-    var t = getUserMap.get(key)
-    if (t == null && key.isInstanceOf[KeyWithDefaultValue[_]]) t = putUserDataIfAbsent(key, key.asInstanceOf[KeyWithDefaultValue[T]].getDefaultValue)
-    t
-  }
-
-  def putUserDataIfAbsent[T](key: Key[T], value: T): T = {
-    while (true) {
-      val map = getUserMap
-      val oldValue = map.get(key)
-      if (oldValue != null) return oldValue
-      val newMap = map.plus(key, value)
-      if ((newMap eq map) || changeUserMap(map, newMap)) return value
-    }
-    null.asInstanceOf[T]
-  }
-
   def putCopyableUserData[T](key: Key[T], value: T): Unit = {
     var control = true
     while (control) {
@@ -521,6 +504,10 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
       if ((newMap eq map) || changeUserMap(map, newMap)) control = false
     }
   }
+
+  protected def changeUserMap(oldMap: KeyFMap, newMap: KeyFMap): Boolean = updater.compareAndSet(this, oldMap, newMap)
+
+  protected def getUserMap: KeyFMap = myUserMap
 
   def replace[T](key: Key[T], @Nullable oldValue: T, @Nullable newValue: T): Boolean = {
     while (true) {
@@ -536,12 +523,25 @@ case class LSPPsiElement(var name: String, project: Project, start: Int, end: In
     false
   }
 
-  protected def changeUserMap(oldMap: KeyFMap, newMap: KeyFMap): Boolean = updater.compareAndSet(this, oldMap, newMap)
-
-  protected def getUserMap: KeyFMap = myUserMap
-
   def copyCopyableDataTo(clone: UserDataHolderBase): Unit = {
     clone.putUserData(COPYABLE_USER_MAP_KEY, getUserData(COPYABLE_USER_MAP_KEY))
+  }
+
+  def getUserData[T](key: Key[T]): T = {
+    var t = getUserMap.get(key)
+    if (t == null && key.isInstanceOf[KeyWithDefaultValue[_]]) t = putUserDataIfAbsent(key, key.asInstanceOf[KeyWithDefaultValue[T]].getDefaultValue)
+    t
+  }
+
+  def putUserDataIfAbsent[T](key: Key[T], value: T): T = {
+    while (true) {
+      val map = getUserMap
+      val oldValue = map.get(key)
+      if (oldValue != null) return oldValue
+      val newMap = map.plus(key, value)
+      if ((newMap eq map) || changeUserMap(map, newMap)) return value
+    }
+    null.asInstanceOf[T]
   }
 
   def isUserDataEmpty: Boolean = getUserMap.isEmpty
