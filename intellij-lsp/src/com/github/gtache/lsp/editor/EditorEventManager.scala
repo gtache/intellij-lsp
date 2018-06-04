@@ -4,7 +4,7 @@ import java.awt._
 import java.awt.event.{KeyEvent, MouseAdapter, MouseEvent}
 import java.io.File
 import java.net.URI
-import java.util.concurrent.{TimeUnit, TimeoutException}
+import java.util.concurrent.{ExecutionException, TimeUnit, TimeoutException}
 import java.util.{Collections, Timer, TimerTask}
 
 import com.github.gtache.lsp.client.languageserver.ServerOptions
@@ -37,6 +37,7 @@ import com.intellij.ui.Hint
 import com.intellij.uiDesigner.core.{GridConstraints, GridLayoutManager, Spacer}
 import javax.swing.{JFrame, JLabel, JPanel}
 import org.eclipse.lsp4j._
+import org.eclipse.lsp4j.jsonrpc.JsonRpcException
 
 import scala.collection.mutable
 
@@ -215,6 +216,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             case e: TimeoutException =>
               LOG.warn(e)
               wrapper.notifyFailure(Timeouts.SIGNATURE)
+            case e: java.io.IOException =>
+              LOG.warn(e)
+              wrapper.crashed(e.asInstanceOf[Exception])
           }
         }
       }
@@ -244,6 +248,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             case e: TimeoutException =>
               LOG.warn(e)
               wrapper.notifyFailure(Timeouts.FORMATTING)
+            case e: java.io.IOException =>
+              LOG.warn(e)
+              wrapper.crashed(e.asInstanceOf[Exception])
           }
         }
       }
@@ -274,7 +281,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           LOG.warn(e)
           wrapper.notifyFailure(Timeouts.CODEACTION)
           null
+        case e: java.io.IOException =>
+          LOG.warn(e)
+          wrapper.crashed(e.asInstanceOf[Exception])
+          null
       }
+
     } else {
       null
     }
@@ -385,6 +397,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           LOG.warn(e)
           wrapper.notifyFailure(Timeouts.COMPLETION)
           Iterable.empty
+        case e: java.io.IOException =>
+          LOG.warn(e)
+          wrapper.crashed(e.asInstanceOf[Exception])
+          Iterable.empty
       }
     } else Iterable.empty
   }
@@ -415,6 +431,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               case e: TimeoutException =>
                 LOG.warn(e)
                 wrapper.notifyFailure(Timeouts.EXECUTE_COMMAND)
+              case e: java.io.IOException =>
+                LOG.warn(e)
+                wrapper.crashed(e.asInstanceOf[Exception])
             }
           }
         })
@@ -589,6 +608,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               case e: TimeoutException =>
                 LOG.warn(e)
                 wrapper.notifyFailure(Timeouts.WILLSAVE)
+              case e: java.io.IOException =>
+                LOG.warn(e)
+                wrapper.crashed(e.asInstanceOf[Exception])
             } finally {
               needSave = true
               saveDocument()
@@ -637,6 +659,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           LOG.warn(e)
           wrapper.notifyFailure(Timeouts.REFERENCES)
           null
+        case e: java.io.IOException =>
+          LOG.warn(e)
+          wrapper.crashed(e.asInstanceOf[Exception])
+          null
       }
     }
     else {
@@ -670,6 +696,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             case e: TimeoutException =>
               wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
               LOG.warn(e)
+              null
+            case e: java.io.IOException =>
+              LOG.warn(e)
+              wrapper.crashed(e.asInstanceOf[Exception])
               null
           }
         } else null
@@ -755,6 +785,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             case e: TimeoutException =>
               LOG.warn(e)
               wrapper.notifyFailure(Timeouts.REFERENCES)
+            case e: java.io.IOException =>
+              LOG.warn(e)
+              wrapper.crashed(e.asInstanceOf[Exception])
           }
         }
       }
@@ -921,6 +954,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                   LOG.warn(e)
                   wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
                   new Range(serverPos, serverPos)
+                case e: java.io.IOException =>
+                  LOG.warn(e)
+                  wrapper.crashed(e.asInstanceOf[Exception])
+                  new Range(serverPos, serverPos)
               }
             } else new Range(serverPos, serverPos)
 
@@ -959,6 +996,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         case e: TimeoutException =>
           LOG.warn(e)
           wrapper.notifyFailure(Timeouts.DEFINITION)
+          null
+        case e: java.io.IOException =>
+          LOG.warn(e)
+          wrapper.crashed(e.asInstanceOf[Exception])
           null
       }
     } else {
@@ -1062,6 +1103,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         case e: TimeoutException =>
           LOG.warn(e)
           wrapper.notifyFailure(Timeouts.HOVER)
+        case e @ (_: java.io.IOException | _:JsonRpcException | _:ExecutionException) =>
+          LOG.warn(e)
+          wrapper.crashed(e.asInstanceOf[Exception])
       }
     }
 
@@ -1116,6 +1160,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         case e: TimeoutException =>
           LOG.warn(e)
           wrapper.notifyFailure(Timeouts.REFERENCES)
+          (Seq.empty, Seq.empty)
+        case e @ (_: java.io.IOException | _:JsonRpcException | _:ExecutionException) =>
+          LOG.warn(e)
+          wrapper.crashed(e.asInstanceOf[Exception])
           (Seq.empty, Seq.empty)
       }
     } else (Seq.empty, Seq.empty)
@@ -1285,6 +1333,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               LOG.warn(e)
               wrapper.notifyFailure(Timeouts.HOVER)
               ""
+            case e: java.io.IOException =>
+              LOG.warn(e)
+              wrapper.crashed(e.asInstanceOf[Exception])
+              ""
           }
         } else {
           ""
@@ -1336,6 +1388,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                   case e: TimeoutException =>
                     LOG.warn(e)
                     wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
+                  case e: java.io.IOException =>
+                    LOG.warn(e)
+                    wrapper.crashed(e.asInstanceOf[Exception])
                 }
               }
             })

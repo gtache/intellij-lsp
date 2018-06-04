@@ -39,7 +39,7 @@ object WorkspaceEditHandler {
             val range = ui.getElement.getTextRange
             val lspRange = new Range(DocumentUtils.offsetToLSPPos(editor, range.getStartOffset), DocumentUtils.offsetToLSPPos(editor, range.getEndOffset))
             val edit = new TextEdit(lspRange, newName)
-            val uri = FileUtils.sanitizeURI(new URL(ui.getVirtualFile.getUrl.replace(" ",FileUtils.SPACE_ENCODED)).toURI.toString)
+            val uri = FileUtils.sanitizeURI(new URL(ui.getVirtualFile.getUrl.replace(" ", FileUtils.SPACE_ENCODED)).toURI.toString)
             if (edits.contains(uri)) {
               edits(uri) += edit
             } else {

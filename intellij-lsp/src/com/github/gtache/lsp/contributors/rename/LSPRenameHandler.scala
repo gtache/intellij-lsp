@@ -77,6 +77,14 @@ class LSPRenameHandler extends RenameHandler {
 
   override def isRenaming(dataContext: DataContext): Boolean = isAvailableOnDataContext(dataContext)
 
+  protected def checkAvailable(elementToRename: PsiElement, editor: Editor, dataContext: DataContext): Boolean = {
+    if (!isAvailableOnDataContext(dataContext)) {
+      RenameHandlerRegistry.getInstance.getRenameHandler(dataContext).invoke(elementToRename.getProject, editor, elementToRename.getContainingFile, dataContext)
+      return false
+    }
+    true
+  }
+
   override def isAvailableOnDataContext(dataContext: DataContext): Boolean = {
     val element = PsiElementRenameHandler.getElement(dataContext)
     val editor = CommonDataKeys.EDITOR.getData(dataContext)
@@ -92,14 +100,6 @@ class LSPRenameHandler extends RenameHandler {
       //IntelliJ 2018 returns psiElement null for unsupported languages
       case _ => psiElement == null && PluginMain.isExtensionSupported(FileUtils.extFromPsiFile(psiFile))
     }
-  }
-
-  protected def checkAvailable(elementToRename: PsiElement, editor: Editor, dataContext: DataContext): Boolean = {
-    if (!isAvailableOnDataContext(dataContext)) {
-      RenameHandlerRegistry.getInstance.getRenameHandler(dataContext).invoke(elementToRename.getProject, editor, elementToRename.getContainingFile, dataContext)
-      return false
-    }
-    true
   }
 
 }
