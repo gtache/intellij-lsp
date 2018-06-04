@@ -53,7 +53,7 @@ Shift+Alt+F7 :
 
 ## Add a Language Server
 This plugin supports communicating with multiple and different language servers at the same time.    
-To add a supported language server, you can either create a plugin (see intellij-lsp-dotty) which extends this plugin and extend LanguageServerDefinition or instantiate a concrete subclass of it and register it, or simply go to IntelliJ/file/settings/Languages & Frameworks/Language Server Protocol and fill the required informations. You can specify multiple extensions for one server by separating them with a colon. (example : ts;js)        
+To add a supported language server, you can either create a plugin (see intellij-lsp-dotty) which extends this plugin and extend LanguageServerDefinition or instantiate a concrete subclass of it and register it, or simply go to IntelliJ/file/settings/Languages & Frameworks/Language Server Protocol and fill the required informations. You can specify multiple extensions for one server by separating them with a semicolon. (example : ts;js)        
 Note that the settings will always override a possible LSP plugin for the same file extension.    
 You can also configure the timeouts for the requests (if you see timeouts warning in the log for example), depending on your computer.    
 Settings:    
