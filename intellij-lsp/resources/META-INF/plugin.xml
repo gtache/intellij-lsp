@@ -1,22 +1,13 @@
 <idea-plugin>
     <id>com.github.gtache.lsp</id>
     <name>LSP Support</name>
-    <version>1.4.0</version>
+    <version>1.5.0</version>
     <vendor email="guillaume.tache@epfl.ch" url="https://github.com/gtache">gtache</vendor>
 
     <description>Adds LSP (Language Server Protocol) support for IntelliJ</description>
 
     <change-notes>
         <![CDATA[
-        -Add support for multiple extensions per server
-        -Better URI handling, fixes spaces in uris
-        -Fixes NPE on LookupItem
-        -Fixes position/range IJ-LSP translation thanks to ant-druha
-        -Better server crash handling
-        -Fixes some issues with IntelliJ 2018 (QuickDoc, rename)
-        -Less hover requests spamming when holding ctrl down
-        -Dirty hack to make rename close opened windows after renaming
-        -Update to lsp4j 0.4.1 and Coursier 1.0.3
 
 ]]>
     </change-notes>
