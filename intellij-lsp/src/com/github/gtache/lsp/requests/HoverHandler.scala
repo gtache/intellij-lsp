@@ -38,9 +38,9 @@ ${markedString.getValue}
             } else ""
           }).filter(s => !s.isEmpty).reduce((a, b) => a + "\n\n" + b)
         }
-      } else {
+      } else if (hoverContents.isRight) {
         hoverContents.getRight.getValue //TODO
-      }
+      } else ""
     } else ""
   }
 
