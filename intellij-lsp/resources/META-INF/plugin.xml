@@ -8,7 +8,8 @@
 
     <change-notes>
         <![CDATA[
-
+            -Add setting to always send requests
+            -Fixes exception when no references found
 ]]>
     </change-notes>
 

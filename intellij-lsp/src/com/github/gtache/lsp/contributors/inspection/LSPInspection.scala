@@ -72,11 +72,11 @@ class LSPInspection extends LocalInspectionTool {
 
   override def getDisplayName: String = getShortName
 
+  override def getShortName: String = "LSP"
+
   override def createOptionsPanel(): JComponent = {
     new LSPInspectionPanel(getShortName, this)
   }
-
-  override def getShortName: String = "LSP"
 
   override def getID: String = "LSP"
 

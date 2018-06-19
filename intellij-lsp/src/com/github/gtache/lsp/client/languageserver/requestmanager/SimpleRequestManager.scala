@@ -47,6 +47,13 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
     } else null
   }
 
+  private def checkStatus: Boolean = wrapper.getStatus == ServerStatus.STARTED
+
+  private def crashed(e: Exception): Unit = {
+    LOG.warn(e)
+    wrapper.crashed(e)
+  }
+
   override def initialized(params: InitializedParams): Unit =
     if (checkStatus) try {
       server.initialized(params)
@@ -170,13 +177,6 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
       case e: Exception => crashed(e)
         null
     } else null
-
-  private def checkStatus: Boolean = wrapper.getStatus == ServerStatus.STARTED
-
-  private def crashed(e: Exception): Unit = {
-    LOG.warn(e)
-    wrapper.crashed(e)
-  }
 
   override def signatureHelp(params: TextDocumentPositionParams): CompletableFuture[SignatureHelp] =
     if (checkStatus) try {

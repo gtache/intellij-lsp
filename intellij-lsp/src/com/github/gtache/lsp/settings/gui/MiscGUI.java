@@ -1,12 +1,17 @@
 package com.github.gtache.lsp.settings.gui;
 
+import com.github.gtache.lsp.settings.LSPState;
+import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
+import com.intellij.uiDesigner.core.Spacer;
 
 import javax.swing.*;
 import java.awt.*;
 
 public final class MiscGUI implements LSPGUI {
+    private final LSPState state = state();
     private JPanel rootPanel;
+    private JCheckBox alwaysSendRequestsCheckBox;
 
     public MiscGUI() {
     }
@@ -18,17 +23,17 @@ public final class MiscGUI implements LSPGUI {
 
     @Override
     public boolean isModified() {
-        return false;
+        return state.isAlwaysSendRequests() != alwaysSendRequestsCheckBox.isSelected();
     }
 
     @Override
     public void reset() {
-
+        alwaysSendRequestsCheckBox.setSelected(state.isAlwaysSendRequests());
     }
 
     @Override
     public void apply() {
-
+        state.setAlwaysSendRequests(alwaysSendRequestsCheckBox.isSelected());
     }
 
     {
@@ -47,7 +52,44 @@ public final class MiscGUI implements LSPGUI {
      */
     private void $$$setupUI$$$() {
         rootPanel = new JPanel();
-        rootPanel.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), -1, -1));
+        rootPanel.setLayout(new GridLayoutManager(4, 2, new Insets(5, 5, 0, 0), -1, -1));
+        alwaysSendRequestsCheckBox = new JCheckBox();
+        alwaysSendRequestsCheckBox.setMargin(new Insets(2, 2, 2, 2));
+        alwaysSendRequestsCheckBox.setText("Always send requests");
+        alwaysSendRequestsCheckBox.setToolTipText("Send requests even if a language plugin already supports it");
+        rootPanel.add(alwaysSendRequestsCheckBox, new GridConstraints(2, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 1, false));
+        final Spacer spacer1 = new Spacer();
+        rootPanel.add(spacer1, new GridConstraints(2, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
+        final Spacer spacer2 = new Spacer();
+        rootPanel.add(spacer2, new GridConstraints(3, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1, GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
+        final JLabel label1 = new JLabel();
+        Font label1Font = this.$$$getFont$$$(null, Font.BOLD, 20, label1.getFont());
+        if (label1Font != null) label1.setFont(label1Font);
+        label1.setText("Miscellaneous Settings");
+        rootPanel.add(label1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        final Spacer spacer3 = new Spacer();
+        rootPanel.add(spacer3, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1, GridConstraints.SIZEPOLICY_WANT_GROW, null, new Dimension(-1, 10), new Dimension(-1, 10), 0, false));
+        final Spacer spacer4 = new Spacer();
+        rootPanel.add(spacer4, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
+    }
+
+    /**
+     * @noinspection ALL
+     */
+    private Font $$$getFont$$$(String fontName, int style, int size, Font currentFont) {
+        if (currentFont == null) return null;
+        String resultName;
+        if (fontName == null) {
+            resultName = currentFont.getName();
+        } else {
+            Font testFont = new Font(fontName, Font.PLAIN, 10);
+            if (testFont.canDisplay('a') && testFont.canDisplay('1')) {
+                resultName = fontName;
+            } else {
+                resultName = currentFont.getName();
+            }
+        }
+        return new Font(resultName, style >= 0 ? style : currentFont.getStyle(), size >= 0 ? size : currentFont.getSize());
     }
 
     /**

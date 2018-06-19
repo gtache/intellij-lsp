@@ -32,12 +32,12 @@ object FileUtils {
     editorFromVirtualFile(psiFile.getVirtualFile, psiFile.getProject)
   }
 
-  def editorFromUri(uri: String, project: Project): Editor = {
-    editorFromVirtualFile(virtualFileFromURI(uri), project)
-  }
-
   def editorFromVirtualFile(file: VirtualFile, project: Project): Editor = {
     FileEditorManager.getInstance(project).getAllEditors(file).collectFirst { case t: TextEditor => t.getEditor }.orNull
+  }
+
+  def editorFromUri(uri: String, project: Project): Editor = {
+    editorFromVirtualFile(virtualFileFromURI(uri), project)
   }
 
   def virtualFileFromURI(uri: String): VirtualFile = {
@@ -75,6 +75,23 @@ object FileUtils {
   }
 
   /**
+    * Returns the URI string corresponding to a VirtualFileSystem file
+    *
+    * @param file The file
+    * @return the URI
+    */
+  def VFSToURI(file: VirtualFile): String = {
+    try {
+      val uri = sanitizeURI(new URL(file.getUrl.replace(" ", SPACE_ENCODED)).toURI.toString)
+      uri
+    } catch {
+      case e: Exception =>
+        LOG.warn(e)
+        null
+    }
+  }
+
+  /**
     * Transforms an URI string into a VFS file
     *
     * @param uri The uri
@@ -107,27 +124,6 @@ object FileUtils {
     */
   def pathToUri(path: String): String = {
     sanitizeURI(new File(path.replace(" ", SPACE_ENCODED)).toURI.toString)
-  }
-
-  def documentToUri(document: Document): String = {
-    sanitizeURI(VFSToURI(FileDocumentManager.getInstance().getFile(document)))
-  }
-
-  /**
-    * Returns the URI string corresponding to a VirtualFileSystem file
-    *
-    * @param file The file
-    * @return the URI
-    */
-  def VFSToURI(file: VirtualFile): String = {
-    try {
-      val uri = sanitizeURI(new URL(file.getUrl.replace(" ", SPACE_ENCODED)).toURI.toString)
-      uri
-    } catch {
-      case e: Exception =>
-        LOG.warn(e)
-        null
-    }
   }
 
   /**
@@ -163,6 +159,10 @@ object FileUtils {
       }
 
     }
+  }
+
+  def documentToUri(document: Document): String = {
+    sanitizeURI(VFSToURI(FileDocumentManager.getInstance().getFile(document)))
   }
 
   /**
