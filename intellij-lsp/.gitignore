@@ -1,7 +1,3 @@
-out/
-.gradle/
-.idea/
-*.iml
-*.zip
-*.ps1
+idea/
 target/
+.idea/
