@@ -1,10 +1,9 @@
 package com.github.gtache.lsp.contributors.icon
 
-import javax.swing.Icon
-
 import com.github.gtache.lsp.client.languageserver.ServerStatus
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.intellij.openapi.extensions.ExtensionPointName
+import javax.swing.Icon
 import org.eclipse.lsp4j.{CompletionItemKind, SymbolKind}
 
 object LSPIconProvider {

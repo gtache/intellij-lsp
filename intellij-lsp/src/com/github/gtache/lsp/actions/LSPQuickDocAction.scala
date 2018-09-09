@@ -4,8 +4,10 @@ import com.github.gtache.lsp.editor.EditorEventManager
 import com.intellij.codeInsight.documentation.actions.ShowQuickDocInfoAction
 import com.intellij.lang.LanguageDocumentation
 import com.intellij.openapi.actionSystem.{AnActionEvent, CommonDataKeys}
+import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileTypes.PlainTextLanguage
 import com.intellij.openapi.project.DumbAware
 import com.intellij.psi.PsiManager
 
@@ -19,7 +21,8 @@ class LSPQuickDocAction extends ShowQuickDocInfoAction with DumbAware {
     val editor = e.getData(CommonDataKeys.EDITOR)
     val file = FileDocumentManager.getInstance().getFile(editor.getDocument)
     val language = PsiManager.getInstance(editor.getProject).findFile(file).getLanguage
-    if (LanguageDocumentation.INSTANCE.allForLanguage(language).isEmpty) {
+    //Hack for IntelliJ 2018 TODO proper way
+    if (LanguageDocumentation.INSTANCE.allForLanguage(language).isEmpty || (ApplicationInfo.getInstance().getMajorVersion.toInt > 2017) && PlainTextLanguage.INSTANCE == language) {
       EditorEventManager.forEditor(editor) match {
         case Some(manager) => manager.quickDoc(editor)
         case None => super.actionPerformed(e)

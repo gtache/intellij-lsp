@@ -1,7 +1,5 @@
 package com.github.gtache.lsp.contributors.inspection
 
-import javax.swing.JComponent
-
 import com.github.gtache.lsp.PluginMain
 import com.github.gtache.lsp.contributors.LSPQuickFix
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
@@ -10,6 +8,7 @@ import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.codeInspection._
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiFile
+import javax.swing.JComponent
 import org.eclipse.lsp4j.DiagnosticSeverity
 
 /**

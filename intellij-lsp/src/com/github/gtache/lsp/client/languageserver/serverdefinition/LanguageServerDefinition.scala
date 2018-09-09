@@ -10,6 +10,7 @@ import com.intellij.openapi.diagnostic.Logger
 import scala.collection.mutable
 
 object LanguageServerDefinition {
+  val SPLIT_CHAR = ";"
   val allDefinitions: mutable.Set[LanguageServerDefinition] = mutable.Set()
   private val LOG: Logger = Logger.getInstance(LanguageServerDefinition.getClass)
 

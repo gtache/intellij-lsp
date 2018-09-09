@@ -15,6 +15,7 @@ class LSPInplaceRenamer(elementToRename: PsiNamedElement, substituted: PsiElemen
     EditorEventManager.forEditor(editor) match {
       case Some(m) =>
         val (references, toClose) = m.references(editor.getCaretModel.getCurrentCaret.getOffset, getOriginalElement = true)
+        LSPRenameProcessor.addEditors(toClose)
         references.map(f => f.getReference).toList.asJava
       case None => List().asJava
     }

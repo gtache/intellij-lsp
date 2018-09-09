@@ -3,6 +3,8 @@ package com.github.gtache.lsp.utils
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.util.text.StringUtil
+import com.intellij.util.DocumentUtil
 import org.eclipse.lsp4j.Position
 
 /**
@@ -32,6 +34,17 @@ object DocumentUtils {
   }
 
   /**
+    * Transforms a LogicalPosition (IntelliJ) to an LSP Position
+    *
+    * @param position the LogicalPosition
+    * @param editor   The editor
+    * @return the Position
+    */
+  def logicalToLSPPos(position: LogicalPosition, editor: Editor): Position = {
+    offsetToLSPPos(editor, editor.logicalPositionToOffset(position))
+  }
+
+  /**
     * Calculates a Position given an editor and an offset
     *
     * @param editor The editor
@@ -39,17 +52,12 @@ object DocumentUtils {
     * @return an LSP position
     */
   def offsetToLSPPos(editor: Editor, offset: Int): Position = {
-    logicalToLSPPos(editor.offsetToLogicalPosition(offset))
-  }
-
-  /**
-    * Transforms a LogicalPosition (IntelliJ) to an LSP Position
-    *
-    * @param position the LogicalPosition
-    * @return the Position
-    */
-  def logicalToLSPPos(position: LogicalPosition): Position = {
-    new Position(position.line, position.column)
+    val doc = editor.getDocument
+    val line = doc.getLineNumber(offset)
+    val lineStart = doc.getLineStartOffset(line)
+    val lineTextBeforeOffset = doc.getText(TextRange.create(lineStart, offset))
+    val column = lineTextBeforeOffset.length
+    new Position(line, column)
   }
 
   /**
@@ -60,21 +68,18 @@ object DocumentUtils {
     * @return The offset
     */
   def LSPPosToOffset(editor: Editor, pos: Position): Int = {
-    val offset = editor.logicalPositionToOffset(LSPToLogicalPos(pos))
-    val docLength = editor.getDocument.getTextLength
+    val line = pos.getLine
+    val doc = editor.getDocument
+    val lineTextForPosition = doc.getText(DocumentUtil.getLineTextRange(doc, line)).substring(0, pos.getCharacter)
+    val tabs = StringUtil.countChars(lineTextForPosition, '\t')
+    val tabSize = editor.getSettings.getTabSize(editor.getProject)
+    val column = tabs * tabSize + lineTextForPosition.length - tabs
+    val offset = editor.logicalPositionToOffset(new LogicalPosition(line, column))
+    val docLength = doc.getTextLength
     if (offset > docLength) {
       LOG.warn("Offset greater than text length : " + offset + " > " + docLength)
     }
     math.min(math.max(offset, 0), docLength)
   }
 
-  /**
-    * Transforms an LSP position to a LogicalPosition
-    *
-    * @param position The LSPPos
-    * @return The LogicalPos
-    */
-  def LSPToLogicalPos(position: Position): LogicalPosition = {
-    new LogicalPosition(position.getLine, position.getCharacter)
-  }
 }

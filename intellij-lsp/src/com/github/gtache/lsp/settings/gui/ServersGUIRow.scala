@@ -1,9 +1,8 @@
 package com.github.gtache.lsp.settings.gui
 
-import javax.swing.{JComboBox, JComponent, JPanel, JTextField}
-
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
+import javax.swing.{JComboBox, JComponent, JPanel, JTextField}
 
 import scala.collection.mutable
 

@@ -1,8 +1,7 @@
 package com.github.gtache.lsp.settings.gui
 
-import javax.swing.JPanel
-
 import com.github.gtache.lsp.settings.LSPState
+import javax.swing.JPanel
 
 trait LSPGUI {
 

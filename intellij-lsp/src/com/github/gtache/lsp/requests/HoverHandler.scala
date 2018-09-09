@@ -20,27 +20,32 @@ object HoverHandler {
   def getHoverString(@NonNull hover: Hover): String = {
     import scala.collection.JavaConverters._
     if (hover != null && hover.getContents != null) {
-      val contents = hover.getContents.asScala
-      if (contents == null || contents.isEmpty) "" else {
-        val stuff = contents.map(c => {
-          if (c.isLeft) c.getLeft else if (c.isRight) {
-            val options = new MutableDataSet()
-            val parser = Parser.builder(options).build()
-            val renderer = HtmlRenderer.builder(options).build()
-            val markedString = c.getRight
-            val string = if (markedString.getLanguage != null && !markedString.getLanguage.isEmpty)
-              s"""```${markedString.getLanguage}
+      val hoverContents = hover.getContents
+      if (hoverContents.isLeft) {
+        val contents = hoverContents.getLeft.asScala
+        if (contents == null || contents.isEmpty) "" else {
+          val stuff = contents.map(c => {
+            if (c.isLeft) c.getLeft else if (c.isRight) {
+              val options = new MutableDataSet()
+              val parser = Parser.builder(options).build()
+              val renderer = HtmlRenderer.builder(options).build()
+              val markedString = c.getRight
+              val string = if (markedString.getLanguage != null && !markedString.getLanguage.isEmpty)
+                s"""```${markedString.getLanguage}
 ${markedString.getValue}
 ```""" else markedString.getValue
-            "<html>" + renderer.render(parser.parse(string)) + "</html>"
-          } else ""
-        }).filter(s => !s.isEmpty);
-        if (stuff.isEmpty) {
-          ""
-        } else {
-          stuff.reduce((a, b) => a + "\n\n" + b)
+              "<html>" + renderer.render(parser.parse(string)) + "</html>"
+            } else ""
+          }).filter(s => !s.isEmpty);
+	  if (stuff.isEmpty) {
+	      ""
+	  } else {
+	      stuff.reduce((a, b) => a + "\n\n" + b)
+	  }
         }
-      }
+      } else if (hoverContents.isRight) {
+        hoverContents.getRight.getValue //TODO
+      } else ""
     } else ""
   }
 

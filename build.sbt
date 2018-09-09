@@ -42,17 +42,17 @@ lazy val `intellij-lsp` = (project in file("intellij-lsp")).
   settings(
     name := "intellij-lsp",
     description := "Language Server Protocol plugin for IntelliJ IDEA",
-    version := "1.3.0",
+    version := "1.4.0",
 
     ideaInternalPlugins := Seq(
       "IntelliLang",
     ),
 
     libraryDependencies ++= Seq(
-      "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.3.0",
-      "io.get-coursier" %% "coursier" % "1.0.0",
-      "io.get-coursier" %% "coursier-cache" % "1.0.0",
-      "com.vladsch.flexmark" % "flexmark" % "0.28.18"
+      "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.4.1",
+      "io.get-coursier" %% "coursier" % "1.0.3",
+      "io.get-coursier" %% "coursier-cache" % "1.0.3",
+      "com.vladsch.flexmark" % "flexmark" % "0.32.24"
     ),
   )
 

@@ -1,5 +1,6 @@
 package com.github.gtache.lsp.client.languageserver.requestmanager
 
+import java.util
 import java.util.concurrent.CompletableFuture
 
 import com.github.gtache.lsp.client.languageserver.ServerStatus
@@ -146,7 +147,7 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
       case e: Exception => crashed(e)
     }
 
-  override def completion(params: TextDocumentPositionParams): CompletableFuture[jsonrpc.messages.Either[java.util.List[CompletionItem], CompletionList]] =
+  override def completion(params: CompletionParams): CompletableFuture[jsonrpc.messages.Either[java.util.List[CompletionItem], CompletionList]] =
     if (checkStatus) try {
       if (serverCapabilities.getCompletionProvider != null) textDocumentService.completion(params) else null
     } catch {
@@ -169,6 +170,13 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
       case e: Exception => crashed(e)
         null
     } else null
+
+  private def checkStatus: Boolean = wrapper.getStatus == ServerStatus.STARTED
+
+  private def crashed(e: Exception): Unit = {
+    LOG.warn(e)
+    wrapper.crashed(e)
+  }
 
   override def signatureHelp(params: TextDocumentPositionParams): CompletableFuture[SignatureHelp] =
     if (checkStatus) try {
@@ -217,13 +225,6 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
       case e: Exception => crashed(e)
         null
     } else null
-
-  private def checkStatus: Boolean = wrapper.getStatus == ServerStatus.STARTED
-
-  private def crashed(e: Exception): Unit = {
-    LOG.warn(e)
-    wrapper.crashed(e)
-  }
 
   override def onTypeFormatting(params: DocumentOnTypeFormattingParams): CompletableFuture[java.util.List[_ <: TextEdit]] =
     if (checkStatus) try {
@@ -288,4 +289,12 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
       case e: Exception => crashed(e)
         null
     } else null
+
+  override def implementation(params: TextDocumentPositionParams): CompletableFuture[util.List[_ <: Location]] = throw new NotImplementedError()
+
+  override def typeDefinition(params: TextDocumentPositionParams): CompletableFuture[util.List[_ <: Location]] = throw new NotImplementedError()
+
+  override def documentColor(params: DocumentColorParams): CompletableFuture[util.List[ColorInformation]] = throw new NotImplementedError()
+
+  override def colorPresentation(params: ColorPresentationParams): CompletableFuture[util.List[ColorPresentation]] = throw new NotImplementedError()
 }

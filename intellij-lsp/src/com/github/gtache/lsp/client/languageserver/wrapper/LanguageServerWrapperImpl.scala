@@ -255,6 +255,8 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         workspaceClientCapabilities.setExecuteCommand(new ExecuteCommandCapabilities)
         workspaceClientCapabilities.setWorkspaceEdit(new WorkspaceEditCapabilities(true))
         workspaceClientCapabilities.setSymbol(new SymbolCapabilities)
+        workspaceClientCapabilities.setWorkspaceFolders(false)
+        workspaceClientCapabilities.setConfiguration(false)
         val textDocumentClientCapabilities = new TextDocumentClientCapabilities
         textDocumentClientCapabilities.setCodeAction(new CodeActionCapabilities)
         //textDocumentClientCapabilities.setCodeLens(new CodeLensCapabilities)
@@ -265,12 +267,14 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         //textDocumentClientCapabilities.setDocumentSymbol(new DocumentSymbolCapabilities)
         textDocumentClientCapabilities.setFormatting(new FormattingCapabilities)
         textDocumentClientCapabilities.setHover(new HoverCapabilities)
+        //textDocumentClientCapabilities.setImplementation(new ImplementationCapabilities())
         textDocumentClientCapabilities.setOnTypeFormatting(new OnTypeFormattingCapabilities)
         textDocumentClientCapabilities.setRangeFormatting(new RangeFormattingCapabilities)
         textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
         textDocumentClientCapabilities.setRename(new RenameCapabilities)
         textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
         textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, true, true))
+        //textDocumentClientCapabilities.setTypeDefinition(new TypeDefinitionCapabilities())
         initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilities, textDocumentClientCapabilities, null))
         initParams.setInitializationOptions(this.serverDefinition.getInitializationOptions(URI.create(initParams.getRootUri)))
         initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
@@ -372,14 +376,14 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
 
   override def crashed(e: Exception): Unit = {
     crashCount += 1
-    if (crashCount < 5) {
+    if (crashCount < 2) {
       val editors = connectedEditors.clone().toMap.keys
       stop()
       editors.foreach(uri => connect(uri))
     } else {
       removeDefinition()
       if (!alreadyShownCrash) ApplicationUtils.invokeLater(() => if (!alreadyShownCrash) {
-        Messages.showErrorDialog("LanguageServer for definition " + serverDefinition + ", project " + project + " keeps crashing due to \n" + e.getMessage + "\nCheck settings", "LSP Error")
+        Messages.showErrorDialog("LanguageServer for definition " + serverDefinition + ", project " + project + " keeps crashing due to \n" + e.getMessage + "\nCheck settings.", "LSP Error")
         alreadyShownCrash = true
       })
     }
@@ -396,7 +400,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private def removeDefinition(): Unit = {
     stop()
     removeWidget()
-    PluginMain.setExtToServerDefinition(PluginMain.getExtToServerDefinition - serverDefinition.ext) //Remove so that the user isn't disturbed anymore
+    PluginMain.setExtToServerDefinition(PluginMain.getExtToServerDefinition -- serverDefinition.ext.split(LanguageServerDefinition.SPLIT_CHAR)) //Remove so that the user isn't disturbed anymore
   }
 
   private def connect(uri: String): Unit = {

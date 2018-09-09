@@ -9,7 +9,6 @@ import com.intellij.openapi.ui.Messages
 import coursier.ivy.IvyRepository
 import coursier.maven.MavenRepository
 import coursier.{Cache, Dependency, Fetch, Module, Repository, Resolution}
-
 import scalaz.concurrent.Task
 
 /**

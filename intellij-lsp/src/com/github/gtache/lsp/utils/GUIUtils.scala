@@ -1,7 +1,6 @@
 package com.github.gtache.lsp.utils
 
 import java.awt.Point
-import javax.swing.{JComponent, JLabel}
 
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.contributors.icon.{LSPDefaultIconProvider, LSPIconProvider}
@@ -9,6 +8,7 @@ import com.intellij.codeInsight.hint.{HintManager, HintManagerImpl}
 import com.intellij.openapi.editor.Editor
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.ui.{Hint, LightweightHint}
+import javax.swing.{JComponent, JLabel}
 
 /**
   * Various utility methods related to the interface

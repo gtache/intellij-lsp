@@ -70,6 +70,7 @@ object PluginMain {
     val nullDef = newExt.filter(d => d._2 == null)
     val oldServerDef = extToServerDefinition
     extToServerDefinition = newExt.toMap.filter(d => d._2 != null)
+    flattenExt()
     nullDef.foreach(ext => LOG.error("Definition for " + ext + " is null"))
     ApplicationUtils.pool(() => {
       val added = newExt.keys.filter(e => !oldServerDef.contains(e)).toSet
@@ -86,6 +87,15 @@ object PluginMain {
     })
   }
 
+  private def flattenExt(): Unit = {
+    extToServerDefinition = extToServerDefinition.map(p => {
+      val ext = p._1
+      val sDef = p._2
+      val split = ext.split(LanguageServerDefinition.SPLIT_CHAR)
+      split.map(s => (s, sDef))
+    }).flatten.toMap
+  }
+
   /**
     * Called when an editor is opened. Instantiates a LanguageServerWrapper if necessary, and adds the Editor to the Wrapper
     *
@@ -96,6 +106,7 @@ object PluginMain {
       val extensions = LanguageServerDefinition.getAllDefinitions.filter(s => !extToServerDefinition.contains(s.ext))
       LOG.info("Added serverDefinitions " + extensions + " from plugins")
       extToServerDefinition = extToServerDefinition ++ extensions.map(s => (s.ext, s))
+      flattenExt()
       loadedExtensions = true
     }
     val file: VirtualFile = FileDocumentManager.getInstance.getFile(editor.getDocument)
@@ -113,14 +124,15 @@ object PluginMain {
               case null =>
                 LOG.info("Instantiating wrapper for " + ext + " : " + rootUri)
                 wrapper = new LanguageServerWrapperImpl(s, project)
-                extToLanguageWrapper.put((ext, rootUri), wrapper)
+                val exts = s.ext.split(LanguageServerDefinition.SPLIT_CHAR)
+                exts.foreach(ext => extToLanguageWrapper.put((ext, rootUri), wrapper))
                 projectToLanguageWrappers.get(rootUri) match {
                   case Some(set) =>
                     set.add(wrapper)
                   case None =>
                     projectToLanguageWrappers.put(rootUri, mutable.Set(wrapper))
                 }
-              case l: LanguageServerWrapperImpl =>
+              case _: LanguageServerWrapperImpl =>
                 LOG.info("Wrapper already existing for " + ext + " , " + rootUri)
             }
             LOG.info("Adding file " + file.getName)
