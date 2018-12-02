@@ -284,6 +284,17 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
         null
     } else null
 
+  private def checkProvider(provider: jsonrpc.messages.Either[Boolean, StaticRegistrationOptions]): Boolean = {
+    provider != null && ((provider.isLeft && provider.getLeft) || (provider.isRight && provider.getRight != null))
+  }
+
+  private def checkStatus: Boolean = wrapper.getStatus == ServerStatus.STARTED
+
+  private def crashed(e: Exception): Unit = {
+    LOG.warn(e)
+    wrapper.crashed(e)
+  }
+
   override def implementation(params: TextDocumentPositionParams): CompletableFuture[util.List[_ <: Location]] = throw new NotImplementedError()
 
   override def typeDefinition(params: TextDocumentPositionParams): CompletableFuture[util.List[_ <: Location]] = throw new NotImplementedError()
@@ -295,15 +306,4 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
   override def foldingRange(params: FoldingRangeRequestParams): CompletableFuture[util.List[FoldingRange]] = throw new NotImplementedError()
 
   override def semanticHighlighting(params: SemanticHighlightingParams): CompletableFuture[util.List[SemanticHighlightingInformation]] = throw new NotImplementedError()
-
-  private def checkProvider(provider: jsonrpc.messages.Either[Boolean, StaticRegistrationOptions]): Boolean = {
-    provider != null && ((provider.isLeft && provider.getLeft) || (provider.isRight && provider.getRight != null))
-  }
-
-  private def checkStatus: Boolean = wrapper.getStatus == ServerStatus.STARTED
-
-  private def crashed(e: Exception): Unit = {
-    LOG.warn(e)
-    wrapper.crashed(e)
-  }
 }

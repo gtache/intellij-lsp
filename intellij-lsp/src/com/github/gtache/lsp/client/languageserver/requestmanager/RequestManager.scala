@@ -106,6 +106,6 @@ trait RequestManager {
 
   def foldingRange(params: FoldingRangeRequestParams): CompletableFuture[java.util.List[FoldingRange]]
 
-  def semanticHighlighting(params: SemanticHighlightingParams) : CompletableFuture[java.util.List[SemanticHighlightingInformation]]
+  def semanticHighlighting(params: SemanticHighlightingParams): CompletableFuture[java.util.List[SemanticHighlightingInformation]]
 
 }
