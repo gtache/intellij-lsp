@@ -11,7 +11,7 @@ lazy val commonSettings = Seq(
   resourceDirectory in Compile  := baseDirectory.value / "resources",
   resourceDirectory in Test     := baseDirectory.value / "test-resources",
 
-  scalaVersion := "2.12.4",
+  scalaVersion := "2.12.7",
   scalacOptions ++= Seq(
     "-deprecation",
     "-feature",
@@ -49,10 +49,10 @@ lazy val `intellij-lsp` = (project in file("intellij-lsp")).
     ),
 
     libraryDependencies ++= Seq(
-      "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.4.1",
+      "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.6.0",
       "io.get-coursier" %% "coursier" % "1.0.3",
       "io.get-coursier" %% "coursier-cache" % "1.0.3",
-      "com.vladsch.flexmark" % "flexmark" % "0.32.24"
+      "com.vladsch.flexmark" % "flexmark" % "0.34.58"
     ),
   )
 

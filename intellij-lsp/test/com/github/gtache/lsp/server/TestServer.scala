@@ -111,10 +111,6 @@ class TestServer extends LanguageServer with LanguageClientAware with TextDocume
     CompletableFuture.completedFuture(createList(new CodeLens(ranges(1), new Command(commands(0), commands(0)), null)))
   }
 
-  private def createList[T](t: T*): util.List[T] = {
-    t.toIndexedSeq.asJava
-  }
-
   override def documentHighlight(position: TextDocumentPositionParams): CompletableFuture[util.List[_ <: DocumentHighlight]] = {
     CompletableFuture.completedFuture(createList(new DocumentHighlight(ranges(1), DocumentHighlightKind.Read),
       new DocumentHighlight(ranges(4), DocumentHighlightKind.Write),
@@ -133,25 +129,25 @@ class TestServer extends LanguageServer with LanguageClientAware with TextDocume
   override def hover(position: TextDocumentPositionParams): CompletableFuture[Hover] = {
     val uri = position.getTextDocument.getUri
     if (uri.contains("test1")) {
-      CompletableFuture.completedFuture(new Hover(createList(Either.forRight(new MarkedString(null, "**Bold** *Italic*"))).asInstanceOf[util.List[Either[String, MarkedString]]], ranges(1)))
+      CompletableFuture.completedFuture(new Hover(createList(Either.forRight(new MarkedString(null, "**Bold** *Italic*")).asInstanceOf[Either[String, MarkedString]]), ranges(1)))
     } else {
-      CompletableFuture.completedFuture(new Hover(createList(Either.forLeft("This is hover")).asInstanceOf[util.List[Either[String, MarkedString]]]))
+      CompletableFuture.completedFuture(new Hover(createList(Either.forLeft("This is hover").asInstanceOf[Either[String, MarkedString]])))
     }
   }
 
-  override def documentSymbol(params: DocumentSymbolParams): CompletableFuture[util.List[_ <: SymbolInformation]] = {
+  override def documentSymbol(params: DocumentSymbolParams): CompletableFuture[util.List[Either[SymbolInformation, DocumentSymbol]]] = {
     val uri = params.getTextDocument.getUri
     if (uri.contains("test1")) {
       val symbols = Array(
-        new SymbolInformation("SymbA", SymbolKind.Class, new Location(uri, ranges(1))),
-        new SymbolInformation("SymbB", SymbolKind.Enum, new Location(uri, ranges(4)))
+        Either.forLeft(new SymbolInformation("SymbA", SymbolKind.Class, new Location(uri, ranges(1)))).asInstanceOf[Either[SymbolInformation, DocumentSymbol]],
+        Either.forLeft(new SymbolInformation("SymbB", SymbolKind.Enum, new Location(uri, ranges(4)))).asInstanceOf[Either[SymbolInformation, DocumentSymbol]]
       )
       CompletableFuture.completedFuture(symbols.toIndexedSeq.asJava)
     } else {
       val nUri = uris.tail.head
       val symbols = Array(
-        new SymbolInformation("SymbA", SymbolKind.Class, new Location(nUri, ranges(1))),
-        new SymbolInformation("SymbB", SymbolKind.Enum, new Location(nUri, ranges(4)))
+        Either.forLeft(new SymbolInformation("SymbA", SymbolKind.Class, new Location(nUri, ranges(1)))).asInstanceOf[Either[SymbolInformation, DocumentSymbol]],
+        Either.forLeft(new SymbolInformation("SymbB", SymbolKind.Enum, new Location(nUri, ranges(4)))).asInstanceOf[Either[SymbolInformation, DocumentSymbol]]
       )
       CompletableFuture.completedFuture(symbols.toIndexedSeq.asJava)
     }
@@ -172,6 +168,10 @@ class TestServer extends LanguageServer with LanguageClientAware with TextDocume
     } else {
       CompletableFuture.completedFuture(createList(new Location(uris.tail.head, ranges(4))))
     }
+  }
+
+  private def createList[T](t: T*): util.List[T] = {
+    t.toIndexedSeq.asJava
   }
 
   override def resolveCodeLens(unresolved: CodeLens): CompletableFuture[CodeLens] = {
@@ -253,11 +253,12 @@ class TestServer extends LanguageServer with LanguageClientAware with TextDocume
     CompletableFuture.completedFuture(createList(new TextEdit(range, "f" * length)))
   }
 
-  override def codeAction(params: CodeActionParams): CompletableFuture[util.List[_ <: Command]] = {
+  //TODO CodeAction
+  override def codeAction(params: CodeActionParams): CompletableFuture[util.List[Either[Command, CodeAction]]] = {
     if (params.getRange.getEnd.getCharacter < 25 && params.getRange.getEnd.getLine < 1) {
-      CompletableFuture.completedFuture(createList(new Command(commands(0), commands(0))))
+      CompletableFuture.completedFuture(createList(Either.forLeft(new Command(commands(0), commands(0)))))
     } else {
-      CompletableFuture.completedFuture(createList(new Command(commands(1), commands(1)), new Command(commands(2), commands(2))))
+      CompletableFuture.completedFuture(createList(Either.forLeft(new Command(commands(1), commands(1))), Either.forLeft(new Command(commands(2), commands(2)))))
     }
   }
 

@@ -29,22 +29,11 @@ class ProcessStreamConnectionProvider(private var commands: Seq[String], private
 
   protected def createProcessBuilder: ProcessBuilder = {
     import scala.collection.JavaConverters._
-    val builder = new ProcessBuilder(getCommands.asJava)
+    //TODO for cquery, REMOVE
+    val builder = new ProcessBuilder(getCommands.map(s => s.replace("\'", "")).asJava)
     builder.directory(new File(getWorkingDirectory))
     builder.redirectError(ProcessBuilder.Redirect.INHERIT)
     builder
-  }
-
-  protected def getCommands: Seq[String] = commands
-
-  def setCommands(commands: Seq[String]): Unit = {
-    this.commands = commands
-  }
-
-  protected def getWorkingDirectory: String = workingDir
-
-  def setWorkingDirectory(workingDir: String): Unit = {
-    this.workingDir = workingDir
   }
 
   @Nullable override def getInputStream: InputStream = {
@@ -72,5 +61,17 @@ class ProcessStreamConnectionProvider(private var commands: Seq[String], private
 
   override def hashCode: Int = {
     Objects.hashCode(this.getCommands) ^ Objects.hashCode(this.getWorkingDirectory)
+  }
+
+  protected def getCommands: Seq[String] = commands
+
+  def setCommands(commands: Seq[String]): Unit = {
+    this.commands = commands
+  }
+
+  protected def getWorkingDirectory: String = workingDir
+
+  def setWorkingDirectory(workingDir: String): Unit = {
+    this.workingDir = workingDir
   }
 }

@@ -1,5 +1,6 @@
 package com.github.gtache.lsp.client.languageserver.serverdefinition
 
+import com.github.gtache.lsp.utils.Utils
 import com.intellij.openapi.diagnostic.Logger
 
 /**
@@ -40,7 +41,8 @@ object ExeLanguageServerDefinition extends UserConfigurableServerDefinitionObjec
         LOG.warn("Not enough elements to translate into a ServerDefinition : " + arr)
         null
       } else {
-        ExeLanguageServerDefinition(arrTail.head, arrTail.tail.head, if (arrTail.length > 2) arrTail.tail.tail else Array())
+        //TODO for cquery, remove
+        ExeLanguageServerDefinition(arrTail.head, arrTail.tail.head, if (arrTail.length > 2) Utils.parseArgs(arrTail.tail.tail) else Array())
       }
     } else {
       null

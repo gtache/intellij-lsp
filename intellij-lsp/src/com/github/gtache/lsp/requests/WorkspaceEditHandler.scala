@@ -112,15 +112,24 @@ object WorkspaceEditHandler {
         val toApply: scala.collection.mutable.ListBuffer[Runnable] = scala.collection.mutable.ListBuffer()
         if (dChanges != null) {
           dChanges.foreach(edit => {
-            val doc = edit.getTextDocument
-            val version = doc.getVersion
-            val uri = FileUtils.sanitizeURI(doc.getUri)
-            toApply += (EditorEventManager.forUri(uri) match {
-              case Some(manager) =>
-                curProject = manager.editor.getProject
-                manager.getEditsRunnable(version, edit.getEdits.asScala.toList, name)
-              case None => manageUnopenedEditor(edit.getEdits.asScala, uri, version)
-            })
+            if (edit.isLeft) {
+              val textEdit = edit.getLeft
+              val doc = textEdit.getTextDocument
+              val version = doc.getVersion
+              val uri = FileUtils.sanitizeURI(doc.getUri)
+              toApply += (EditorEventManager.forUri(uri) match {
+                case Some(manager) =>
+                  curProject = manager.editor.getProject
+                  manager.getEditsRunnable(version, textEdit.getEdits.asScala.toList, name)
+                case None => manageUnopenedEditor(textEdit.getEdits.asScala, uri, version)
+              })
+            } else if (edit.isRight) {
+              val resourceOp = edit.getRight
+              //TODO
+            } else {
+              LOG.warn("Null edit")
+            }
+
           })
         } else if (changes != null) {
           changes.foreach(edit => {

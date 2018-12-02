@@ -81,6 +81,11 @@ object EditorEventManager {
     uriToManager.get(uri)
   }
 
+  private def prune(): Unit = {
+    editorToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(editorToManager.remove)
+    uriToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(uriToManager.remove)
+  }
+
   /**
     * @param editor An editor
     * @return The manager for the given editor, or None
@@ -88,11 +93,6 @@ object EditorEventManager {
   def forEditor(editor: Editor): Option[EditorEventManager] = {
     prune()
     editorToManager.get(editor)
-  }
-
-  private def prune(): Unit = {
-    editorToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(editorToManager.remove)
-    uriToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(uriToManager.remove)
   }
 
   /**
@@ -264,7 +264,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param element The element which needs the CodeAction
     * @return The list of commands, or null if none are given / the request times out
     */
-  def codeAction(element: LSPPsiElement): Iterable[Command] = {
+  def codeAction(element: LSPPsiElement): Iterable[jsonrpc.messages.Either[Command, CodeAction]] = {
     val params = new CodeActionParams()
     params.setTextDocument(identifier)
     val range = new Range(DocumentUtils.offsetToLSPPos(editor, element.start), DocumentUtils.offsetToLSPPos(editor, element.end))
@@ -630,70 +630,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
-    * Applies the given edits to the document
-    *
-    * @param version    The version of the edits (will be discarded if older than current version)
-    * @param edits      The edits to apply
-    * @param name       The name of the edits (Rename, for example)
-    * @param closeAfter will close the file after edits if set to true
-    * @return True if the edits were applied, false otherwise
-    */
-  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
-    val runnable = getEditsRunnable(version, edits, name)
-    writeAction(() => {
-      if (runnable != null) CommandProcessor.getInstance().executeCommand(project, runnable, name, "LSPPlugin", editor.getDocument)
-      if (closeAfter) {
-        FileEditorManager.getInstance(project)
-          .closeFile(PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument).getVirtualFile)
-      }
-    })
-    if (runnable != null) true else false
-  }
-
-  /**
-    * Returns a Runnable used to apply the given edits and save the document
-    * Used by WorkspaceEditHandler (allows to revert a rename for example)
-    *
-    * @param version The edit version
-    * @param edits   The edits
-    * @param name    The name of the edit
-    * @return The runnable
-    */
-  def getEditsRunnable(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Runnable = {
-    if (version >= this.version) {
-      val document = editor.getDocument
-      if (document.isWritable) {
-        () => {
-          edits.foreach(edit => {
-            val text = edit.getNewText
-            val range = edit.getRange
-            val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
-            val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
-            if (text == "" || text == null) {
-              document.deleteString(start, end)
-            } else if (end - start <= 0) {
-              document.insertString(start, text)
-            } else {
-              document.replaceString(start, end, text)
-            }
-          })
-          saveDocument()
-        }
-      } else {
-        LOG.warn("Document is not writable")
-        null
-      }
-    } else {
-      LOG.warn("Edit version " + version + " is older than current version " + this.version)
-      null
-    }
-  }
-
-  private def saveDocument(): Unit = {
-    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
-  }
-
-  /**
     * Gets references, synchronously
     *
     * @param offset The offset of the element
@@ -793,13 +729,17 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               showReferences(offset)
             } else {
               val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(FileUtils.sanitizeURI(loc.getUri))))
-              val descriptor = new OpenFileDescriptor(project, file)
-              writeAction(() => {
-                val newEditor = FileEditorManager.getInstance(project).openTextEditor(descriptor, true)
-                val startOffset = DocumentUtils.LSPPosToOffset(newEditor, loc.getRange.getStart)
-                newEditor.getCaretModel.getCurrentCaret.moveToOffset(startOffset)
-                newEditor.getSelectionModel.setSelection(startOffset, DocumentUtils.LSPPosToOffset(newEditor, loc.getRange.getEnd))
-              })
+              if (file != null) {
+                val descriptor = new OpenFileDescriptor(project, file)
+                writeAction(() => {
+                  val newEditor = FileEditorManager.getInstance(project).openTextEditor(descriptor, true)
+                  val startOffset = DocumentUtils.LSPPosToOffset(newEditor, loc.getRange.getStart)
+                  newEditor.getCaretModel.getCurrentCaret.moveToOffset(startOffset)
+                  newEditor.getSelectionModel.setSelection(startOffset, DocumentUtils.LSPPosToOffset(newEditor, loc.getRange.getEnd))
+                })
+              } else {
+                LOG.warn("Empty file for " + FileUtils.sanitizeURI(loc.getUri))
+              }
             }
             if (ctrlRange != null) ctrlRange.dispose()
             ctrlRange = null
@@ -1249,6 +1189,70 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           applyEdit(edits = formatting.asScala, name = "Reformat document", closeAfter = closeAfter)))
       }
     })
+  }
+
+  /**
+    * Applies the given edits to the document
+    *
+    * @param version    The version of the edits (will be discarded if older than current version)
+    * @param edits      The edits to apply
+    * @param name       The name of the edits (Rename, for example)
+    * @param closeAfter will close the file after edits if set to true
+    * @return True if the edits were applied, false otherwise
+    */
+  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
+    val runnable = getEditsRunnable(version, edits, name)
+    writeAction(() => {
+      if (runnable != null) CommandProcessor.getInstance().executeCommand(project, runnable, name, "LSPPlugin", editor.getDocument)
+      if (closeAfter) {
+        FileEditorManager.getInstance(project)
+          .closeFile(PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument).getVirtualFile)
+      }
+    })
+    if (runnable != null) true else false
+  }
+
+  /**
+    * Returns a Runnable used to apply the given edits and save the document
+    * Used by WorkspaceEditHandler (allows to revert a rename for example)
+    *
+    * @param version The edit version
+    * @param edits   The edits
+    * @param name    The name of the edit
+    * @return The runnable
+    */
+  def getEditsRunnable(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Runnable = {
+    if (version >= this.version) {
+      val document = editor.getDocument
+      if (document.isWritable) {
+        () => {
+          edits.foreach(edit => {
+            val text = edit.getNewText
+            val range = edit.getRange
+            val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+            val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+            if (text == "" || text == null) {
+              document.deleteString(start, end)
+            } else if (end - start <= 0) {
+              document.insertString(start, text)
+            } else {
+              document.replaceString(start, end, text)
+            }
+          })
+          saveDocument()
+        }
+      } else {
+        LOG.warn("Document is not writable")
+        null
+      }
+    } else {
+      LOG.warn("Edit version " + version + " is older than current version " + this.version)
+      null
+    }
+  }
+
+  private def saveDocument(): Unit = {
+    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
   }
 
   /**

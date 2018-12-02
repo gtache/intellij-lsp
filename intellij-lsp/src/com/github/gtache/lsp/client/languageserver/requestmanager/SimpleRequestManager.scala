@@ -47,13 +47,6 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
     } else null
   }
 
-  private def checkStatus: Boolean = wrapper.getStatus == ServerStatus.STARTED
-
-  private def crashed(e: Exception): Unit = {
-    LOG.warn(e)
-    wrapper.crashed(e)
-  }
-
   override def initialized(params: InitializedParams): Unit =
     if (checkStatus) try {
       server.initialized(params)
@@ -202,7 +195,7 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
         null
     } else null
 
-  override def documentSymbol(params: DocumentSymbolParams): CompletableFuture[java.util.List[_ <: SymbolInformation]] =
+  override def documentSymbol(params: DocumentSymbolParams): CompletableFuture[java.util.List[jsonrpc.messages.Either[SymbolInformation, DocumentSymbol]]] =
     if (checkStatus) try {
       if (serverCapabilities.getDocumentSymbolProvider) textDocumentService.documentSymbol(params) else null
     } catch {
@@ -242,9 +235,9 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
         null
     } else null
 
-  override def codeAction(params: CodeActionParams): CompletableFuture[java.util.List[_ <: Command]] =
+  override def codeAction(params: CodeActionParams): CompletableFuture[java.util.List[jsonrpc.messages.Either[Command, CodeAction]]] =
     if (checkStatus) try {
-      if (serverCapabilities.getCodeActionProvider) textDocumentService.codeAction(params) else null
+      if (checkProvider(serverCapabilities.getCodeActionProvider.asInstanceOf[jsonrpc.messages.Either[Boolean, StaticRegistrationOptions]])) textDocumentService.codeAction(params) else null
     } catch {
       case e: Exception => crashed(e)
         null
@@ -276,7 +269,8 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
 
   override def documentLinkResolve(unresolved: DocumentLink): CompletableFuture[DocumentLink] =
     if (checkStatus) try {
-      if (serverCapabilities.getDocumentLinkProvider != null && serverCapabilities.getDocumentLinkProvider.getResolveProvider) textDocumentService.documentLinkResolve(unresolved) else null
+      if (serverCapabilities.getDocumentLinkProvider != null && serverCapabilities.getDocumentLinkProvider.getResolveProvider)
+        textDocumentService.documentLinkResolve(unresolved) else null
     } catch {
       case e: Exception => crashed(e)
         null
@@ -284,7 +278,7 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
 
   override def rename(params: RenameParams): CompletableFuture[WorkspaceEdit] =
     if (checkStatus) try {
-      if (serverCapabilities.getRenameProvider) textDocumentService.rename(params) else null
+      if (checkProvider(serverCapabilities.getRenameProvider.asInstanceOf[jsonrpc.messages.Either[Boolean, StaticRegistrationOptions]])) textDocumentService.rename(params) else null
     } catch {
       case e: Exception => crashed(e)
         null
@@ -297,4 +291,19 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
   override def documentColor(params: DocumentColorParams): CompletableFuture[util.List[ColorInformation]] = throw new NotImplementedError()
 
   override def colorPresentation(params: ColorPresentationParams): CompletableFuture[util.List[ColorPresentation]] = throw new NotImplementedError()
+
+  override def foldingRange(params: FoldingRangeRequestParams): CompletableFuture[util.List[FoldingRange]] = throw new NotImplementedError()
+
+  override def semanticHighlighting(params: SemanticHighlightingParams): CompletableFuture[util.List[SemanticHighlightingInformation]] = throw new NotImplementedError()
+
+  private def checkProvider(provider: jsonrpc.messages.Either[Boolean, StaticRegistrationOptions]): Boolean = {
+    provider != null && ((provider.isLeft && provider.getLeft) || (provider.isRight && provider.getRight != null))
+  }
+
+  private def checkStatus: Boolean = wrapper.getStatus == ServerStatus.STARTED
+
+  private def crashed(e: Exception): Unit = {
+    LOG.warn(e)
+    wrapper.crashed(e)
+  }
 }
