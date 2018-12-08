@@ -804,8 +804,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 LOG.warn("Empty file for " + FileUtils.sanitizeURI(loc.getUri))
               }
             }
-            if (ctrlRange != null) ctrlRange.dispose()
-            ctrlRange = null
+            invokeLater(() => {
+              if (ctrlRange != null) ctrlRange.dispose()
+              ctrlRange = null
+            })
           }
         })
       }
@@ -1157,7 +1159,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       try {
         val definition = request.get(DEFINITION_TIMEOUT, TimeUnit.MILLISECONDS)
         wrapper.notifySuccess(Timeouts.DEFINITION)
-        if (definition != null && !definition.isEmpty()) {
+        if (definition != null && !definition.isEmpty) {
           definition.get(0)
         } else {
           null
