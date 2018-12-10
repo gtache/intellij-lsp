@@ -174,7 +174,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def characterTyped(c: Char): Unit = {
     if (completionTriggers.contains(c.toString)) {
-      //completion(DocumentUtils.offsetToLSPPos(editor,editor.getCaretModel.getCurrentCaret.getOffset))
+      completion(DocumentUtils.offsetToLSPPos(editor,editor.getCaretModel.getCurrentCaret.getOffset))
     } else if (signatureTriggers.contains(c.toString)) {
       signatureHelp()
     } else if (onTypeFormattingTriggers.contains(c.toString)) {
