@@ -68,6 +68,7 @@ object DocumentUtils {
     * @return The offset
     */
   def LSPPosToOffset(editor: Editor, pos: Position): Int = {
+    LOG.info("LSP pos : "+pos)
     val line = pos.getLine
     val doc = editor.getDocument
     val lineTextForPosition = doc.getText(DocumentUtil.getLineTextRange(doc, line)).substring(0, pos.getCharacter)

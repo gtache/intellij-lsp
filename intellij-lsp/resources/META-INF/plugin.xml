@@ -8,8 +8,11 @@
 
     <change-notes>
         <![CDATA[
+            -Updates to lsp4j 0.6.0
             -Add setting to always send requests
             -Fixes exception when no references found
+            -Improved go to with ctrl-click
+            -Other bugfixes
 ]]>
     </change-notes>
 
