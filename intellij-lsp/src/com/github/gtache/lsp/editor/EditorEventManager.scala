@@ -90,17 +90,17 @@ object EditorEventManager {
     editorToManager.get(editor)
   }
 
-  private def prune(): Unit = {
-    editorToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(editorToManager.remove)
-    uriToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(uriToManager.remove)
-  }
-
   /**
     * Tells the server that all the documents will be saved
     */
   def willSaveAll(): Unit = {
     prune()
     editorToManager.foreach(e => e._2.willSave())
+  }
+
+  private def prune(): Unit = {
+    editorToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(editorToManager.remove)
+    uriToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(uriToManager.remove)
   }
 }
 
@@ -153,6 +153,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     else
       Set[String]()
 
+  private val semanticHighlightingScopes: Seq[Seq[String]] = serverOptions.semanticHighlightingOptions.getScopes.asScala.toList.map(l => l.asScala.toList)
+
   private val project: Project = editor.getProject
   @volatile var needSave = false
   private var hoverThread = new Timer("Hover", true)
@@ -174,7 +176,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def characterTyped(c: Char): Unit = {
     if (completionTriggers.contains(c.toString)) {
-      completion(DocumentUtils.offsetToLSPPos(editor,editor.getCaretModel.getCurrentCaret.getOffset))
+      completion(DocumentUtils.offsetToLSPPos(editor, editor.getCaretModel.getCurrentCaret.getOffset))
     } else if (signatureTriggers.contains(c.toString)) {
       signatureHelp()
     } else if (onTypeFormattingTriggers.contains(c.toString)) {
@@ -217,38 +219,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             case e: TimeoutException =>
               LOG.warn(e)
               wrapper.notifyFailure(Timeouts.SIGNATURE)
-            case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
-              LOG.warn(e)
-              wrapper.crashed(e.asInstanceOf[Exception])
-          }
-        }
-      }
-    })
-  }
-
-  /**
-    * Formats the document when a trigger character is typed
-    *
-    * @param c The trigger character
-    */
-  private def onTypeFormatting(c: String): Unit = {
-    pool(() => {
-      if (!editor.isDisposed) {
-        val params = new DocumentOnTypeFormattingParams()
-        params.setCh(c)
-        params.setPosition(computableReadAction(() => DocumentUtils.logicalToLSPPos(editor.getCaretModel.getCurrentCaret.getLogicalPosition, editor)))
-        params.setTextDocument(identifier)
-        params.setOptions(new FormattingOptions())
-        val future = requestManager.onTypeFormatting(params)
-        if (future != null) {
-          try {
-            val edits = future.get(FORMATTING_TIMEOUT, TimeUnit.MILLISECONDS)
-            wrapper.notifySuccess(Timeouts.FORMATTING)
-            if (edits != null) invokeLater(() => applyEdit(edits = edits.asScala, name = "On type formatting"))
-          } catch {
-            case e: TimeoutException =>
-              LOG.warn(e)
-              wrapper.notifyFailure(Timeouts.FORMATTING)
             case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
               LOG.warn(e)
               wrapper.crashed(e.asInstanceOf[Exception])
@@ -627,70 +597,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       needSave = true
       saveDocument()
     }
-  }
-
-  /**
-    * Applies the given edits to the document
-    *
-    * @param version    The version of the edits (will be discarded if older than current version)
-    * @param edits      The edits to apply
-    * @param name       The name of the edits (Rename, for example)
-    * @param closeAfter will close the file after edits if set to true
-    * @return True if the edits were applied, false otherwise
-    */
-  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
-    val runnable = getEditsRunnable(version, edits, name)
-    writeAction(() => {
-      if (runnable != null) CommandProcessor.getInstance().executeCommand(project, runnable, name, "LSPPlugin", editor.getDocument)
-      if (closeAfter) {
-        FileEditorManager.getInstance(project)
-          .closeFile(PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument).getVirtualFile)
-      }
-    })
-    if (runnable != null) true else false
-  }
-
-  /**
-    * Returns a Runnable used to apply the given edits and save the document
-    * Used by WorkspaceEditHandler (allows to revert a rename for example)
-    *
-    * @param version The edit version
-    * @param edits   The edits
-    * @param name    The name of the edit
-    * @return The runnable
-    */
-  def getEditsRunnable(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Runnable = {
-    if (version >= this.version) {
-      val document = editor.getDocument
-      if (document.isWritable) {
-        () => {
-          edits.foreach(edit => {
-            val text = edit.getNewText
-            val range = edit.getRange
-            val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
-            val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
-            if (text == "" || text == null) {
-              document.deleteString(start, end)
-            } else if (end - start <= 0) {
-              document.insertString(start, text)
-            } else {
-              document.replaceString(start, end, text)
-            }
-          })
-          saveDocument()
-        }
-      } else {
-        LOG.warn("Document is not writable")
-        null
-      }
-    } else {
-      LOG.warn("Edit version " + version + " is older than current version " + this.version)
-      null
-    }
-  }
-
-  private def saveDocument(): Unit = {
-    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
   }
 
   /**
@@ -1256,6 +1162,70 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   /**
+    * Applies the given edits to the document
+    *
+    * @param version    The version of the edits (will be discarded if older than current version)
+    * @param edits      The edits to apply
+    * @param name       The name of the edits (Rename, for example)
+    * @param closeAfter will close the file after edits if set to true
+    * @return True if the edits were applied, false otherwise
+    */
+  def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
+    val runnable = getEditsRunnable(version, edits, name)
+    writeAction(() => {
+      if (runnable != null) CommandProcessor.getInstance().executeCommand(project, runnable, name, "LSPPlugin", editor.getDocument)
+      if (closeAfter) {
+        FileEditorManager.getInstance(project)
+          .closeFile(PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument).getVirtualFile)
+      }
+    })
+    if (runnable != null) true else false
+  }
+
+  /**
+    * Returns a Runnable used to apply the given edits and save the document
+    * Used by WorkspaceEditHandler (allows to revert a rename for example)
+    *
+    * @param version The edit version
+    * @param edits   The edits
+    * @param name    The name of the edit
+    * @return The runnable
+    */
+  def getEditsRunnable(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits"): Runnable = {
+    if (version >= this.version) {
+      val document = editor.getDocument
+      if (document.isWritable) {
+        () => {
+          edits.foreach(edit => {
+            val text = edit.getNewText
+            val range = edit.getRange
+            val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
+            val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+            if (text == "" || text == null) {
+              document.deleteString(start, end)
+            } else if (end - start <= 0) {
+              document.insertString(start, text)
+            } else {
+              document.replaceString(start, end, text)
+            }
+          })
+          saveDocument()
+        }
+      } else {
+        LOG.warn("Document is not writable")
+        null
+      }
+    } else {
+      LOG.warn("Edit version " + version + " is older than current version " + this.version)
+      null
+    }
+  }
+
+  private def saveDocument(): Unit = {
+    invokeLater(() => writeAction(() => FileDocumentManager.getInstance().saveDocument(editor.getDocument)))
+  }
+
+  /**
     * Reformat the text currently selected in the editor
     */
   def reformatSelection(): Unit = {
@@ -1419,6 +1389,51 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def mouseExited(): Unit = {
     mouseInEditor = false
     isCtrlDown = false
+  }
+
+  def semanticHighlighting(lines: Seq[SemanticHighlightingInformation]): Unit = {
+    val (removeHighlighting, addHighlighting) = lines.partition(s => s.getTokens == null || s.getTokens.nonEmpty)
+    removeHighlighting.foreach(l => {
+      val line = l.getLine
+      //Remove highlighting
+    })
+    addHighlighting.foreach(l => {
+      val line = l.getLine
+      val tokens = l.getTokens
+      //Add highlighting
+    })
+  }
+
+  /**
+    * Formats the document when a trigger character is typed
+    *
+    * @param c The trigger character
+    */
+  private def onTypeFormatting(c: String): Unit = {
+    pool(() => {
+      if (!editor.isDisposed) {
+        val params = new DocumentOnTypeFormattingParams()
+        params.setCh(c)
+        params.setPosition(computableReadAction(() => DocumentUtils.logicalToLSPPos(editor.getCaretModel.getCurrentCaret.getLogicalPosition, editor)))
+        params.setTextDocument(identifier)
+        params.setOptions(new FormattingOptions())
+        val future = requestManager.onTypeFormatting(params)
+        if (future != null) {
+          try {
+            val edits = future.get(FORMATTING_TIMEOUT, TimeUnit.MILLISECONDS)
+            wrapper.notifySuccess(Timeouts.FORMATTING)
+            if (edits != null) invokeLater(() => applyEdit(edits = edits.asScala, name = "On type formatting"))
+          } catch {
+            case e: TimeoutException =>
+              LOG.warn(e)
+              wrapper.notifyFailure(Timeouts.FORMATTING)
+            case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
+              LOG.warn(e)
+              wrapper.crashed(e.asInstanceOf[Exception])
+          }
+        }
+      }
+    })
   }
 
   /**

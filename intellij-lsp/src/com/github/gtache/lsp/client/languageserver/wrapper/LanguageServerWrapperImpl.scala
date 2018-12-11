@@ -175,7 +175,9 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
                 val mouseMotionListener = new EditorMouseMotionListenerImpl
                 val documentListener = new DocumentListenerImpl
                 val selectionListener = new SelectionListenerImpl
-                val serverOptions = ServerOptions(syncKind, capabilities.getCompletionProvider, capabilities.getSignatureHelpProvider, capabilities.getCodeLensProvider, capabilities.getDocumentOnTypeFormattingProvider, capabilities.getDocumentLinkProvider, capabilities.getExecuteCommandProvider)
+                val serverOptions = ServerOptions(syncKind, capabilities.getCompletionProvider, capabilities.getSignatureHelpProvider,
+                  capabilities.getCodeLensProvider, capabilities.getDocumentOnTypeFormattingProvider, capabilities.getDocumentLinkProvider,
+                  capabilities.getExecuteCommandProvider, capabilities.getSemanticHighlighting)
                 val manager = new EditorEventManager(editor, mouseListener, mouseMotionListener, documentListener, selectionListener, requestManager, serverOptions, this)
                 mouseListener.setManager(manager)
                 mouseMotionListener.setManager(manager)
@@ -274,7 +276,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         textDocumentClientCapabilities.setRangeFormatting(new RangeFormattingCapabilities)
         textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
         textDocumentClientCapabilities.setRename(new RenameCapabilities)
-        textDocumentClientCapabilities.setSemanticHighlightingCapabilities(new SemanticHighlightingCapabilities(false))
+        textDocumentClientCapabilities.setSemanticHighlightingCapabilities(new SemanticHighlightingCapabilities(true))
         textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
         textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, true, true))
         //textDocumentClientCapabilities.setTypeDefinition(new TypeDefinitionCapabilities)

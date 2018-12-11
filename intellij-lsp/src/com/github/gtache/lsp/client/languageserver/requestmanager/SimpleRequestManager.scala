@@ -37,6 +37,7 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
 
   override def publishDiagnostics(publishDiagnosticsParams: PublishDiagnosticsParams): Unit = client.publishDiagnostics(publishDiagnosticsParams)
 
+  override def semanticHighlighting(params: SemanticHighlightingParams): Unit = client.semanticHighlighting(params)
   //General
   override def initialize(params: InitializeParams): CompletableFuture[InitializeResult] = {
     if (checkStatus) try {
@@ -304,6 +305,4 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
   override def colorPresentation(params: ColorPresentationParams): CompletableFuture[util.List[ColorPresentation]] = throw new NotImplementedError()
 
   override def foldingRange(params: FoldingRangeRequestParams): CompletableFuture[util.List[FoldingRange]] = throw new NotImplementedError()
-
-  override def semanticHighlighting(params: SemanticHighlightingParams): CompletableFuture[util.List[SemanticHighlightingInformation]] = throw new NotImplementedError()
 }
