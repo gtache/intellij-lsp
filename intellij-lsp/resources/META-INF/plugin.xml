@@ -9,10 +9,11 @@
     <change-notes>
         <![CDATA[
             -Updates to lsp4j 0.6.0
-            -Add setting to always send requests
+            -Adds setting to always send requests
             -Fixes exception when no references found
-            -Improved go to with ctrl-click
-            -Other bugfixes
+            -Fixes exception when a position is bigger than the line length
+            -Improves go to with ctrl-click
+            -Fixes missing "Show reformat file dialog" and "Reformat code" texts in the menu
 ]]>
     </change-notes>
 
