@@ -71,9 +71,9 @@
         <action class="com.github.gtache.lsp.actions.LSPQuickDocAction" id="QuickJavaDoc" text="Quick Doc"
                 overrides="true"/> <!-- Overrides quickdoc if possible, otherwise delegates to it -->
         <action class="com.github.gtache.lsp.actions.LSPReformatAction" id="ReformatCode" use-shortcut-of="ReformatCode"
-                overrides="true"/>
+                overrides="true" text="Reformat Code"/>
         <action class="com.github.gtache.lsp.actions.LSPShowReformatDialogAction" id="ShowReformatFileDialog"
-                use-shortcut-of="ShowReformatFileDialog" overrides="true"/>
+                use-shortcut-of="ShowReformatFileDialog" overrides="true" text="Show Reformat File Dialog"/>
         <action class="com.github.gtache.lsp.actions.LSPReferencesAction"
                 id="LSPFindUsages">
             <keyboard-shortcut first-keystroke="shift alt F7" keymap="$default"/>
