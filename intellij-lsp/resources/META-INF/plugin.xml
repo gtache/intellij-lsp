@@ -82,6 +82,12 @@
         <action class="com.github.gtache.lsp.actions.LSPRefactoringAction" id="LSPRefactoringAction">
             <keyboard-shortcut first-keystroke="shift alt F6" keymap="$default"/>
         </action>
+        <action class="com.github.gtache.lsp.actions.LSPLinkToServerAction" id="LSPForceLink"
+                text="Link to LSP server..." description="Forces linking a file with an LSP server">
+            <add-to-group group-id="EditorPopupMenu"/>
+            <add-to-group group-id="EditorTabPopupMenu"/>
+            <keyboard-shortcut first-keystroke="shift alt F8" keymap="$default"/>
+        </action>
     </actions>
 
     <application-components>

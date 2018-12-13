@@ -294,7 +294,8 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         case e@(_: LSPException | _: IOException) =>
           LOG.warn(e)
           ApplicationUtils.invokeLater(() => Messages.showErrorDialog("Can't start server, please check settings\n" + e.getMessage, "LSP Error"))
-          removeDefinition()
+          stop()
+          removeServerWrapper()
       }
     }
   }
@@ -386,7 +387,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       stop()
       editors.foreach(uri => connect(uri))
     } else {
-      removeDefinition()
+      removeServerWrapper()
       if (!alreadyShownCrash) ApplicationUtils.invokeLater(() => if (!alreadyShownCrash) {
         Messages.showErrorDialog("LanguageServer for definition " + serverDefinition + ", project " + project + " keeps crashing due to \n" + e.getMessage + "\nCheck settings.", "LSP Error")
         alreadyShownCrash = true
@@ -402,10 +403,10 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     statusWidget.dispose()
   }
 
-  private def removeDefinition(): Unit = {
+  private def removeServerWrapper(): Unit = {
     stop()
     removeWidget()
-    PluginMain.setExtToServerDefinition(PluginMain.getExtToServerDefinition -- serverDefinition.ext.split(LanguageServerDefinition.SPLIT_CHAR)) //Remove so that the user isn't disturbed anymore
+    PluginMain.removeWrapper(this)
   }
 
   private def connect(uri: String): Unit = {

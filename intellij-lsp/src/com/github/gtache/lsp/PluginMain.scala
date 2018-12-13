@@ -135,7 +135,26 @@ object PluginMain {
     }
   }
 
-  def forcedEditorOpened(editor: Editor, serverDefinition: LanguageServerDefinition, wrapper: LanguageServerWrapper): Unit = {
+  private def addExtensions(): Unit = {
+    if (!loadedExtensions) {
+      val extensions = LanguageServerDefinition.getAllDefinitions.filter(s => !extToServerDefinition.contains(s.ext))
+      LOG.info("Added serverDefinitions " + extensions + " from plugins")
+      extToServerDefinition = extToServerDefinition ++ extensions.map(s => (s.ext, s))
+      flattenExt()
+      loadedExtensions = true
+    }
+  }
+
+  private def flattenExt(): Unit = {
+    extToServerDefinition = extToServerDefinition.map(p => {
+      val ext = p._1
+      val sDef = p._2
+      val split = ext.split(LanguageServerDefinition.SPLIT_CHAR)
+      split.map(s => (s, sDef))
+    }).flatten.toMap
+  }
+
+  def forceEditorOpened(editor: Editor, serverDefinition: LanguageServerDefinition, wrapper: LanguageServerWrapper = null): Unit = {
     addExtensions()
     val file: VirtualFile = FileDocumentManager.getInstance.getFile(editor.getDocument)
     if (file != null) {
@@ -172,25 +191,6 @@ object PluginMain {
   def getExtToServerDefinition: Map[String, LanguageServerDefinition] = {
     addExtensions()
     extToServerDefinition
-  }
-
-  private def addExtensions(): Unit = {
-    if (!loadedExtensions) {
-      val extensions = LanguageServerDefinition.getAllDefinitions.filter(s => !extToServerDefinition.contains(s.ext))
-      LOG.info("Added serverDefinitions " + extensions + " from plugins")
-      extToServerDefinition = extToServerDefinition ++ extensions.map(s => (s.ext, s))
-      flattenExt()
-      loadedExtensions = true
-    }
-  }
-
-  private def flattenExt(): Unit = {
-    extToServerDefinition = extToServerDefinition.map(p => {
-      val ext = p._1
-      val sDef = p._2
-      val split = ext.split(LanguageServerDefinition.SPLIT_CHAR)
-      split.map(s => (s, sDef))
-    }).flatten.toMap
   }
 
   /**
@@ -269,6 +269,11 @@ object PluginMain {
       case None => LOG.info("No wrapper for project " + project.getBasePath)
         Array.empty
     }
+  }
+
+  def removeWrapper(wrapper: LanguageServerWrapper): Unit = {
+    extToLanguageWrapper.remove((wrapper.getServerDefinition.ext, FileUtils.pathToUri(wrapper.getProject.getBasePath)))
+
   }
 }
 
