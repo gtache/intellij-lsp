@@ -9,6 +9,7 @@
     <change-notes>
         <![CDATA[
             -Updates to lsp4j 0.6.0
+            -Adds possibility to manually link files to a specific server
             -Adds setting to always send requests
             -Fixes exception when no references found
             -Fixes exception when a position is bigger than the line length
@@ -86,6 +87,7 @@
                 text="Link to LSP server..." description="Forces linking a file with an LSP server">
             <add-to-group group-id="EditorPopupMenu"/>
             <add-to-group group-id="EditorTabPopupMenu"/>
+            <add-to-group group-id="ProjectViewPopupMenu"/>
             <keyboard-shortcut first-keystroke="shift alt F8" keymap="$default"/>
         </action>
     </actions>
