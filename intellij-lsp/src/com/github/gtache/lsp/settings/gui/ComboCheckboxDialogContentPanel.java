@@ -28,20 +28,20 @@ public class ComboCheckboxDialogContentPanel {
     }
 
     public int getComboBoxIndex() {
-        if (showDetailsCheck.isSelected()) {
+        /*if (showDetailsCheck.isSelected()) {
             final var serverDefSize = serverDefModel.getSize();
             return serverDefSize + serverBox.getSelectedIndex();
-        } else return serverBox.getSelectedIndex();
+        } else */
+        return serverBox.getSelectedIndex();
     }
 
 
     private void setupUI() {
         rootPane = new JPanel();
-        rootPane.setLayout(new GridLayoutManager(5, 3, JBUI.emptyInsets(), -1, -1));
-        showDetailsCheck = new JCheckBox();
+        rootPane.setLayout(new GridLayoutManager(4, 3, JBUI.emptyInsets(), -1, -1));
+        /*showDetailsCheck = new JCheckBox();
         showDetailsCheck.setText("Show servers instances");
         rootPane.add(showDetailsCheck, new GridConstraints(3, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        serverBox = new ComboBox<>(this.serverDefModel);
         showDetailsCheck.addItemListener(e -> {
             final var checkBox = (JCheckBox) e.getItem();
             if (checkBox.isSelected()) {
@@ -49,10 +49,12 @@ public class ComboCheckboxDialogContentPanel {
             } else {
                 serverBox.setModel(serverDefModel);
             }
-        });
+        });*/
+        serverBox = new ComboBox<>(this.serverDefModel);
+
         rootPane.add(serverBox, new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         final Spacer spacer1 = new Spacer();
-        rootPane.add(spacer1, new GridConstraints(4, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1, GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
+        rootPane.add(spacer1, new GridConstraints(3, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1, GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
         final Spacer spacer2 = new Spacer();
         rootPane.add(spacer2, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1, GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
         final Spacer spacer3 = new Spacer();

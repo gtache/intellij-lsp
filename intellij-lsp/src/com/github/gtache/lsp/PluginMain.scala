@@ -33,6 +33,7 @@ object PluginMain {
   private val LOG: Logger = Logger.getInstance(classOf[PluginMain])
   private val extToLanguageWrapper: mutable.Map[(String, String), LanguageServerWrapper] = mutable.HashMap()
   private val projectToLanguageWrappers: mutable.Map[String, mutable.Set[LanguageServerWrapper]] = mutable.HashMap()
+  private val forcedAssociations: mutable.Map[(String, String), LanguageServerWrapper] = mutable.HashMap()
   private var extToServerDefinition: Map[String, LanguageServerDefinition] = HashMap()
   private var loadedExtensions: Boolean = false
 
@@ -110,28 +111,50 @@ object PluginMain {
     }
   }
 
+  def forceEditorOpened(editor: Editor, serverDefinition: LanguageServerDefinition, project: Project): Unit = {
+    addExtensions()
+    val file: VirtualFile = FileDocumentManager.getInstance.getFile(editor.getDocument)
+    if (file != null) {
+      ApplicationUtils.pool(() => {
+        LOG.info("Opened " + file.getName)
+        val wrapper = getWrapperFor(serverDefinition.ext, editor, serverDefinition)
+        forcedAssociations.update((FileUtils.editorToURIString(editor), FileUtils.projectToUri(project)), wrapper)
+        wrapper.connect(editor)
+        LOG.info("Adding file " + file.getName)
+      })
+    } else {
+      LOG.warn("File for editor " + editor.getDocument.getText + " is null")
+    }
+  }
+
   private def getWrapperFor(ext: String, editor: Editor, serverDefinition: LanguageServerDefinition): LanguageServerWrapper = {
     val project: Project = editor.getProject
     val rootPath: String = FileUtils.editorToProjectFolderPath(editor)
     val rootUri: String = FileUtils.pathToUri(rootPath)
-    extToLanguageWrapper.synchronized {
-      var wrapper = extToLanguageWrapper.get((ext, rootUri)).orNull
-      wrapper match {
-        case null =>
-          LOG.info("Instantiating wrapper for " + ext + " : " + rootUri)
-          wrapper = new LanguageServerWrapperImpl(serverDefinition, project)
-          val exts = serverDefinition.ext.split(LanguageServerDefinition.SPLIT_CHAR)
-          exts.foreach(ext => extToLanguageWrapper.put((ext, rootUri), wrapper))
-          projectToLanguageWrappers.get(rootUri) match {
-            case Some(set) =>
-              set.add(wrapper)
-            case None =>
-              projectToLanguageWrappers.put(rootUri, mutable.Set(wrapper))
+    forcedAssociations.synchronized {
+      val wrapper = forcedAssociations.get((FileUtils.editorToURIString(editor), FileUtils.projectToUri(project))).orNull
+      if (wrapper == null) {
+        extToLanguageWrapper.synchronized {
+          var wrapper = extToLanguageWrapper.get((ext, rootUri)).orNull
+          wrapper match {
+            case null =>
+              LOG.info("Instantiating wrapper for " + ext + " : " + rootUri)
+              wrapper = new LanguageServerWrapperImpl(serverDefinition, project)
+              val exts = serverDefinition.ext.split(LanguageServerDefinition.SPLIT_CHAR)
+              exts.foreach(ext => extToLanguageWrapper.put((ext, rootUri), wrapper))
+              extToLanguageWrapper.put((serverDefinition.ext, rootUri), wrapper)
+              projectToLanguageWrappers.get(rootUri) match {
+                case Some(set) =>
+                  set.add(wrapper)
+                case None =>
+                  projectToLanguageWrappers.put(rootUri, mutable.Set(wrapper))
+              }
+            case _: LanguageServerWrapperImpl =>
+              LOG.info("Wrapper already existing for " + ext + " , " + rootUri)
           }
-        case _: LanguageServerWrapperImpl =>
-          LOG.info("Wrapper already existing for " + ext + " , " + rootUri)
-      }
-      wrapper
+          wrapper
+        }
+      } else wrapper
     }
   }
 
@@ -150,27 +173,8 @@ object PluginMain {
       val ext = p._1
       val sDef = p._2
       val split = ext.split(LanguageServerDefinition.SPLIT_CHAR)
-      split.map(s => (s, sDef))
+      split.map(s => (s, sDef)) :+ (ext -> sDef)
     }).flatten.toMap
-  }
-
-  def forceEditorOpened(editor: Editor, serverDefinition: LanguageServerDefinition, wrapper: LanguageServerWrapper = null): Unit = {
-    addExtensions()
-    val file: VirtualFile = FileDocumentManager.getInstance.getFile(editor.getDocument)
-    if (file != null) {
-      ApplicationUtils.pool(() => {
-        LOG.info("Opened " + file.getName)
-        if (wrapper != null) {
-          wrapper.connect(editor)
-        } else {
-          val newWrapper = getWrapperFor(file.getCanonicalPath, editor, serverDefinition)
-          newWrapper.connect(editor)
-          LOG.info("Adding file " + file.getName)
-        }
-      })
-    } else {
-      LOG.warn("File for editor " + editor.getDocument.getText + " is null")
-    }
   }
 
   /**
@@ -199,24 +203,12 @@ object PluginMain {
     * @param editor the editor.
     */
   def editorClosed(editor: Editor): Unit = {
-    val file: VirtualFile = FileDocumentManager.getInstance.getFile(editor.getDocument)
-    if (file != null) {
-      val ext: String = file.getExtension
-      extToServerDefinition.get(ext) match {
-        case Some(_) =>
-          val uri = FileUtils.editorToURIString(editor)
-          ApplicationUtils.pool(() => {
-            LanguageServerWrapperImpl.forUri(uri).foreach(l => {
-              LOG.info("Disconnecting " + uri)
-              l.disconnect(uri)
-            })
-          })
-        case None =>
-          LOG.info("Closing LSP-unsupported file with extension " + ext)
-      }
-    } else {
-      LOG.warn("File for document " + editor.getDocument.getText + " is null")
-    }
+    ApplicationUtils.pool(() => {
+      LanguageServerWrapperImpl.forEditor(editor).foreach(l => {
+        LOG.info("Disconnecting " + FileUtils.editorToURIString(editor))
+        l.disconnect(editor)
+      })
+    })
   }
 
 

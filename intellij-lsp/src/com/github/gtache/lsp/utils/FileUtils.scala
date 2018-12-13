@@ -32,12 +32,12 @@ object FileUtils {
     editorFromVirtualFile(psiFile.getVirtualFile, psiFile.getProject)
   }
 
-  def editorFromVirtualFile(file: VirtualFile, project: Project): Editor = {
-    FileEditorManager.getInstance(project).getAllEditors(file).collectFirst { case t: TextEditor => t.getEditor }.orNull
-  }
-
   def editorFromUri(uri: String, project: Project): Editor = {
     editorFromVirtualFile(virtualFileFromURI(uri), project)
+  }
+
+  def editorFromVirtualFile(file: VirtualFile, project: Project): Editor = {
+    FileEditorManager.getInstance(project).getAllEditors(file).collectFirst { case t: TextEditor => t.getEditor }.orNull
   }
 
   def virtualFileFromURI(uri: String): VirtualFile = {
@@ -92,6 +92,45 @@ object FileUtils {
   }
 
   /**
+    * Transforms an URI string into a VFS file
+    *
+    * @param uri The uri
+    * @return The virtual file
+    */
+  def URIToVFS(uri: String): VirtualFile = {
+    val res = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
+    res
+  }
+
+  /**
+    * Returns the project base dir uri given an editor
+    *
+    * @param editor The editor
+    * @return The project whose the editor belongs
+    */
+  def editorToProjectFolderUri(editor: Editor): String = {
+    pathToUri(editorToProjectFolderPath(editor))
+  }
+
+  def editorToProjectFolderPath(editor: Editor): String = {
+    new File(editor.getProject.getBasePath).getAbsolutePath
+  }
+
+  def projectToUri(project: Project): String = {
+    pathToUri(new File(project.getBasePath).getAbsolutePath)
+  }
+
+  /**
+    * Transforms a path into an URI string
+    *
+    * @param path The path
+    * @return The uri
+    */
+  def pathToUri(path: String): String = {
+    sanitizeURI(new File(path.replace(" ", SPACE_ENCODED)).toURI.toString)
+  }
+
+  /**
     * Fixes common problems in uri, mainly related to Windows
     *
     * @param uri The uri to sanitize
@@ -124,41 +163,6 @@ object FileUtils {
       }
 
     }
-  }
-
-  /**
-    * Transforms an URI string into a VFS file
-    *
-    * @param uri The uri
-    * @return The virtual file
-    */
-  def URIToVFS(uri: String): VirtualFile = {
-    val res = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
-    res
-  }
-
-  /**
-    * Returns the project base dir uri given an editor
-    *
-    * @param editor The editor
-    * @return The project whose the editor belongs
-    */
-  def editorToProjectFolderUri(editor: Editor): String = {
-    pathToUri(editorToProjectFolderPath(editor))
-  }
-
-  def editorToProjectFolderPath(editor: Editor): String = {
-    new File(editor.getProject.getBasePath).getAbsolutePath
-  }
-
-  /**
-    * Transforms a path into an URI string
-    *
-    * @param path The path
-    * @return The uri
-    */
-  def pathToUri(path: String): String = {
-    sanitizeURI(new File(path.replace(" ", SPACE_ENCODED)).toURI.toString)
   }
 
   def documentToUri(document: Document): String = {
