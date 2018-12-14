@@ -11,10 +11,12 @@
             -Updates to lsp4j 0.6.0
             -Adds possibility to manually link files to a specific server
             -Adds setting to always send requests
+            -Improves go to with ctrl-click
             -Fixes exception when no references found
             -Fixes exception when a position is bigger than the line length
-            -Improves go to with ctrl-click
             -Fixes missing "Show reformat file dialog" and "Reformat code" texts in the menu
+            -Fixes closing an editor while server is starting not being registered
+            -Better handling of opened editors at startup
 ]]>
     </change-notes>
 

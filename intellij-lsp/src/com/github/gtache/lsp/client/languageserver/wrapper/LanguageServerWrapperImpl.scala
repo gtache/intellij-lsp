@@ -60,6 +60,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   import LanguageServerWrapperImpl._
   import ServerStatus._
 
+  private val toConnect : mutable.Set[Editor] = mutable.Set()
   private val rootPath = project.getBasePath
   private val connectedEditors: mutable.Map[String, EditorEventManager] = mutable.HashMap()
   private val LOG: Logger = Logger.getInstance(classOf[LanguageServerWrapperImpl])
@@ -157,49 +158,61 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     */
   @throws[IOException]
   def connect(editor: Editor): Unit = {
-    val uri = FileUtils.editorToURIString(editor)
-    if (!this.connectedEditors.contains(uri)) {
-      start()
-      if (this.initializeFuture != null && editor != null) {
-        val capabilities = getServerCapabilities
-        if (capabilities != null) {
-          initializeFuture.thenRun(() => {
-            if (!this.connectedEditors.contains(uri)) {
-              try {
-                val syncOptions: Either[TextDocumentSyncKind, TextDocumentSyncOptions] = if (capabilities == null) null else capabilities.getTextDocumentSync
-                var syncKind: TextDocumentSyncKind = null
-                if (syncOptions != null) {
-                  if (syncOptions.isRight) syncKind = syncOptions.getRight.getChange
-                  else if (syncOptions.isLeft) syncKind = syncOptions.getLeft
-                  val mouseListener = new EditorMouseListenerImpl
-                  val mouseMotionListener = new EditorMouseMotionListenerImpl
-                  val documentListener = new DocumentListenerImpl
-                  val selectionListener = new SelectionListenerImpl
-                  val serverOptions = ServerOptions(syncKind, capabilities.getCompletionProvider, capabilities.getSignatureHelpProvider,
-                    capabilities.getCodeLensProvider, capabilities.getDocumentOnTypeFormattingProvider, capabilities.getDocumentLinkProvider,
-                    capabilities.getExecuteCommandProvider, capabilities.getSemanticHighlighting)
-                  val manager = new EditorEventManager(editor, mouseListener, mouseMotionListener, documentListener, selectionListener, requestManager, serverOptions, this)
-                  mouseListener.setManager(manager)
-                  mouseMotionListener.setManager(manager)
-                  documentListener.setManager(manager)
-                  selectionListener.setManager(manager)
-                  manager.registerListeners()
-                  this.connectedEditors.put(uri, manager)
-                  uriToLanguageServerWrapper.put((uri, FileUtils.editorToProjectFolderUri(editor)), this)
-                  manager.documentOpened()
-                  LOG.info("Created a manager for " + uri)
+    if (editor==null){
+      LOG.warn("editor is null for " + serverDefinition)
+    } else {
+      val uri = FileUtils.editorToURIString(editor)
+      uriToLanguageServerWrapper.synchronized {
+        uriToLanguageServerWrapper.put((uri, FileUtils.editorToProjectFolderUri(editor)), this)
+      }
+      if (!this.connectedEditors.contains(uri)) {
+        start()
+        if (this.initializeFuture != null) {
+          val capabilities = getServerCapabilities
+          if (capabilities != null) {
+            initializeFuture.thenRun(() => {
+              if (!this.connectedEditors.contains(uri)) {
+                try {
+                  val syncOptions: Either[TextDocumentSyncKind, TextDocumentSyncOptions] = if (capabilities == null) null else capabilities.getTextDocumentSync
+                  var syncKind: TextDocumentSyncKind = null
+                  if (syncOptions != null) {
+                    if (syncOptions.isRight) syncKind = syncOptions.getRight.getChange
+                    else if (syncOptions.isLeft) syncKind = syncOptions.getLeft
+                    val mouseListener = new EditorMouseListenerImpl
+                    val mouseMotionListener = new EditorMouseMotionListenerImpl
+                    val documentListener = new DocumentListenerImpl
+                    val selectionListener = new SelectionListenerImpl
+                    val serverOptions = ServerOptions(syncKind, capabilities.getCompletionProvider, capabilities.getSignatureHelpProvider,
+                      capabilities.getCodeLensProvider, capabilities.getDocumentOnTypeFormattingProvider, capabilities.getDocumentLinkProvider,
+                      capabilities.getExecuteCommandProvider, capabilities.getSemanticHighlighting)
+                    val manager = new EditorEventManager(editor, mouseListener, mouseMotionListener, documentListener, selectionListener, requestManager, serverOptions, this)
+                    mouseListener.setManager(manager)
+                    mouseMotionListener.setManager(manager)
+                    documentListener.setManager(manager)
+                    selectionListener.setManager(manager)
+                    manager.registerListeners()
+                    this.connectedEditors.synchronized {
+                      this.connectedEditors.put(uri, manager)
+                    }
+                    manager.documentOpened()
+                    LOG.info("Created a manager for " + uri)
+                    toConnect.remove(editor)
+                    toConnect.foreach(e => connect(e))
+                  }
+                } catch {
+                  case e: Exception => LOG.error(e)
                 }
-              } catch {
-                case e: Exception => LOG.error(e)
               }
-            }
 
-          })
+            })
+          } else {
+            LOG.warn("Capabilities are null for " + serverDefinition)
+          }
         } else {
-          LOG.warn("Capabilities are null for " + serverDefinition)
+          toConnect.synchronized {
+            toConnect.add(editor)
+          }
         }
-      } else {
-        LOG.warn(if (editor == null) "editor is null for " + serverDefinition else "initializeFuture is null for " + serverDefinition)
       }
     }
   }
@@ -210,11 +223,15 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     * @param uri The uri of the editor
     */
   def disconnect(uri: String): Unit = {
-    this.connectedEditors.remove(uri).foreach({ e =>
-      uriToLanguageServerWrapper.remove((uri, FileUtils.projectToUri(project)))
-      e.removeListeners()
-      e.documentClosed()
-    })
+    this.connectedEditors.synchronized {
+      uriToLanguageServerWrapper.synchronized {
+        this.connectedEditors.remove(uri).foreach({ e =>
+          uriToLanguageServerWrapper.remove((uri, FileUtils.projectToUri(project)))
+          e.removeListeners()
+          e.documentClosed()
+        })
+      }
+    }
 
     if (this.connectedEditors.isEmpty) stop()
   }
@@ -243,11 +260,6 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     connectedEditors.foreach(e => disconnect(e._1))
     this.languageServer = null
     setStatus(STOPPED)
-  }
-
-  private def setStatus(status: ServerStatus): Unit = {
-    this.status = status
-    statusWidget.setStatus(status)
   }
 
   /**
@@ -380,6 +392,11 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   override def getProject: Project = project
 
   override def getStatus: ServerStatus = status
+
+  private def setStatus(status: ServerStatus): Unit = {
+    this.status = status
+    statusWidget.setStatus(status)
+  }
 
   override def crashed(e: Exception): Unit = {
     crashCount += 1

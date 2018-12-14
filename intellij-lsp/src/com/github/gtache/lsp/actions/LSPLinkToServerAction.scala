@@ -10,7 +10,7 @@ import com.github.gtache.lsp.utils.ApplicationUtils.computableWriteAction
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.openapi.actionSystem.{ActionPlaces, AnActionEvent, CommonDataKeys}
 import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.fileEditor.{FileEditorManager, OpenFileDescriptor}
+import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, OpenFileDescriptor}
 import com.intellij.openapi.project.{DumbAwareAction, Project}
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -37,7 +37,7 @@ class LSPLinkToServerAction extends DumbAwareAction {
     editors = allEditors._1 ++ allEditors._2
     val alreadyConnected = allEditors._2
     if (alreadyConnected.nonEmpty) {
-      Messages.showWarningDialog(project, "Editor(s) " + alreadyConnected.map(e => FileUtils.editorToURIString(e)).mkString("\n") + " already connected to a Language Server, will be overwritten", "Trying to connect an already connected editor")
+      Messages.showWarningDialog(project, "Editor(s) " + alreadyConnected.map(e => FileDocumentManager.getInstance().getFile(e.getDocument).getName).mkString("\n") + " already connected to servers with ext " + alreadyConnected.map(e => LanguageServerWrapperImpl.forEditor(e).get.getServerDefinition.ext.toString).mkString(",") + ", will be overwritten", "Trying to connect an already connected editor")
     }
     if (editors.nonEmpty) {
       import scala.collection.JavaConverters._

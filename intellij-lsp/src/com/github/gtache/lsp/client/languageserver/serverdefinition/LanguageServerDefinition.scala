@@ -32,6 +32,10 @@ object LanguageServerDefinition {
       LOG.warn("Trying to add a null definition")
     }
   }
+
+  def fromArray(arr : Array[String]): LanguageServerDefinition = {
+    UserConfigurableServerDefinition.fromArray(arr)
+  }
 }
 
 /**
@@ -125,5 +129,11 @@ trait LanguageServerDefinition {
     * @return The stream connection provider
     */
   protected def createConnectionProvider(workingDir: String): StreamConnectionProvider
+
+
+  /**
+    * @return The array corresponding to the server definition
+    */
+  def toArray: Array[String] = throw new NotImplementedError()
 
 }
