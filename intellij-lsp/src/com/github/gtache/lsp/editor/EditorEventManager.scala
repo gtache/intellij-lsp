@@ -804,10 +804,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 LOG.warn("Empty file for " + FileUtils.sanitizeURI(loc.getUri))
               }
             }
-            invokeLater(() => {
-              if (ctrlRange != null) ctrlRange.dispose()
-              ctrlRange = null
-            })
+            if (ctrlRange != null) ctrlRange.dispose()
+            ctrlRange = null
           }
         })
       }
@@ -1138,10 +1136,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val startOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getStart)
         val endOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getEnd)
         val isDefinition = DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) == startOffset
-        if (ctrlRange != null) ctrlRange.dispose()
-        ctrlRange = CtrlRangeMarker(loc, editor,
-          if (!isDefinition) editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.HYPERLINK, editor.getColorsScheme.getAttributes(EditorColors.REFERENCE_HYPERLINK_COLOR), HighlighterTargetArea.EXACT_RANGE)
-          else null)
+        invokeLater(()=> {
+          if (ctrlRange != null) ctrlRange.dispose()
+          ctrlRange = CtrlRangeMarker(loc, editor,
+            if (!isDefinition) editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.HYPERLINK, editor.getColorsScheme.getAttributes(EditorColors.REFERENCE_HYPERLINK_COLOR), HighlighterTargetArea.EXACT_RANGE)
+            else null)
+        })
       }
     }
   }
