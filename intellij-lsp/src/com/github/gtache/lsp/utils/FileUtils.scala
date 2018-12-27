@@ -32,12 +32,12 @@ object FileUtils {
     editorFromVirtualFile(psiFile.getVirtualFile, psiFile.getProject)
   }
 
-  def editorFromVirtualFile(file: VirtualFile, project: Project): Editor = {
-    FileEditorManager.getInstance(project).getAllEditors(file).collectFirst { case t: TextEditor => t.getEditor }.orNull
-  }
-
   def editorFromUri(uri: String, project: Project): Editor = {
     editorFromVirtualFile(virtualFileFromURI(uri), project)
+  }
+
+  def editorFromVirtualFile(file: VirtualFile, project: Project): Editor = {
+    FileEditorManager.getInstance(project).getAllEditors(file).collectFirst { case t: TextEditor => t.getEditor }.orNull
   }
 
   def virtualFileFromURI(uri: String): VirtualFile = {
@@ -98,32 +98,34 @@ object FileUtils {
     * @return The sanitized uri
     */
   def sanitizeURI(uri: String): String = {
-    val reconstructed: StringBuilder = StringBuilder.newBuilder
-    var uriCp = new String(uri).replace(" ", SPACE_ENCODED) //Don't trust servers
-    if (!uri.startsWith(URI_FILE_BEGIN)) {
-      LOG.warn("Malformed uri : " + uri)
-      uri //Probably not an uri
-    } else {
-      uriCp = uriCp.drop(URI_FILE_BEGIN.length).dropWhile(c => c == URI_PATH_SEP)
-      reconstructed.append(URI_VALID_FILE_BEGIN)
-      if (os == OS.UNIX) {
-        reconstructed.append(uriCp).toString()
+    if (uri != null) {
+      val reconstructed: StringBuilder = StringBuilder.newBuilder
+      var uriCp = new String(uri).replace(" ", SPACE_ENCODED) //Don't trust servers
+      if (!uri.startsWith(URI_FILE_BEGIN)) {
+        LOG.warn("Malformed uri : " + uri)
+        uri //Probably not an uri
       } else {
-        reconstructed.append(uriCp.takeWhile(c => c != URI_PATH_SEP))
-        val driveLetter = reconstructed.charAt(URI_VALID_FILE_BEGIN.length)
-        if (driveLetter.isLower) {
-          reconstructed.setCharAt(URI_VALID_FILE_BEGIN.length, driveLetter.toUpper)
+        uriCp = uriCp.drop(URI_FILE_BEGIN.length).dropWhile(c => c == URI_PATH_SEP)
+        reconstructed.append(URI_VALID_FILE_BEGIN)
+        if (os == OS.UNIX) {
+          reconstructed.append(uriCp).toString()
+        } else {
+          reconstructed.append(uriCp.takeWhile(c => c != URI_PATH_SEP))
+          val driveLetter = reconstructed.charAt(URI_VALID_FILE_BEGIN.length)
+          if (driveLetter.isLower) {
+            reconstructed.setCharAt(URI_VALID_FILE_BEGIN.length, driveLetter.toUpper)
+          }
+          if (reconstructed.endsWith(COLON_ENCODED)) {
+            reconstructed.delete(reconstructed.length - 3, reconstructed.length)
+          }
+          if (!reconstructed.endsWith(":")) {
+            reconstructed.append(":")
+          }
+          reconstructed.append(uriCp.dropWhile(c => c != URI_PATH_SEP)).toString()
         }
-        if (reconstructed.endsWith(COLON_ENCODED)) {
-          reconstructed.delete(reconstructed.length - 3, reconstructed.length)
-        }
-        if (!reconstructed.endsWith(":")) {
-          reconstructed.append(":")
-        }
-        reconstructed.append(uriCp.dropWhile(c => c != URI_PATH_SEP)).toString()
-      }
 
-    }
+      }
+    } else null
   }
 
   /**
@@ -159,6 +161,10 @@ object FileUtils {
     */
   def pathToUri(path: String): String = {
     sanitizeURI(new File(path.replace(" ", SPACE_ENCODED)).toURI.toString)
+  }
+
+  def projectToUri(project: Project): String = {
+    pathToUri(new File(project.getBasePath).getAbsolutePath)
   }
 
   def documentToUri(document: Document): String = {

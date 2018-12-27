@@ -7,6 +7,7 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.util.DocumentUtil
 import org.eclipse.lsp4j.Position
+
 import scala.math.min
 
 /**
@@ -75,7 +76,6 @@ object DocumentUtils {
     */
   def LSPPosToOffset(editor: Editor, pos: Position): Int = {
     computableReadAction(() => {
-      LOG.info("LSP pos : "+pos)
       val line = pos.getLine
       val doc = editor.getDocument
       val lineText = doc.getText(DocumentUtil.getLineTextRange(doc, line))
@@ -84,6 +84,9 @@ object DocumentUtils {
       val tabSize = editor.getSettings.getTabSize(editor.getProject)
       val column = tabs * tabSize + lineTextForPosition.length - tabs
       val offset = editor.logicalPositionToOffset(new LogicalPosition(line, column))
+      if (pos.getCharacter >= lineText.length) {
+        LOG.warn("LSPPOS outofbounds : " + pos + " line : " + lineText + " column : " + column + " offset : " + offset)
+      }
       val docLength = doc.getTextLength
       if (offset > docLength) {
         LOG.warn("Offset greater than text length : " + offset + " > " + docLength)

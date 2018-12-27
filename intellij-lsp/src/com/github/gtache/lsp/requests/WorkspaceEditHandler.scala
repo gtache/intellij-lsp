@@ -11,7 +11,7 @@ import com.intellij.openapi.command.{CommandProcessor, UndoConfirmationPolicy}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.{FileEditorManager, OpenFileDescriptor}
-import com.intellij.openapi.project.{Project, ProjectManager}
+import com.intellij.openapi.project.{Project, ProjectManager, ProjectUtil}
 import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
 import com.intellij.psi.PsiElement
 import com.intellij.refactoring.listeners.RefactoringElementListener
@@ -86,7 +86,7 @@ object WorkspaceEditHandler {
         def manageUnopenedEditor(edits: Iterable[TextEdit], uri: String, version: Int = Int.MaxValue): Runnable = {
           val projects = ProjectManager.getInstance().getOpenProjects
           val project = projects //Infer the project from the uri
-            .map(p => (FileUtils.VFSToURI(p.getBaseDir), p))
+            .map(p => (FileUtils.VFSToURI(ProjectUtil.guessProjectDir(p)), p))
             .filter(p => uri.startsWith(p._1))
             .sortBy(s => s._1.length).reverse
             .map(p => p._2)

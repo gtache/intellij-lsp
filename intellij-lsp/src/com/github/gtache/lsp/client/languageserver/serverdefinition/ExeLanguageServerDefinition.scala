@@ -38,7 +38,7 @@ object ExeLanguageServerDefinition extends UserConfigurableServerDefinitionObjec
     if (arr.head == typ) {
       val arrTail = arr.tail
       if (arrTail.length < 2) {
-        LOG.warn("Not enough elements to translate into a ServerDefinition : " + arr)
+        LOG.warn("Not enough elements to translate into a ServerDefinition : " + arr.mkString(" ; "))
         null
       } else {
         //TODO for cquery, remove

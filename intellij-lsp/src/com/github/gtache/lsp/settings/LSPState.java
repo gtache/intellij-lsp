@@ -13,6 +13,7 @@ import com.intellij.openapi.components.Storage;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.util.xmlb.XmlSerializerUtil;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -31,13 +32,21 @@ public final class LSPState implements PersistentStateComponent<LSPState> {
     public Map<String, String[]> extToServ = new LinkedHashMap<>(10);
     public Map<Timeouts, Integer> timeouts = new EnumMap<>(Timeouts.class);
     public List<String> coursierResolvers = new ArrayList<>(5);
+    public Map<String[], String[]> forcedAssociations = new HashMap<>(10);
 
     public LSPState() {
     }
 
     @Nullable
     public static LSPState getInstance() {
-        return ServiceManager.getService(LSPState.class);
+        try {
+            return ServiceManager.getService(LSPState.class);
+        } catch (final Exception e) {
+            LOG.warn("Couldn't load LSPState");
+            LOG.warn(e);
+            ApplicationUtils$.MODULE$.invokeLater(() -> Messages.showErrorDialog("Couldn't load LSP settings, you will need to reconfigure them.", "LSP plugin"));
+            return null;
+        }
     }
 
     public List<String> getCoursierResolvers() {
@@ -72,13 +81,21 @@ public final class LSPState implements PersistentStateComponent<LSPState> {
         this.timeouts = new EnumMap<>(timeouts);
     }
 
+    public Map<String[], String[]> getForcedAssociations() {
+        return forcedAssociations;
+    }
+
+    public void setForcedAssociations(final Map<String[], String[]> forcedAssociations) {
+        this.forcedAssociations = new HashMap<>(forcedAssociations);
+    }
+
     @Override
     public LSPState getState() {
         return this;
     }
 
     @Override
-    public void loadState(final LSPState lspState) {
+    public void loadState(@NotNull final LSPState lspState) {
         try {
             XmlSerializerUtil.copyBean(lspState, this);
             LOG.info("LSP State loaded");
@@ -88,7 +105,10 @@ public final class LSPState implements PersistentStateComponent<LSPState> {
             if (timeouts != null && !timeouts.isEmpty()) {
                 Timeout.setTimeouts(timeouts);
             }
-        } catch (Exception e) {
+            if (forcedAssociations != null && !forcedAssociations.isEmpty()) {
+                PluginMain.setForcedAssociations(forcedAssociations);
+            }
+        } catch (final Exception e) {
             LOG.warn("Couldn't load LSPState");
             LOG.warn(e);
             ApplicationUtils$.MODULE$.invokeLater(() -> Messages.showErrorDialog("Couldn't load LSP settings, you will need to reconfigure them.", "LSP plugin"));

@@ -9,10 +9,17 @@
     <change-notes>
         <![CDATA[
             -Updates to lsp4j 0.6.0
-            -Add setting to always send requests
+            -Adds possibility to manually link files to a specific server
+            -Adds setting to always send requests
+            -Improves go to with ctrl-click
+            -Fixes Find Usages with ctrl-click
             -Fixes exception when no references found
-            -Improved go to with ctrl-click
-            -Other bugfixes
+            -Fixes exception when a position is bigger than the line length
+            -Fixes missing "Show reformat file dialog" and "Reformat code" texts in the menu
+            -Fixes closing an editor while server is starting not being registered
+            -Fixes mix of plain text and markup for hover being displayed incorrectly
+            -Better handling of opened editors at startup
+            -Potential fix for diagnostic highlights not being cleared
 ]]>
     </change-notes>
 
@@ -71,15 +78,22 @@
         <action class="com.github.gtache.lsp.actions.LSPQuickDocAction" id="QuickJavaDoc" text="Quick Doc"
                 overrides="true"/> <!-- Overrides quickdoc if possible, otherwise delegates to it -->
         <action class="com.github.gtache.lsp.actions.LSPReformatAction" id="ReformatCode" use-shortcut-of="ReformatCode"
-                overrides="true"/>
+                overrides="true" text="Reformat Code"/>
         <action class="com.github.gtache.lsp.actions.LSPShowReformatDialogAction" id="ShowReformatFileDialog"
-                use-shortcut-of="ShowReformatFileDialog" overrides="true"/>
+                use-shortcut-of="ShowReformatFileDialog" overrides="true" text="Show Reformat File Dialog"/>
         <action class="com.github.gtache.lsp.actions.LSPReferencesAction"
                 id="LSPFindUsages">
             <keyboard-shortcut first-keystroke="shift alt F7" keymap="$default"/>
         </action>
         <action class="com.github.gtache.lsp.actions.LSPRefactoringAction" id="LSPRefactoringAction">
             <keyboard-shortcut first-keystroke="shift alt F6" keymap="$default"/>
+        </action>
+        <action class="com.github.gtache.lsp.actions.LSPLinkToServerAction" id="LSPForceLink"
+                text="Link to LSP server..." description="Forces linking a file with an LSP server">
+            <add-to-group group-id="EditorPopupMenu"/>
+            <add-to-group group-id="EditorTabPopupMenu"/>
+            <add-to-group group-id="ProjectViewPopupMenu"/>
+            <keyboard-shortcut first-keystroke="shift alt F8" keymap="$default"/>
         </action>
     </actions>
 
