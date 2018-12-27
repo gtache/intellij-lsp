@@ -83,6 +83,11 @@ object EditorEventManager {
     uriToManager.get(uri)
   }
 
+  private def prune(): Unit = {
+    editorToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(editorToManager.remove)
+    uriToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(uriToManager.remove)
+  }
+
   /**
     * @param editor An editor
     * @return The manager for the given editor, or None
@@ -90,11 +95,6 @@ object EditorEventManager {
   def forEditor(editor: Editor): Option[EditorEventManager] = {
     prune()
     editorToManager.get(editor)
-  }
-
-  private def prune(): Unit = {
-    editorToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(editorToManager.remove)
-    uriToManager.filter(e => !e._2.wrapper.isActive).keys.foreach(uriToManager.remove)
   }
 
   /**
@@ -194,7 +194,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def signatureHelp(): Unit = {
     val lPos = editor.getCaretModel.getCurrentCaret.getLogicalPosition
     val point = editor.logicalPositionToXY(lPos)
-    val params = new TextDocumentPositionParams(identifier, computableReadAction(() => DocumentUtils.logicalToLSPPos(lPos, editor)))
+    val params = new TextDocumentPositionParams(identifier, DocumentUtils.logicalToLSPPos(lPos, editor))
     pool(() => {
       if (!editor.isDisposed) {
         val future = requestManager.signatureHelp(params)
@@ -436,7 +436,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           val source = diagnostic.getSource
           val range = diagnostic.getRange
           val severity = diagnostic.getSeverity
-          val (start, end) = computableReadAction(() => (DocumentUtils.LSPPosToOffset(editor, range.getStart), DocumentUtils.LSPPosToOffset(editor, range.getEnd)))
+          val (start, end) = (DocumentUtils.LSPPosToOffset(editor, range.getStart), DocumentUtils.LSPPosToOffset(editor, range.getEnd))
 
           val markupModel = editor.getMarkupModel
           val colorScheme = editor.getColorsScheme
@@ -627,7 +627,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         if (references != null) {
           references.asScala.collect {
             case l: Location if FileUtils.sanitizeURI(l.getUri) == identifier.getUri =>
-              computableReadAction(() => (DocumentUtils.LSPPosToOffset(editor, l.getRange.getStart), DocumentUtils.LSPPosToOffset(editor, l.getRange.getEnd)))
+              (DocumentUtils.LSPPosToOffset(editor, l.getRange.getStart), DocumentUtils.LSPPosToOffset(editor, l.getRange.getEnd))
           }
         } else {
           null
@@ -694,7 +694,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def mouseClicked(e: EditorMouseEvent): Unit = {
     if (isCtrlDown) {
-      createCtrlRange(computableReadAction(() => DocumentUtils.logicalToLSPPos(editor.xyToLogicalPosition(e.getMouseEvent.getPoint), editor)), null)
+      createCtrlRange(DocumentUtils.logicalToLSPPos(editor.xyToLogicalPosition(e.getMouseEvent.getPoint), editor), null)
       if (ctrlRange != null) {
         val loc = ctrlRange.loc
         invokeLater(() => {
@@ -918,42 +918,43 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private def createCtrlRange(serverPos: Position, range: Range): Unit = {
     val loc = requestDefinition(serverPos)
     if (loc != null) {
-      invokeLater(() => {
-        if (!editor.isDisposed) {
-          val corRange = if (range == null) {
-            val params = new TextDocumentPositionParams(identifier, serverPos)
-            val future = requestManager.documentHighlight(params)
-            if (future != null) {
-              try {
-                val highlights = future.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
-                if (highlights != null) {
-                  wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
-                  val offset = DocumentUtils.LSPPosToOffset(editor, serverPos)
-                  highlights.asScala.find(dh => DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart) <= offset
-                    && offset <= DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)).fold(new Range(serverPos, serverPos))(dh => dh.getRange)
-                } else new Range(serverPos, serverPos)
-              } catch {
-                case e: TimeoutException =>
-                  LOG.warn(e)
-                  wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
-                  new Range(serverPos, serverPos)
-                case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
-                  LOG.warn(e)
-                  wrapper.crashed(e.asInstanceOf[Exception])
-                  new Range(serverPos, serverPos)
-              }
-            } else new Range(serverPos, serverPos)
-
-          } else range
-          val startOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getStart)
-          val endOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getEnd)
-          val isDefinition = DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) == startOffset
-          if (ctrlRange != null) ctrlRange.dispose()
-          ctrlRange = CtrlRangeMarker(loc, editor,
-            if (!isDefinition) editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.HYPERLINK, editor.getColorsScheme.getAttributes(EditorColors.REFERENCE_HYPERLINK_COLOR), HighlighterTargetArea.EXACT_RANGE)
-            else null)
-        }
-      })
+      if (!editor.isDisposed) {
+        val corRange = if (range == null) {
+          val params = new TextDocumentPositionParams(identifier, serverPos)
+          val future = requestManager.documentHighlight(params)
+          if (future != null) {
+            try {
+              val highlights = future.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
+              if (highlights != null) {
+                wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
+                val offset = DocumentUtils.LSPPosToOffset(editor, serverPos)
+                highlights.asScala.find(dh => DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart) <= offset
+                  && offset <= DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)).fold(new Range(serverPos, serverPos))(dh => dh.getRange)
+              } else new Range(serverPos, serverPos)
+            } catch {
+              case e: TimeoutException =>
+                LOG.warn(e)
+                wrapper.notifyFailure(Timeouts.DOC_HIGHLIGHT)
+                new Range(serverPos, serverPos)
+              case e@(_: java.io.IOException | _: JsonRpcException | _: ExecutionException) =>
+                LOG.warn(e)
+                wrapper.crashed(e.asInstanceOf[Exception])
+                new Range(serverPos, serverPos)
+            }
+          } else new Range(serverPos, serverPos)
+        } else range
+        val startOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getStart)
+        val endOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getEnd)
+        val isDefinition = DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) == startOffset
+        invokeLater(() => {
+          if (!editor.isDisposed) {
+            if (ctrlRange != null) ctrlRange.dispose()
+            ctrlRange = CtrlRangeMarker(loc, editor,
+              if (!isDefinition) editor.getMarkupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.HYPERLINK, editor.getColorsScheme.getAttributes(EditorColors.REFERENCE_HYPERLINK_COLOR), HighlighterTargetArea.EXACT_RANGE)
+              else null)
+          }
+        })
+      }
     }
   }
 
@@ -1422,7 +1423,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       if (!editor.isDisposed) {
         val params = new DocumentOnTypeFormattingParams()
         params.setCh(c)
-        params.setPosition(computableReadAction(() => DocumentUtils.logicalToLSPPos(editor.getCaretModel.getCurrentCaret.getLogicalPosition, editor)))
+        params.setPosition(DocumentUtils.logicalToLSPPos(editor.getCaretModel.getCurrentCaret.getLogicalPosition, editor))
         params.setTextDocument(identifier)
         params.setOptions(new FormattingOptions())
         val future = requestManager.onTypeFormatting(params)

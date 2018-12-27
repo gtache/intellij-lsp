@@ -28,7 +28,7 @@ object HoverHandler {
         var useHtml = false
         val contents = hoverContents.getLeft.asScala
         val result = if (contents == null || contents.isEmpty) "" else {
-          contents.map(c => {
+          val parsedContent = contents.map(c => {
             if (c.isLeft) c.getLeft else if (c.isRight) {
               useHtml = true
               val options = new MutableDataSet()
@@ -37,11 +37,16 @@ object HoverHandler {
               val markedString = c.getRight
               val string = if (markedString.getLanguage != null && !markedString.getLanguage.isEmpty)
                 s"""```${markedString.getLanguage}
-${markedString.getValue}
-```""" else markedString.getValue
+                ${markedString.getValue}
+                ```""" else markedString.getValue
               renderer.render(parser.parse(string))
             } else ""
-          }).filter(s => !s.isEmpty).reduce((a, b) => a + "\n\n" + b)
+          }).filter(s => !s.isEmpty)
+          if (parsedContent.isEmpty) {
+            ""
+          } else {
+            parsedContent.reduce((a, b) => a + "\n\n" + b)
+          }
         }
         if (useHtml) "<html>" + result + "</html>" else result
       } else if (hoverContents.isRight) {
