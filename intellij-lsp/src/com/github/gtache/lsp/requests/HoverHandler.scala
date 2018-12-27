@@ -36,10 +36,8 @@ object HoverHandler {
               val renderer = HtmlRenderer.builder(options).build()
               val markedString = c.getRight
               val string = if (markedString.getLanguage != null && !markedString.getLanguage.isEmpty)
-                s"""```${markedString.getLanguage}
-                ${markedString.getValue}
-                ```""" else markedString.getValue
-              renderer.render(parser.parse(string))
+                s"""```${markedString.getLanguage}${markedString.getValue}```""" else markedString.getValue
+              if (string.nonEmpty) renderer.render(parser.parse(string)) else ""
             } else ""
           }).filter(s => !s.isEmpty)
           if (parsedContent.isEmpty) {
