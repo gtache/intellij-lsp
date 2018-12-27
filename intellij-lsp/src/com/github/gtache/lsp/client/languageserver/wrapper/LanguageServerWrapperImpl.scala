@@ -320,7 +320,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         textDocumentClientCapabilities.setRangeFormatting(new RangeFormattingCapabilities)
         textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
         textDocumentClientCapabilities.setRename(new RenameCapabilities)
-        textDocumentClientCapabilities.setSemanticHighlightingCapabilities(new SemanticHighlightingCapabilities(true))
+        textDocumentClientCapabilities.setSemanticHighlightingCapabilities(new SemanticHighlightingCapabilities(false))
         textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
         textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, true, true))
         //textDocumentClientCapabilities.setTypeDefinition(new TypeDefinitionCapabilities)
