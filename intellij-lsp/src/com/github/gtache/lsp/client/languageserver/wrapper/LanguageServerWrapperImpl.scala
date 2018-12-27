@@ -60,7 +60,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   import LanguageServerWrapperImpl._
   import ServerStatus._
 
-  private val toConnect : mutable.Set[Editor] = mutable.Set()
+  private val toConnect: mutable.Set[Editor] = mutable.Set()
   private val rootPath = project.getBasePath
   private val connectedEditors: mutable.Map[String, EditorEventManager] = mutable.HashMap()
   private val LOG: Logger = Logger.getInstance(classOf[LanguageServerWrapperImpl])
@@ -98,7 +98,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     *
     * @return the languageServer capabilities, or null if initialization job didn't complete
     */
-  @Nullable def getServerCapabilities: ServerCapabilities = {
+  @Nullable override def getServerCapabilities: ServerCapabilities = {
     if (this.initializeResult != null) this.initializeResult.getCapabilities else {
       try {
         start()
@@ -135,21 +135,21 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     * @param uri the URI as a string
     * @return the EditorEventManager (or null)
     */
-  def getEditorManagerFor(uri: String): EditorEventManager = {
+  override def getEditorManagerFor(uri: String): EditorEventManager = {
     connectedEditors.get(uri).orNull
   }
 
   /**
     * @return The request manager for this wrapper
     */
-  def getRequestManager: RequestManager = {
+  override def getRequestManager: RequestManager = {
     requestManager
   }
 
   /**
     * @return whether the underlying connection to language languageServer is still active
     */
-  def isActive: Boolean = this.launcherFuture != null && !this.launcherFuture.isDone && !this.launcherFuture.isCancelled && !alreadyShownTimeout && !alreadyShownCrash
+  override def isActive: Boolean = this.launcherFuture != null && !this.launcherFuture.isDone && !this.launcherFuture.isCancelled && !alreadyShownTimeout && !alreadyShownCrash
 
   /**
     * Connects an editor to the languageServer
@@ -157,8 +157,8 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     * @param editor the editor
     */
   @throws[IOException]
-  def connect(editor: Editor): Unit = {
-    if (editor==null){
+  override def connect(editor: Editor): Unit = {
+    if (editor == null) {
       LOG.warn("editor is null for " + serverDefinition)
     } else {
       val uri = FileUtils.editorToURIString(editor)
@@ -222,7 +222,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     *
     * @param uri The uri of the editor
     */
-  def disconnect(uri: String): Unit = {
+  override def disconnect(uri: String): Unit = {
     this.connectedEditors.synchronized {
       uriToLanguageServerWrapper.synchronized {
         this.connectedEditors.remove(uri).foreach({ e =>
@@ -236,7 +236,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     if (this.connectedEditors.isEmpty) stop()
   }
 
-  def stop(): Unit = {
+  override def stop(): Unit = {
     if (this.initializeFuture != null) {
       this.initializeFuture.cancel(true)
       this.initializeFuture = null
@@ -265,12 +265,12 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   /**
     * Checks if the wrapper is already connected to the document at the given path
     */
-  def isConnectedTo(location: String): Boolean = connectedEditors.contains(location)
+  override def isConnectedTo(location: String): Boolean = connectedEditors.contains(location)
 
   /**
     * @return the LanguageServer
     */
-  @Nullable def getServer: LanguageServer = {
+  @Nullable override def getServer: LanguageServer = {
     start()
     if (initializeFuture != null && !this.initializeFuture.isDone) this.initializeFuture.join
     this.languageServer
@@ -280,7 +280,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     * Starts the LanguageServer
     */
   @throws[IOException]
-  def start(): Unit = {
+  override def start(): Unit = {
     if (status == STOPPED && !alreadyShownCrash && !alreadyShownTimeout) {
       setStatus(STARTING)
       try {
@@ -347,11 +347,11 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   /**
     * @return The language ID that this wrapper is dealing with if defined in the content type mapping for the language languageServer
     */
-  @Nullable def getLanguageId(contentTypes: Array[String]): String = {
+  @Nullable override def getLanguageId(contentTypes: Array[String]): String = {
     if (contentTypes.exists(serverDefinition.getMappedExtensions.contains(_))) serverDefinition.id else null
   }
 
-  def logMessage(message: Message): Unit = {
+  override def logMessage(message: Message): Unit = {
     message match {
       case responseMessage: ResponseMessage if responseMessage.getError != null && (responseMessage.getId eq Integer.toString(ResponseErrorCode.RequestCancelled.getValue)) =>
         LOG.error(new ResponseErrorException(responseMessage.getError))

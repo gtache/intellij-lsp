@@ -32,12 +32,12 @@ object FileUtils {
     editorFromVirtualFile(psiFile.getVirtualFile, psiFile.getProject)
   }
 
-  def editorFromVirtualFile(file: VirtualFile, project: Project): Editor = {
-    FileEditorManager.getInstance(project).getAllEditors(file).collectFirst { case t: TextEditor => t.getEditor }.orNull
-  }
-
   def editorFromUri(uri: String, project: Project): Editor = {
     editorFromVirtualFile(virtualFileFromURI(uri), project)
+  }
+
+  def editorFromVirtualFile(file: VirtualFile, project: Project): Editor = {
+    FileEditorManager.getInstance(project).getAllEditors(file).collectFirst { case t: TextEditor => t.getEditor }.orNull
   }
 
   def virtualFileFromURI(uri: String): VirtualFile = {

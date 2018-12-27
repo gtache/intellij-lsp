@@ -128,7 +128,7 @@ object PluginMain {
         val forced = forcedAssociationsInstances.get((uri, pUri)).orNull
         if (forced == null) {
           val forcedDef = forcedAssociations.get((uri, pUri)).orNull
-          if (forcedDef==null) {
+          if (forcedDef == null) {
             extToServerDefinition.get(ext).foreach(s => {
               val wrapper = getWrapperFor(ext, editor, s)
               LOG.info("Adding file " + file.getName)
@@ -136,7 +136,7 @@ object PluginMain {
             })
           } else {
             val wrapper = getWrapperFor(ext, editor, forcedDef)
-            LOG.info("Adding file "+file.getName)
+            LOG.info("Adding file " + file.getName)
             wrapper.connect(editor)
           }
         } else forced.connect(editor)
@@ -199,7 +199,7 @@ object PluginMain {
           }
           forcedAssociationsInstances.synchronized {
             forcedAssociations.foreach(t => {
-              if (t._2==serverDefinition && t._1._2==rootUri){
+              if (t._2 == serverDefinition && t._1._2 == rootUri) {
                 forcedAssociationsInstances.update(t._1, wrapper)
               }
             })
@@ -209,25 +209,6 @@ object PluginMain {
         }
       } else wrapper
     }
-  }
-
-  private def addExtensions(): Unit = {
-    if (!loadedExtensions) {
-      val extensions = LanguageServerDefinition.getAllDefinitions.filter(s => !extToServerDefinition.contains(s.ext))
-      LOG.info("Added serverDefinitions " + extensions + " from plugins")
-      extToServerDefinition = extToServerDefinition ++ extensions.map(s => (s.ext, s))
-      flattenExt()
-      loadedExtensions = true
-    }
-  }
-
-  private def flattenExt(): Unit = {
-    extToServerDefinition = extToServerDefinition.map(p => {
-      val ext = p._1
-      val sDef = p._2
-      val split = ext.split(LanguageServerDefinition.SPLIT_CHAR)
-      split.map(s => (s, sDef)) :+ (ext -> sDef)
-    }).flatten.toMap
   }
 
   /**
@@ -248,6 +229,25 @@ object PluginMain {
   def getExtToServerDefinition: Map[String, LanguageServerDefinition] = {
     addExtensions()
     extToServerDefinition
+  }
+
+  private def addExtensions(): Unit = {
+    if (!loadedExtensions) {
+      val extensions = LanguageServerDefinition.getAllDefinitions.filter(s => !extToServerDefinition.contains(s.ext))
+      LOG.info("Added serverDefinitions " + extensions + " from plugins")
+      extToServerDefinition = extToServerDefinition ++ extensions.map(s => (s.ext, s))
+      flattenExt()
+      loadedExtensions = true
+    }
+  }
+
+  private def flattenExt(): Unit = {
+    extToServerDefinition = extToServerDefinition.map(p => {
+      val ext = p._1
+      val sDef = p._2
+      val split = ext.split(LanguageServerDefinition.SPLIT_CHAR)
+      split.map(s => (s, sDef)) :+ (ext -> sDef)
+    }).flatten.toMap
   }
 
   /**

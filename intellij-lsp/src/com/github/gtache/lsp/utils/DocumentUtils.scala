@@ -6,6 +6,7 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.util.DocumentUtil
 import org.eclipse.lsp4j.Position
+
 import scala.math.min
 
 /**

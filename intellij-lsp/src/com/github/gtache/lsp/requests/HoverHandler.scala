@@ -1,5 +1,6 @@
 package com.github.gtache.lsp.requests
 
+import com.intellij.openapi.diagnostic.Logger
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.util.options.MutableDataSet
@@ -10,6 +11,8 @@ import org.eclipse.lsp4j.jsonrpc.validation.NonNull
   * Object used to process Hover responses
   */
 object HoverHandler {
+
+  private val LOG: Logger = Logger.getInstance(HoverHandler.getClass)
 
   /**
     * Returns the hover string corresponding to an Hover response
@@ -22,10 +25,12 @@ object HoverHandler {
     if (hover != null && hover.getContents != null) {
       val hoverContents = hover.getContents
       if (hoverContents.isLeft) {
+        var useHtml = false
         val contents = hoverContents.getLeft.asScala
-        if (contents == null || contents.isEmpty) "" else {
+        val result = if (contents == null || contents.isEmpty) "" else {
           contents.map(c => {
             if (c.isLeft) c.getLeft else if (c.isRight) {
+              useHtml = true
               val options = new MutableDataSet()
               val parser = Parser.builder(options).build()
               val renderer = HtmlRenderer.builder(options).build()
@@ -34,10 +39,11 @@ object HoverHandler {
                 s"""```${markedString.getLanguage}
 ${markedString.getValue}
 ```""" else markedString.getValue
-              "<html>" + renderer.render(parser.parse(string)) + "</html>"
+              renderer.render(parser.parse(string))
             } else ""
           }).filter(s => !s.isEmpty).reduce((a, b) => a + "\n\n" + b)
         }
+        if (useHtml) "<html>" + result + "</html>" else result
       } else if (hoverContents.isRight) {
         hoverContents.getRight.getValue //TODO
       } else ""

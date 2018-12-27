@@ -12,11 +12,14 @@
             -Adds possibility to manually link files to a specific server
             -Adds setting to always send requests
             -Improves go to with ctrl-click
+            -Fixes Find Usages with ctrl-click
             -Fixes exception when no references found
             -Fixes exception when a position is bigger than the line length
             -Fixes missing "Show reformat file dialog" and "Reformat code" texts in the menu
             -Fixes closing an editor while server is starting not being registered
+            -Fixes mix of plain text and markup for hover being displayed incorrectly
             -Better handling of opened editors at startup
+            -Potential fix for diagnostic highlights not being cleared
 ]]>
     </change-notes>
 

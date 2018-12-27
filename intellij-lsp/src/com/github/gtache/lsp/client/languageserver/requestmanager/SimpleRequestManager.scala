@@ -38,6 +38,7 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
   override def publishDiagnostics(publishDiagnosticsParams: PublishDiagnosticsParams): Unit = client.publishDiagnostics(publishDiagnosticsParams)
 
   override def semanticHighlighting(params: SemanticHighlightingParams): Unit = client.semanticHighlighting(params)
+
   //General
   override def initialize(params: InitializeParams): CompletableFuture[InitializeResult] = {
     if (checkStatus) try {
@@ -244,6 +245,10 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
         null
     } else null
 
+  private def checkProvider(provider: jsonrpc.messages.Either[Boolean, StaticRegistrationOptions]): Boolean = {
+    provider != null && ((provider.isLeft && provider.getLeft) || (provider.isRight && provider.getRight != null))
+  }
+
   override def codeLens(params: CodeLensParams): CompletableFuture[java.util.List[_ <: CodeLens]] =
     if (checkStatus) try {
       if (serverCapabilities.getCodeLensProvider != null) textDocumentService.codeLens(params) else null
@@ -268,6 +273,13 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
         null
     } else null
 
+  private def checkStatus: Boolean = wrapper.getStatus == ServerStatus.STARTED
+
+  private def crashed(e: Exception): Unit = {
+    LOG.warn(e)
+    wrapper.crashed(e)
+  }
+
   override def documentLinkResolve(unresolved: DocumentLink): CompletableFuture[DocumentLink] =
     if (checkStatus) try {
       if (serverCapabilities.getDocumentLinkProvider != null && serverCapabilities.getDocumentLinkProvider.getResolveProvider)
@@ -284,17 +296,6 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
       case e: Exception => crashed(e)
         null
     } else null
-
-  private def checkProvider(provider: jsonrpc.messages.Either[Boolean, StaticRegistrationOptions]): Boolean = {
-    provider != null && ((provider.isLeft && provider.getLeft) || (provider.isRight && provider.getRight != null))
-  }
-
-  private def checkStatus: Boolean = wrapper.getStatus == ServerStatus.STARTED
-
-  private def crashed(e: Exception): Unit = {
-    LOG.warn(e)
-    wrapper.crashed(e)
-  }
 
   override def implementation(params: TextDocumentPositionParams): CompletableFuture[util.List[_ <: Location]] = throw new NotImplementedError()
 

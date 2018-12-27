@@ -33,7 +33,7 @@ object LanguageServerDefinition {
     }
   }
 
-  def fromArray(arr : Array[String]): LanguageServerDefinition = {
+  def fromArray(arr: Array[String]): LanguageServerDefinition = {
     UserConfigurableServerDefinition.fromArray(arr)
   }
 }
@@ -123,17 +123,16 @@ trait LanguageServerDefinition {
   override def toString: String = "ServerDefinition for " + ext
 
   /**
+    * @return The array corresponding to the server definition
+    */
+  def toArray: Array[String] = throw new NotImplementedError()
+
+  /**
     * Creates a StreamConnectionProvider given the working directory
     *
     * @param workingDir The root directory
     * @return The stream connection provider
     */
   protected def createConnectionProvider(workingDir: String): StreamConnectionProvider
-
-
-  /**
-    * @return The array corresponding to the server definition
-    */
-  def toArray: Array[String] = throw new NotImplementedError()
 
 }
