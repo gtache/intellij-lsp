@@ -121,7 +121,7 @@ public final class LSPState implements PersistentStateComponent<LSPState> {
             if (extToServ != null) {
                 PluginMain.setExtToServerDefinition(UserConfigurableServerDefinition$.MODULE$.fromArrayMap(extToServ));
             }
-            if (timeouts != null) {
+            if (timeouts != null && !timeouts.isEmpty()) {
                 Timeout.setTimeouts(timeouts);
             }
             if (forcedAssociations != null) {
