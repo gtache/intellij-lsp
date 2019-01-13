@@ -28,13 +28,18 @@ public final class LSPState implements PersistentStateComponent<LSPState> {
     private static final Logger LOG = Logger.getInstance(LSPState.class);
 
     //Must be public to be saved
-    public boolean alwaysSendRequests = false;
-    public Map<String, String[]> extToServ = new LinkedHashMap<>(10);
-    public Map<Timeouts, Integer> timeouts = new EnumMap<>(Timeouts.class);
-    public List<String> coursierResolvers = new ArrayList<>(5);
-    public Map<String[], String[]> forcedAssociations = new HashMap<>(10);
+    public boolean alwaysSendRequests;
+    public Map<String, String[]> extToServ;
+    public Map<Timeouts, Integer> timeouts;
+    public List<String> coursierResolvers;
+    public Map<String[], String[]> forcedAssociations;
 
     public LSPState() {
+        alwaysSendRequests = false;
+        extToServ = new LinkedHashMap<>(10);
+        timeouts = new EnumMap<>(Timeouts.class);
+        coursierResolvers = new ArrayList<>(5);
+        forcedAssociations = new HashMap<>(10);
     }
 
     @Nullable
@@ -42,8 +47,7 @@ public final class LSPState implements PersistentStateComponent<LSPState> {
         try {
             return ServiceManager.getService(LSPState.class);
         } catch (final Exception e) {
-            LOG.warn("Couldn't load LSPState");
-            LOG.warn(e);
+            LOG.warn("Couldn't load LSPState : " + e);
             ApplicationUtils$.MODULE$.invokeLater(() -> Messages.showErrorDialog("Couldn't load LSP settings, you will need to reconfigure them.", "LSP plugin"));
             return null;
         }
@@ -90,6 +94,21 @@ public final class LSPState implements PersistentStateComponent<LSPState> {
     }
 
     @Override
+    public int hashCode() {
+        return Boolean.hashCode(alwaysSendRequests) + 3 * extToServ.hashCode() + 7 * timeouts.hashCode() + 11 * coursierResolvers.hashCode() + 13 * forcedAssociations.hashCode();
+    }
+
+    @Override
+    public boolean equals(final Object that) {
+        if (that instanceof LSPState) {
+            final LSPState thatS = (LSPState) that;
+            return alwaysSendRequests == thatS.alwaysSendRequests && extToServ.equals(thatS.extToServ) && timeouts.equals(thatS.timeouts) && coursierResolvers.equals(thatS.coursierResolvers) && forcedAssociations.equals(thatS.forcedAssociations);
+        }
+        return false;
+    }
+
+
+    @Override
     public LSPState getState() {
         return this;
     }
@@ -99,18 +118,17 @@ public final class LSPState implements PersistentStateComponent<LSPState> {
         try {
             XmlSerializerUtil.copyBean(lspState, this);
             LOG.info("LSP State loaded");
-            if (extToServ != null && !extToServ.isEmpty()) {
+            if (extToServ != null) {
                 PluginMain.setExtToServerDefinition(UserConfigurableServerDefinition$.MODULE$.fromArrayMap(extToServ));
             }
-            if (timeouts != null && !timeouts.isEmpty()) {
+            if (timeouts != null) {
                 Timeout.setTimeouts(timeouts);
             }
-            if (forcedAssociations != null && !forcedAssociations.isEmpty()) {
+            if (forcedAssociations != null) {
                 PluginMain.setForcedAssociations(forcedAssociations);
             }
         } catch (final Exception e) {
-            LOG.warn("Couldn't load LSPState");
-            LOG.warn(e);
+            LOG.warn("Couldn't load LSPState : " + e);
             ApplicationUtils$.MODULE$.invokeLater(() -> Messages.showErrorDialog("Couldn't load LSP settings, you will need to reconfigure them.", "LSP plugin"));
         }
     }
