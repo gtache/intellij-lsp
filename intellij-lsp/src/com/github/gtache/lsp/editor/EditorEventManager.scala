@@ -316,7 +316,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                     })*/
             if (textEdit != null) {
               if (addTextEdits != null) {
-                lookupElementBuilder = LookupElementBuilder.create("")
+                lookupElementBuilder = LookupElementBuilder.create(presentableText, "")
                   .withInsertHandler((context: InsertionContext, item: LookupElement) => {
                     context.commitDocument()
                     invokeLater(() => {
@@ -324,18 +324,21 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                       if (command != null) executeCommands(Iterable(command))
                     })
                   })
+                  .withLookupString(presentableText)
               } else {
-                lookupElementBuilder = LookupElementBuilder.create("")
+                lookupElementBuilder = LookupElementBuilder.create(presentableText, "")
                   .withInsertHandler((context: InsertionContext, item: LookupElement) => {
                     context.commitDocument()
                     invokeLater(() => {
                       applyEdit(edits = Seq(textEdit), name = "Completion : " + label)
                       if (command != null) executeCommands(Iterable(command))
+                      editor.getCaretModel.moveCaretRelatively(textEdit.getNewText.length,0,false,false,true)
                     })
                   })
+                  .withLookupString(presentableText)
               }
             } else if (addTextEdits != null) {
-              lookupElementBuilder = LookupElementBuilder.create("")
+              lookupElementBuilder = LookupElementBuilder.create(presentableText, "")
                 .withInsertHandler((context: InsertionContext, item: LookupElement) => {
                   context.commitDocument()
                   invokeLater(() => {
@@ -343,6 +346,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                     if (command != null) executeCommands(Iterable(command))
                   })
                 })
+                .withLookupString(presentableText)
             } else {
               lookupElementBuilder = LookupElementBuilder.create(if (insertText != null && insertText != "") insertText else label)
               if (command != null) lookupElementBuilder = lookupElementBuilder.withInsertHandler((context: InsertionContext, item: LookupElement) => {
