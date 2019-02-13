@@ -9,6 +9,8 @@
     <change-notes>
         <![CDATA[
             -Fixes error when using LinkToServer with shortcut
+            -Fixes missing diagnostics when codeAction is unavailable
+            -Fixes missing insertion option
 ]]>
     </change-notes>
 
