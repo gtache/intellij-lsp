@@ -15,6 +15,7 @@ object LSPDefaultIconProvider extends LSPIconProvider {
   private val STARTED = IconLoader.getIcon("/images/started.png")
   private val STARTING = IconLoader.getIcon("/images/starting.png")
   private val STOPPED = IconLoader.getIcon("/images/stopped.png")
+  private val FAILED = IconLoader.getIcon("/images/failed.png")
 
   override def getCompletionIcon(kind: CompletionItemKind): Icon = {
     kind match {
@@ -41,7 +42,10 @@ object LSPDefaultIconProvider extends LSPIconProvider {
   }
 
   override def getStatusIcons: Map[ServerStatus, Icon] = {
-    Map(ServerStatus.STOPPED -> STOPPED, ServerStatus.STARTING -> STARTING, ServerStatus.STARTED -> STARTED)
+    Map(ServerStatus.STOPPED -> STOPPED,
+      ServerStatus.STARTING -> STARTING,
+      ServerStatus.STARTED -> STARTED,
+      ServerStatus.FAILED -> FAILED)
   }
 
   override def getSymbolIcon(kind: SymbolKind): Icon = {

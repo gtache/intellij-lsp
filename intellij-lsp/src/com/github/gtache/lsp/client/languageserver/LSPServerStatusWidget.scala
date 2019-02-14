@@ -3,7 +3,7 @@ package com.github.gtache.lsp.client.languageserver
 import java.awt.Point
 import java.awt.event.MouseEvent
 
-import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
+import com.github.gtache.lsp.client.languageserver.wrapper.{LanguageServerWrapper, LanguageServerWrapperImpl}
 import com.github.gtache.lsp.requests.Timeouts
 import com.github.gtache.lsp.utils.{ApplicationUtils, GUIUtils}
 import com.intellij.ide.DataManager
@@ -83,6 +83,7 @@ class LSPServerStatusWidget(val wrapper: LanguageServerWrapper) extends StatusBa
       val component = t.getComponent
       val actions = wrapper.getStatus match {
         case ServerStatus.STARTED => Seq(ShowConnectedFiles, ShowTimeouts)
+        case ServerStatus.FAILED => Seq(Restart, ShowTimeouts)
         case _ => Seq(ShowTimeouts)
       }
       val title = "Server actions"
@@ -92,6 +93,12 @@ class LSPServerStatusWidget(val wrapper: LanguageServerWrapper) extends StatusBa
       val dimension = popup.getContent.getPreferredSize
       val at = new Point(0, -dimension.height)
       popup.show(new RelativePoint(t.getComponent, at))
+    }
+
+    private object Restart extends AnAction("&Restart the server", "Try to restart the server after it failed", null) with DumbAware {
+      override def actionPerformed(e: AnActionEvent): Unit = {
+        wrapper.start()
+      }
     }
 
     private object ShowConnectedFiles extends AnAction("&Show connected files", "Show the files connected to the server", null) with DumbAware {
