@@ -5,7 +5,6 @@ import java.io.IOException
 import java.net.URI
 import java.util.concurrent._
 
-import com.github.gtache.lsp.PluginMain
 import com.github.gtache.lsp.client.languageserver.requestmanager.{RequestManager, SimpleRequestManager}
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.client.languageserver.{LSPServerStatusWidget, ServerOptions, ServerStatus}
@@ -91,6 +90,10 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     } else {
       capabilities.getRight.getWillSaveWaitUntil
     }
+  }
+
+  def getAllPotentialEditors: Seq[Editor] = {
+    FileUtils.getAllOpenedEditors(project).filter(e => serverDefinition.getMappedExtensions.contains(FileUtils.fileTypeFromEditor(e).getDefaultExtension))
   }
 
   /**
@@ -342,6 +345,11 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
           setFailed()
       }
     }
+  }
+
+  override def restart(): Unit = {
+    stop()
+    getAllPotentialEditors.foreach(e => connect(e))
   }
 
   /**

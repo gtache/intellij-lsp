@@ -171,6 +171,12 @@ object FileUtils {
     sanitizeURI(VFSToURI(FileDocumentManager.getInstance().getFile(document)))
   }
 
+  def getAllOpenedEditors(project: Project): Seq[Editor] = {
+    //TODO probably wrong
+    FileEditorManager.getInstance(project).getAllEditors().filter(e => e.isInstanceOf[Editor])
+      .map(e => e.asInstanceOf[Editor]).toSeq
+  }
+
   /**
     * Object representing the OS type (Windows or Unix)
     */

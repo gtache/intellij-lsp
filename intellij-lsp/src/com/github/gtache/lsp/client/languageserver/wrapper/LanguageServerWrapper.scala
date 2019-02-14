@@ -147,5 +147,7 @@ trait LanguageServerWrapper {
 
   def removeWidget(): Unit
 
+  def restart(): Unit
+
 
 }

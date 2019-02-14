@@ -83,9 +83,9 @@ class LSPServerStatusWidget(val wrapper: LanguageServerWrapper) extends StatusBa
       val mnemonics = JBPopupFactory.ActionSelectionAid.MNEMONICS
       val component = t.getComponent
       val actions = wrapper.getStatus match {
-        case ServerStatus.STARTED => Seq(ShowConnectedFiles, ShowTimeouts)
-        case ServerStatus.FAILED => Seq(Restart, ShowTimeouts)
-        case _ => Seq(ShowTimeouts)
+        case ServerStatus.STARTED => Seq(Restart, ShowConnectedFiles, ShowTimeouts)
+        case ServerStatus.STARTING => Seq(ShowTimeouts)
+        case _ => Seq(Restart, ShowTimeouts)
       }
       val title = "Server actions"
       val context = DataManager.getInstance().getDataContext(component)
