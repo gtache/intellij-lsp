@@ -1,16 +1,14 @@
 <idea-plugin>
     <id>com.github.gtache.lsp</id>
     <name>LSP Support</name>
-    <version>1.5.1</version>
+    <version>1.6.0</version>
     <vendor email="guillaume.tache@epfl.ch" url="https://github.com/gtache">gtache</vendor>
 
     <description>Adds LSP (Language Server Protocol) support for IntelliJ</description>
 
     <change-notes>
         <![CDATA[
-            -Fixes error when using LinkToServer with shortcut
-            -Fixes missing diagnostics when codeAction is unavailable
-            -Fixes missing code completions
+
 ]]>
     </change-notes>
 
