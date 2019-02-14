@@ -14,6 +14,10 @@ intellij {
     pluginName 'LSP Support'
 }
 
+patchPluginXml {
+    untilBuild '2018.3'
+}
+
 dependencies {
     compile group: 'org.eclipse.lsp4j', name: 'org.eclipse.lsp4j', version: '0.6.0'
     compile group: 'io.get-coursier', name: 'coursier_2.12', version: '1.0.3'

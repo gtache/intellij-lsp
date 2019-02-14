@@ -9,6 +9,7 @@ import com.github.gtache.lsp.settings.gui.ComboCheckboxDialog
 import com.github.gtache.lsp.utils.ApplicationUtils.computableWriteAction
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.openapi.actionSystem.{ActionPlaces, AnActionEvent, CommonDataKeys}
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, OpenFileDescriptor}
 import com.intellij.openapi.project.{DumbAwareAction, Project}
@@ -16,6 +17,8 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.LocalFileSystem
 
 class LSPLinkToServerAction extends DumbAwareAction {
+  private val LOG: Logger = Logger.getInstance(classOf[LSPLinkToServerAction])
+
   override def actionPerformed(anActionEvent: AnActionEvent): Unit = {
     var editors: Array[Editor] = Array()
     val project: Project = anActionEvent.getDataContext.getData(CommonDataKeys.PROJECT)
@@ -32,6 +35,9 @@ class LSPLinkToServerAction extends DumbAwareAction {
       case ActionPlaces.PROJECT_VIEW_POPUP =>
         val virtualFiles = anActionEvent.getDataContext.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
         editors = openClosedEditors(virtualFiles.map(v => FileUtils.VFSToURI(v)), project)
+      case _ =>
+        editors = Array(anActionEvent.getDataContext.getData(CommonDataKeys.EDITOR_EVEN_IF_INACTIVE))
+        LOG.warn("Unknown place : " + anActionEvent.getPlace)
     }
     val allEditors = editors.filter(e => e != null).partition(e => LanguageServerWrapperImpl.forEditor(e).isEmpty)
     editors = allEditors._1 ++ allEditors._2
