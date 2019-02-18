@@ -41,8 +41,9 @@ import com.intellij.uiDesigner.core.{GridConstraints, GridLayoutManager, Spacer}
 import javax.swing.{JFrame, JLabel, JPanel}
 import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.jsonrpc.JsonRpcException
+import org.eclipse.lsp4j.util.SemanticHighlightingTokens
 
-import scala.collection.mutable
+import scala.collection.{JavaConverters, mutable}
 import scala.collection.mutable.ArrayBuffer
 
 object EditorEventManager {
@@ -135,7 +136,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private val changesParams = new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(), Collections.singletonList(new TextDocumentContentChangeEvent()))
   private val selectedSymbHighlights: mutable.Set[RangeHighlighter] = mutable.HashSet()
   private val diagnosticsHighlights: mutable.Set[DiagnosticRangeHighlighter] = mutable.HashSet()
-  private val semanticHighlights: ArrayBuffer[ArrayBuffer[RangeHighlighter]] = ArrayBuffer()
+  private val semanticHighlights: mutable.Map[Int, Seq[RangeHighlighter]] = mutable.Map()
   private val syncKind = serverOptions.syncKind
 
   private val completionTriggers =
@@ -157,9 +158,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     else
       Set[String]()
 
-  private val semanticHighlightingScopes: Seq[Seq[String]] =
+  private val semanticHighlightingScopes: IndexedSeq[Seq[String]] =
     if (serverOptions.semanticHighlightingOptions != null && serverOptions.semanticHighlightingOptions.getScopes != null)
-      serverOptions.semanticHighlightingOptions.getScopes.asScala.toList.map(l => l.asScala.toList) else null
+      serverOptions.semanticHighlightingOptions.getScopes.asScala.toList.map(l => l.asScala.toList).toIndexedSeq else null
 
   private val project: Project = editor.getProject
   @volatile var needSave = false
@@ -1410,24 +1411,25 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     val (removeHighlighting, addHighlighting) = lines.partition(s => s.getTokens == null || s.getTokens.nonEmpty)
     removeHighlighting.foreach(l => {
       val line = l.getLine
-      //TODO check empty arr
-      semanticHighlights(line).foreach(editor.getMarkupModel.removeHighlighter)
-      semanticHighlights(line).clear()
+      if (semanticHighlights.contains(line)) {
+        semanticHighlights(line).foreach(editor.getMarkupModel.removeHighlighter)
+      }
+      semanticHighlights(line) = Seq.empty
     })
     addHighlighting.foreach(l => {
       val line = l.getLine
-      val tokens = Base64.getDecoder.decode(l.getTokens)
-      //TODO real process
-      Array[String]().map(s => {
-        val range: Range = ???
-        val scope: String = ???
-        val attributes = SemanticHighlightingHandler.scopeToTextAttributes(scope, editor)
-        val rh = editor.getMarkupModel.addRangeHighlighter(DocumentUtils.LSPPosToOffset(editor, range.getStart),
-          DocumentUtils.LSPPosToOffset(editor, range.getEnd), 0, attributes, HighlighterTargetArea.EXACT_RANGE)
-        //TODO check empty arr
-        semanticHighlights(line).append(rh)
+      val tokens = JavaConverters.asScalaBuffer(SemanticHighlightingTokens.decode(l.getTokens))
+      val rhs = tokens.map(t => {
+        val offset = t.character
+        val length = t.length
+        val scopes = semanticHighlightingScopes(t.scope) //TODO not sure
+        val attributes = scopes.map(scope => SemanticHighlightingHandler.scopeToTextAttributes(scope, editor)).head //TODO multiple scopes
+        val rh = editor.getMarkupModel.addRangeHighlighter(DocumentUtils.LSPPosToOffset(editor, new Position(line, offset)),
+          DocumentUtils.LSPPosToOffset(editor, new Position(line, offset + length)), HighlighterLayer.SYNTAX,
+          attributes, HighlighterTargetArea.EXACT_RANGE)
         rh
       })
+      semanticHighlights(line) = rhs
     })
   }
 
