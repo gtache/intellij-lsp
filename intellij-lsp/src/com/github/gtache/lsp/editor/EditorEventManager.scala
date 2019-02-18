@@ -5,7 +5,7 @@ import java.awt.event.{KeyEvent, MouseAdapter, MouseEvent}
 import java.io.File
 import java.net.URI
 import java.util.concurrent.{ExecutionException, TimeUnit, TimeoutException}
-import java.util.{Collections, Timer, TimerTask}
+import java.util.{Base64, Collections, Timer, TimerTask}
 
 import com.github.gtache.lsp.actions.LSPReferencesAction
 import com.github.gtache.lsp.client.languageserver.ServerOptions
@@ -13,7 +13,7 @@ import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapperImpl
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.contributors.rename.LSPRenameProcessor
-import com.github.gtache.lsp.requests.{HoverHandler, Timeouts, WorkspaceEditHandler}
+import com.github.gtache.lsp.requests.{HoverHandler, SemanticHighlightingHandler, Timeouts, WorkspaceEditHandler}
 import com.github.gtache.lsp.settings.LSPState
 import com.github.gtache.lsp.utils.{DocumentUtils, FileUtils, GUIUtils}
 import com.intellij.codeInsight.CodeInsightSettings
@@ -43,6 +43,7 @@ import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.jsonrpc.JsonRpcException
 
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 object EditorEventManager {
   private val HOVER_TIME_THRES: Long = EditorSettingsExternalizable.getInstance().getQuickDocOnMouseOverElementDelayMillis * 1000000
@@ -134,6 +135,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private val changesParams = new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(), Collections.singletonList(new TextDocumentContentChangeEvent()))
   private val selectedSymbHighlights: mutable.Set[RangeHighlighter] = mutable.HashSet()
   private val diagnosticsHighlights: mutable.Set[DiagnosticRangeHighlighter] = mutable.HashSet()
+  private val semanticHighlights: ArrayBuffer[ArrayBuffer[RangeHighlighter]] = ArrayBuffer()
   private val syncKind = serverOptions.syncKind
 
   private val completionTriggers =
@@ -332,7 +334,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                     invokeLater(() => {
                       applyEdit(edits = Seq(textEdit), name = "Completion : " + label)
                       if (command != null) executeCommands(Iterable(command))
-                      editor.getCaretModel.moveCaretRelatively(textEdit.getNewText.length,0,false,false,true)
+                      editor.getCaretModel.moveCaretRelatively(textEdit.getNewText.length, 0, false, false, true)
                     })
                   })
                   .withLookupString(presentableText)
@@ -1408,12 +1410,24 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     val (removeHighlighting, addHighlighting) = lines.partition(s => s.getTokens == null || s.getTokens.nonEmpty)
     removeHighlighting.foreach(l => {
       val line = l.getLine
-      //Remove highlighting
+      //TODO check empty arr
+      semanticHighlights(line).foreach(editor.getMarkupModel.removeHighlighter)
+      semanticHighlights(line).clear()
     })
     addHighlighting.foreach(l => {
       val line = l.getLine
-      val tokens = l.getTokens
-      //Add highlighting
+      val tokens = Base64.getDecoder.decode(l.getTokens)
+      //TODO real process
+      Array[String]().map(s => {
+        val range: Range = ???
+        val scope: String = ???
+        val attributes = SemanticHighlightingHandler.scopeToTextAttributes(scope, editor)
+        val rh = editor.getMarkupModel.addRangeHighlighter(DocumentUtils.LSPPosToOffset(editor, range.getStart),
+          DocumentUtils.LSPPosToOffset(editor, range.getEnd), 0, attributes, HighlighterTargetArea.EXACT_RANGE)
+        //TODO check empty arr
+        semanticHighlights(line).append(rh)
+        rh
+      })
     })
   }
 

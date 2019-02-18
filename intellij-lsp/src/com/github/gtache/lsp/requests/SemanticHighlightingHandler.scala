@@ -14,7 +14,7 @@ import org.eclipse.lsp4j.SemanticHighlightingParams
 object SemanticHighlightingHandler {
 
   private val LOG: Logger = Logger.getInstance(SemanticHighlightingHandler.getClass)
-  val mapping: Map[String, Style] = Map(
+  private val mapping: Map[String, Style] = Map(
     "comment" -> Style(DefaultLanguageHighlighterColors.LINE_COMMENT),
     "comment.line" -> Style(DefaultLanguageHighlighterColors.LINE_COMMENT),
     "comment.line.double-slash" -> Style(DefaultLanguageHighlighterColors.LINE_COMMENT),
@@ -117,12 +117,16 @@ object SemanticHighlightingHandler {
     }
   }
 
-  def scopeToStyle(scope: String) : Style = {
-    ???
+  def scopeToStyle(scope: String): Style = {
+    if (scope.split(".").length > 3) {
+      mapping(scope.split(".").take(3).mkString("."))
+    } else {
+      mapping(scope)
+    }
   }
 
-  def scopeToTextAttributes(scope: String) : TextAttributes = {
-    ???
+  def scopeToTextAttributes(scope: String, editor: Editor): TextAttributes = {
+    mapping(scope).toTextAttributes(editor)
   }
 
 }
