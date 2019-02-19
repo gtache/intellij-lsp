@@ -46,7 +46,7 @@ object DocumentUtils {
     * @return the Position
     */
   def logicalToLSPPos(position: LogicalPosition, editor: Editor): Position = {
-    offsetToLSPPos(editor, editor.logicalPositionToOffset(position))
+    computableReadAction(() => offsetToLSPPos(editor, editor.logicalPositionToOffset(position)))
   }
 
   /**

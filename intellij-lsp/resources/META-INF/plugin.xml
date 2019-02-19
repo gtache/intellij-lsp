@@ -10,6 +10,7 @@
         <![CDATA[
             -Fixes Duplicate RPC Method textdocument/semanticHighlighting exception
             -Uses guessProjectDir for rootPath
+            -Fixes exception related to logicalToLSPPos not running on dispatch thread
 ]]>
     </change-notes>
 
