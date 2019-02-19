@@ -118,6 +118,7 @@ object SemanticHighlightingHandler {
   }
 
   def scopeToStyle(scope: String): Style = {
+    //TODO proper
     if (scope.split(".").length > 3) {
       mapping(scope.split(".").take(3).mkString("."))
     } else {
