@@ -9,6 +9,7 @@
     <change-notes>
         <![CDATA[
             -Fixes Duplicate RPC Method textdocument/semanticHighlighting exception
+            -Uses guessProjectDir for rootPath
 ]]>
     </change-notes>
 
