@@ -107,7 +107,7 @@ class LanguageClientImpl extends LanguageClient {
         LOG.warn("Unknown message type for " + message)
     }
   }
-
+  
   override def semanticHighlighting(params: SemanticHighlightingParams): Unit = {
     SemanticHighlightingHandler.handlePush(params)
   }
