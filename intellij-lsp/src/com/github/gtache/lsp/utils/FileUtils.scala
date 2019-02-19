@@ -153,6 +153,10 @@ object FileUtils {
     new File(editor.getProject.getBasePath).getAbsolutePath
   }
 
+  def VFSToPath(file: VirtualFile): String = {
+    new File(file.getPath).getAbsolutePath
+  }
+
   /**
     * Transforms a path into an URI string
     *
