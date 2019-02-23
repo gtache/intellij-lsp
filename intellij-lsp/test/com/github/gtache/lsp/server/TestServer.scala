@@ -45,6 +45,12 @@ class TestServer extends LanguageServer with LanguageClientAware with TextDocume
       val d = new CompletionItem("D")
       d.setKind(CompletionItemKind.Method)
       d
+    },  {
+      val e = new CompletionItem("E")
+      e.setInsertTextFormat(InsertTextFormat.Snippet)
+      e.setInsertText("Hello $1 how $2 are ${3:you}?")
+      e.setDeprecated(true)
+      e
     }
   )
   private val uris = List(new File("D:\\Projects\\Scala\\DottyExample\\src\\main\\test1.test").toURI.toString, new File("D:\\Projects\\Scala\\DottyExample\\src\\main\\test2.test").toURI.toString)

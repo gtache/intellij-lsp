@@ -93,7 +93,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   }
 
   def getAllPotentialEditors: Seq[Editor] = {
-    FileUtils.getAllOpenedEditors(project).filter(e => serverDefinition.getMappedExtensions.contains(FileUtils.fileTypeFromEditor(e).getDefaultExtension))
+    FileUtils.getAllOpenedEditors(project).filter(e => serverDefinition.getMappedExtensions.contains(FileUtils.extFromEditor(e)))
   }
 
   /**
@@ -284,7 +284,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     */
   @throws[IOException]
   override def start(): Unit = {
-    if (status == STOPPED && !alreadyShownCrash && !alreadyShownTimeout) {
+    if (status == STOPPED || status==FAILED) {
       setStatus(STARTING)
       try {
         val (inputStream, outputStream) = serverDefinition.start(rootPath)
@@ -313,7 +313,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         textDocumentClientCapabilities.setCodeAction(new CodeActionCapabilities)
         //textDocumentClientCapabilities.setCodeLens(new CodeLensCapabilities)
         //textDocumentClientCapabilities.setColorProvider(new ColorProviderCapabilities)
-        textDocumentClientCapabilities.setCompletion(new CompletionCapabilities(new CompletionItemCapabilities(false)))
+        textDocumentClientCapabilities.setCompletion(new CompletionCapabilities(new CompletionItemCapabilities(true)))
         textDocumentClientCapabilities.setDefinition(new DefinitionCapabilities)
         textDocumentClientCapabilities.setDocumentHighlight(new DocumentHighlightCapabilities)
         //textDocumentClientCapabilities.setDocumentLink(new DocumentLinkCapabilities)
@@ -351,7 +351,9 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   }
 
   override def restart(): Unit = {
-    stop()
+    if (status == ServerStatus.STARTED || status == ServerStatus.STARTING) {
+      stop()
+    }
     getAllPotentialEditors.foreach(e => connect(e))
   }
 

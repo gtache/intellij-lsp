@@ -20,6 +20,8 @@ import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.codeInsight.completion.InsertionContext
 import com.intellij.codeInsight.hint.HintManager
 import com.intellij.codeInsight.lookup._
+import com.intellij.codeInsight.template.impl.TemplateImpl
+import com.intellij.codeInsight.template.{LiveTemplateBuilder, TemplateBuilderImpl, TemplateManager}
 import com.intellij.lang.LanguageDocumentation
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.command.CommandProcessor
@@ -45,6 +47,7 @@ import org.eclipse.lsp4j.util.SemanticHighlightingTokens
 
 import scala.collection.{JavaConverters, mutable}
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Random
 
 object EditorEventManager {
   private val HOVER_TIME_THRES: Long = EditorSettingsExternalizable.getInstance().getQuickDocOnMouseOverElementDelayMillis * 1000000
@@ -293,14 +296,17 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             * @return The corresponding LookupElement
             */
           def createLookupItem(item: CompletionItem): LookupElement = {
+            //TODO improve
             val addTextEdits = item.getAdditionalTextEdits
             val command = item.getCommand
+            val commitChars = item.getCommitCharacters
             val data = item.getData
+            val deprecated = item.getDeprecated
             val detail = item.getDetail
             val doc = item.getDocumentation
             val filterText = item.getFilterText
             val insertText = item.getInsertText
-            val insertFormat = item.getInsertTextFormat
+            val insertFormat = item.getInsertTextFormat //TODO snippet
             val kind = item.getKind
             val label = item.getLabel
             val textEdit = item.getTextEdit
@@ -309,6 +315,33 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             val tailText = if (detail != null) detail else ""
             val iconProvider = GUIUtils.getIconProviderFor(wrapper.getServerDefinition)
             val icon = iconProvider.getCompletionIcon(kind)
+            if (insertFormat == InsertTextFormat.Snippet) {
+              val startIndexes = 0.until(insertText.length).filter(insertText.startsWith("$", _))
+              val variables = startIndexes.map(i => {
+                val sub = insertText.drop(i + 1)
+                if (sub.head == '{') {
+                  val num = sub.tail.takeWhile(c => c != ':')
+                  val placeholder = sub.tail.dropWhile(c => c != ':').tail.takeWhile(c => c != '}')
+                  val len = num.length + placeholder.length + 4
+                  (i, i + len, num, placeholder)
+                } else {
+                  val num = sub.takeWhile(c => c.isDigit)
+                  val placeholder = "..."
+                  val len = num.length + 1
+                  (i, i + len, num, placeholder)
+                }
+              })
+              var newInsertText = insertText
+              variables.sortBy(t => -t._1).foreach(t => newInsertText = newInsertText.take(t._1) + "$" + t._3 + newInsertText.drop(t._2))
+              val text = newInsertText
+              val template = new TemplateImpl(Random.nextString(10), "lsp")
+              template.setString(text)
+              variables.foreach(t => {
+                template.addVariable(t._3, t._3, t._4, true)
+              })
+              template.setInline(false)
+              TemplateManager.getInstance(project).startTemplate(editor,template)
+            }
             var lookupElementBuilder: LookupElementBuilder = null
             /*            .withRenderer((element: LookupElement, presentation: LookupElementPresentation) => { //TODO later
                       presentation match {
@@ -320,7 +353,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             if (textEdit != null) {
               if (addTextEdits != null) {
                 lookupElementBuilder = LookupElementBuilder.create(presentableText, "")
-                  .withInsertHandler((context: InsertionContext, item: LookupElement) => {
+                  .withInsertHandler((context: InsertionContext, _: LookupElement) => {
                     context.commitDocument()
                     invokeLater(() => {
                       applyEdit(edits = addTextEdits.asScala :+ textEdit, name = "Completion : " + label)
@@ -330,7 +363,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                   .withLookupString(presentableText)
               } else {
                 lookupElementBuilder = LookupElementBuilder.create(presentableText, "")
-                  .withInsertHandler((context: InsertionContext, item: LookupElement) => {
+                  .withInsertHandler((context: InsertionContext, _: LookupElement) => {
                     context.commitDocument()
                     invokeLater(() => {
                       applyEdit(edits = Seq(textEdit), name = "Completion : " + label)
@@ -342,7 +375,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               }
             } else if (addTextEdits != null) {
               lookupElementBuilder = LookupElementBuilder.create(presentableText, "")
-                .withInsertHandler((context: InsertionContext, item: LookupElement) => {
+                .withInsertHandler((context: InsertionContext, _: LookupElement) => {
                   context.commitDocument()
                   invokeLater(() => {
                     applyEdit(edits = addTextEdits.asScala, name = "Completion : " + label)
@@ -352,7 +385,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 .withLookupString(presentableText)
             } else {
               lookupElementBuilder = LookupElementBuilder.create(if (insertText != null && insertText != "") insertText else label)
-              if (command != null) lookupElementBuilder = lookupElementBuilder.withInsertHandler((context: InsertionContext, item: LookupElement) => {
+              if (command != null) lookupElementBuilder = lookupElementBuilder.withInsertHandler((context: InsertionContext, _: LookupElement) => {
                 context.commitDocument()
                 invokeLater(() => {
                   executeCommands(Iterable(command))
@@ -360,6 +393,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               })
             }
             if (kind == CompletionItemKind.Keyword) lookupElementBuilder = lookupElementBuilder.withBoldness(true)
+            if (deprecated){
+              lookupElementBuilder = lookupElementBuilder.withStrikeoutness(true)
+            }
             lookupElementBuilder.withPresentableText(presentableText).withTailText(tailText, true).withIcon(icon).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT)
           }
 

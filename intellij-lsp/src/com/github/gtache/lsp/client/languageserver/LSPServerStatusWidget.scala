@@ -98,7 +98,7 @@ class LSPServerStatusWidget(val wrapper: LanguageServerWrapper) extends StatusBa
 
     private object Restart extends AnAction("&Restart the server", "Try to restart the server after it failed", AllIcons.Actions.Restart) with DumbAware {
       override def actionPerformed(e: AnActionEvent): Unit = {
-        wrapper.start()
+        ApplicationUtils.pool(() => wrapper.restart())
       }
     }
 

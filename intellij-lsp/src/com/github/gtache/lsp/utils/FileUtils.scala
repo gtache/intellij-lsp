@@ -5,9 +5,9 @@ import java.net.{URI, URL}
 
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Document, Editor}
-import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, TextEditor}
+import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditor, FileEditorManager, TextEditor}
 import com.intellij.openapi.fileTypes.FileType
-import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.{Project, ProjectUtil}
 import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
 import com.intellij.psi.PsiFile
 import org.eclipse.lsp4j.TextDocumentIdentifier
@@ -52,6 +52,10 @@ object FileUtils {
     */
   def fileTypeFromEditor(editor: Editor): FileType = {
     FileDocumentManager.getInstance().getFile(editor.getDocument).getFileType
+  }
+
+  def extFromEditor(editor: Editor): String = {
+    FileDocumentManager.getInstance().getFile(editor.getDocument).getExtension
   }
 
   /**
@@ -150,7 +154,7 @@ object FileUtils {
   }
 
   def editorToProjectFolderPath(editor: Editor): String = {
-    new File(editor.getProject.getBasePath).getAbsolutePath
+    new File(ProjectUtil.guessProjectDir(editor.getProject).getPath).getAbsolutePath
   }
 
   def VFSToPath(file: VirtualFile): String = {
@@ -176,9 +180,7 @@ object FileUtils {
   }
 
   def getAllOpenedEditors(project: Project): Seq[Editor] = {
-    //TODO probably wrong
-    FileEditorManager.getInstance(project).getAllEditors().filter(e => e.isInstanceOf[Editor])
-      .map(e => e.asInstanceOf[Editor]).toSeq
+    ApplicationUtils.computableReadAction(() => FileEditorManager.getInstance(project).getAllEditors().filter(e => e.isInstanceOf[TextEditor]).map(e => e.asInstanceOf[TextEditor].getEditor).toSeq)
   }
 
   /**
