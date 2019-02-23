@@ -302,7 +302,10 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         //workspaceClientCapabilities.setDidChangeConfiguration(new DidChangeConfigurationCapabilities)
         workspaceClientCapabilities.setDidChangeWatchedFiles(new DidChangeWatchedFilesCapabilities)
         workspaceClientCapabilities.setExecuteCommand(new ExecuteCommandCapabilities)
-        workspaceClientCapabilities.setWorkspaceEdit(new WorkspaceEditCapabilities(true))
+        val wec = new WorkspaceEditCapabilities
+        //TODO set failureHandling and resourceOperations
+        wec.setDocumentChanges(true)
+        workspaceClientCapabilities.setWorkspaceEdit(wec)
         workspaceClientCapabilities.setSymbol(new SymbolCapabilities)
         workspaceClientCapabilities.setWorkspaceFolders(false)
         workspaceClientCapabilities.setConfiguration(false)
@@ -408,7 +411,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
 
   override def crashed(e: Exception): Unit = {
     crashCount += 1
-    if (crashCount < 2) {
+    if (crashCount < 4) {
       val editors = connectedEditors.clone().toMap.keys
       stop()
       editors.foreach(uri => connect(uri))
