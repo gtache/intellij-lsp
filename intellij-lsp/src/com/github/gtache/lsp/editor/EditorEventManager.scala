@@ -332,7 +332,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                     invokeLater(() => {
                       applyEdit(edits = Seq(textEdit), name = "Completion : " + label)
                       if (command != null) executeCommands(Iterable(command))
-                      editor.getCaretModel.moveCaretRelatively(textEdit.getNewText.length,0,false,false,true)
+                      editor.getCaretModel.moveCaretRelatively(textEdit.getNewText.length, 0, false, false, true)
                     })
                   })
                   .withLookupString(presentableText)
@@ -426,21 +426,15 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param diagnostics The diagnostics to apply from the server
     */
   def diagnostics(diagnostics: Iterable[Diagnostic]): Unit = {
-    pool(() => {
+    invokeLater(() => {
       if (!editor.isDisposed) {
-        invokeLater(() => {
-          diagnosticsHighlights.synchronized {
-            diagnosticsHighlights.foreach(highlight => editor.getMarkupModel.removeHighlighter(highlight.rangeHighlighter))
-            diagnosticsHighlights.clear()
-          }
-        })
+        diagnosticsHighlights.synchronized {
+          diagnosticsHighlights.foreach(highlight => editor.getMarkupModel.removeHighlighter(highlight.rangeHighlighter))
+          diagnosticsHighlights.clear()
+        }
         for (diagnostic <- diagnostics) {
-          val code = diagnostic.getCode
-          val message = diagnostic.getMessage
-          val source = diagnostic.getSource
           val range = diagnostic.getRange
           val severity = diagnostic.getSeverity
-          val (start, end) = (DocumentUtils.LSPPosToOffset(editor, range.getStart), DocumentUtils.LSPPosToOffset(editor, range.getEnd))
 
           val markupModel = editor.getMarkupModel
           val colorScheme = editor.getColorsScheme
@@ -452,16 +446,14 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             case DiagnosticSeverity.Information => (EffectType.WAVE_UNDERSCORE, java.awt.Color.GRAY, HighlighterLayer.WARNING)
             case DiagnosticSeverity.Hint => (EffectType.BOLD_DOTTED_LINE, java.awt.Color.GRAY, HighlighterLayer.WARNING)
           }
-          invokeLater(() => {
-            if (!editor.isDisposed) {
-              diagnosticsHighlights.synchronized {
-                diagnosticsHighlights
-                  .add(DiagnosticRangeHighlighter(markupModel.addRangeHighlighter(start, end, layer,
-                    new TextAttributes(colorScheme.getDefaultForeground, colorScheme.getDefaultBackground, effectColor, effectType, Font.PLAIN), HighlighterTargetArea.EXACT_RANGE),
-                    diagnostic))
-              }
-            }
-          })
+
+          val (start, end) = (DocumentUtils.LSPPosToOffset(editor, range.getStart), DocumentUtils.LSPPosToOffset(editor, range.getEnd))
+          diagnosticsHighlights.synchronized {
+            diagnosticsHighlights
+              .add(DiagnosticRangeHighlighter(markupModel.addRangeHighlighter(start, end, layer,
+                new TextAttributes(colorScheme.getDefaultForeground, colorScheme.getDefaultBackground, effectColor, effectType, Font.PLAIN), HighlighterTargetArea.EXACT_RANGE),
+                diagnostic))
+          }
         }
       }
     })
@@ -1393,7 +1385,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   def mouseEntered(): Unit = {
     mouseInEditor = true
-
   }
 
   /**

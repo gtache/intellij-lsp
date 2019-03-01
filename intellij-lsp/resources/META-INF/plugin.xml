@@ -9,6 +9,7 @@
     <change-notes>
         <![CDATA[
             -Adds logging for server processes
+            -Fixes IllegalArgumentException with diagnostics
 ]]>
     </change-notes>
 
