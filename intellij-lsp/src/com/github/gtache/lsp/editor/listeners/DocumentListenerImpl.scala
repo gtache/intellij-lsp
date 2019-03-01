@@ -22,7 +22,7 @@ class DocumentListenerImpl extends DocumentListener with LSPListener {
     * @param event the event containing the information about the change.
     */
   override def documentChanged(event: DocumentEvent): Unit = {
-    if (checkManager()) {
+    if (checkEnabled()) {
       manager.documentChanged(event)
     }
   }

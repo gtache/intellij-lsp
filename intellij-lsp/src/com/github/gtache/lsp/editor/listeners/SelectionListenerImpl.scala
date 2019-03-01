@@ -8,5 +8,5 @@ import com.intellij.openapi.editor.event.{SelectionEvent, SelectionListener}
 class SelectionListenerImpl extends SelectionListener with LSPListener {
 
   override def selectionChanged(e: SelectionEvent): Unit =
-    if (checkManager()) manager.selectionChanged(e)
+    if (checkEnabled()) manager.selectionChanged(e)
 }

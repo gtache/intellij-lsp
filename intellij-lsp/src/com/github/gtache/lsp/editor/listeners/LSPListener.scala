@@ -9,7 +9,7 @@ import com.intellij.openapi.diagnostic.Logger
 trait LSPListener {
   private val LOG: Logger = Logger.getInstance(this.getClass)
   protected var manager: EditorEventManager = _
-
+  protected var enabled: Boolean = true
 
   /**
     * Sets the manager for this listener
@@ -21,15 +21,21 @@ trait LSPListener {
   }
 
   /**
-    * Checks if a manager is set, and logs and error if not the case
-    *
-    * @return true or false depending on if the manager is set
+    * Checks if the listener must currently report on events
     */
-  protected def checkManager(): Boolean = {
+  protected def checkEnabled(): Boolean = {
     if (manager == null) {
       LOG.error("Manager is null")
       false
-    } else true
+    } else enabled
+  }
+
+  def disable(): Unit = {
+    enabled = false
+  }
+
+  def enable(): Unit = {
+    enabled = true
   }
 
 }

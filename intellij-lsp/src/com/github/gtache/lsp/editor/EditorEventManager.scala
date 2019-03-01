@@ -4,8 +4,9 @@ import java.awt._
 import java.awt.event.{KeyEvent, MouseAdapter, MouseEvent}
 import java.io.File
 import java.net.URI
+import java.util
 import java.util.concurrent.{ExecutionException, TimeUnit, TimeoutException}
-import java.util.{Collections, Timer, TimerTask}
+import java.util.{Timer, TimerTask}
 
 import com.github.gtache.lsp.actions.LSPReferencesAction
 import com.github.gtache.lsp.client.languageserver.ServerOptions
@@ -43,6 +44,7 @@ import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.jsonrpc.JsonRpcException
 
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 object EditorEventManager {
   private val HOVER_TIME_THRES: Long = EditorSettingsExternalizable.getInstance().getQuickDocOnMouseOverElementDelayMillis * 1000000
@@ -131,7 +133,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   private val identifier: TextDocumentIdentifier = new TextDocumentIdentifier(FileUtils.editorToURIString(editor))
   private val LOG: Logger = Logger.getInstance(classOf[EditorEventManager])
-  private val changesParams = new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(), Collections.singletonList(new TextDocumentContentChangeEvent()))
+  private val changesParams = new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(), new util.ArrayList[TextDocumentContentChangeEvent]())
   private val selectedSymbHighlights: mutable.Set[RangeHighlighter] = mutable.HashSet()
   private val diagnosticsHighlights: mutable.Set[DiagnosticRangeHighlighter] = mutable.HashSet()
   private val syncKind = serverOptions.syncKind
@@ -168,6 +170,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private var isOpen: Boolean = false
   private var mouseInEditor: Boolean = true
   private var currentHint: Hint = _
+  private var holdDCE: Boolean = false
+  private val DCEs: ArrayBuffer[DocumentEvent] = ArrayBuffer()
 
   uriToManager.put(FileUtils.editorToURIString(editor), this)
   editorToManager.put(editor, this)
@@ -459,50 +463,101 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     })
   }
 
+  private def releaseDCE(): Unit = {
+    DCEs.synchronized {
+      if (!editor.isDisposed) {
+        changesParams.synchronized {
+          syncKind match {
+            case TextDocumentSyncKind.None =>
+            case TextDocumentSyncKind.Full =>
+              val changeEvent = new TextDocumentContentChangeEvent()
+              changeEvent.setText(editor.getDocument.getText)
+              changesParams.getContentChanges.add(changeEvent)
+            case TextDocumentSyncKind.Incremental =>
+              DCEs.filter(e => e.getDocument == editor.getDocument).map(event => {
+                val changeEvent = new TextDocumentContentChangeEvent()
+                val newText = event.getNewFragment
+                val offset = event.getOffset
+                val newTextLength = event.getNewLength
+                val lspPosition: Position = DocumentUtils.offsetToLSPPos(editor, offset)
+                val startLine = lspPosition.getLine
+                val startColumn = lspPosition.getCharacter
+                val oldText = event.getOldFragment
+
+                //if text was deleted/replaced, calculate the end position of inserted/deleted text
+                val (endLine, endColumn) = if (oldText.length() > 0) {
+                  val line = startLine + StringUtil.countNewLines(oldText)
+                  val oldLines = oldText.toString.split('\n')
+                  val oldTextLength = if (oldLines.isEmpty) 0 else oldLines.last.length
+                  val column = if (oldLines.length == 1) startColumn + oldTextLength else oldTextLength
+                  (line, column)
+                } else (startLine, startColumn) //if insert or no text change, the end position is the same
+                val range = new Range(new Position(startLine, startColumn), new Position(endLine, endColumn))
+                changeEvent.setRange(range)
+                changeEvent.setRangeLength(newTextLength)
+                changeEvent.setText(newText.toString)
+                changeEvent
+              }).foreach(changesParams.getContentChanges.add(_))
+          }
+        }
+        requestManager.didChange(changesParams)
+        changesParams.getContentChanges.clear()
+      }
+    }
+  }
+
   /**
     * Handles the DocumentChanged events
     *
     * @param event The DocumentEvent
     */
   def documentChanged(event: DocumentEvent): Unit = {
-    if (!editor.isDisposed) {
-      if (event.getDocument == editor.getDocument) {
-        predTime = System.nanoTime() //So that there are no hover events while typing
-        changesParams.getTextDocument.setVersion({
-          version += 1
-          version - 1
-        })
-        syncKind match {
-          case TextDocumentSyncKind.None =>
-          case TextDocumentSyncKind.Incremental =>
-            val changeEvent = changesParams.getContentChanges.get(0)
-            val newText = event.getNewFragment
-            val offset = event.getOffset
-            val newTextLength = event.getNewLength
-            val lspPosition: Position = DocumentUtils.offsetToLSPPos(editor, offset)
-            val startLine = lspPosition.getLine
-            val startColumn = lspPosition.getCharacter
-            val oldText = event.getOldFragment
+    if (holdDCE) {
+      DCEs.synchronized {
+        DCEs.append(event)
+      }
+    } else {
+      if (!editor.isDisposed) {
+        if (event.getDocument == editor.getDocument) {
+          predTime = System.nanoTime() //So that there are no hover events while typing
+          changesParams.synchronized {
+            changesParams.getTextDocument.setVersion({
+              version += 1
+              version - 1
+            })
+          }
+          syncKind match {
+            case TextDocumentSyncKind.None =>
+            case TextDocumentSyncKind.Incremental =>
+              val changeEvent = changesParams.getContentChanges.get(0)
+              val newText = event.getNewFragment
+              val offset = event.getOffset
+              val newTextLength = event.getNewLength
+              val lspPosition: Position = DocumentUtils.offsetToLSPPos(editor, offset)
+              val startLine = lspPosition.getLine
+              val startColumn = lspPosition.getCharacter
+              val oldText = event.getOldFragment
 
-            //if text was deleted/replaced, calculate the end position of inserted/deleted text
-            val (endLine, endColumn) = if (oldText.length() > 0) {
-              val line = startLine + StringUtil.countNewLines(oldText)
-              val oldLines = oldText.toString.split('\n')
-              val oldTextLength = if (oldLines.isEmpty) 0 else oldLines.last.length
-              val column = if (oldLines.length == 1) startColumn + oldTextLength else oldTextLength
-              (line, column)
-            } else (startLine, startColumn) //if insert or no text change, the end position is the same
-          val range = new Range(new Position(startLine, startColumn), new Position(endLine, endColumn))
-            changeEvent.setRange(range)
-            changeEvent.setRangeLength(newTextLength)
-            changeEvent.setText(newText.toString)
+              //if text was deleted/replaced, calculate the end position of inserted/deleted text
+              val (endLine, endColumn) = if (oldText.length() > 0) {
+                val line = startLine + StringUtil.countNewLines(oldText)
+                val oldLines = oldText.toString.split('\n')
+                val oldTextLength = if (oldLines.isEmpty) 0 else oldLines.last.length
+                val column = if (oldLines.length == 1) startColumn + oldTextLength else oldTextLength
+                (line, column)
+              } else (startLine, startColumn) //if insert or no text change, the end position is the same
+            val range = new Range(new Position(startLine, startColumn), new Position(endLine, endColumn))
+              changeEvent.setRange(range)
+              changeEvent.setRangeLength(newTextLength)
+              changeEvent.setText(newText.toString)
 
-          case TextDocumentSyncKind.Full =>
-            changesParams.getContentChanges.get(0).setText(editor.getDocument.getText())
+            case TextDocumentSyncKind.Full =>
+              changesParams.getContentChanges.get(0).setText(editor.getDocument.getText())
+          }
+          requestManager.didChange(changesParams)
+        } else {
+          LOG.error("Wrong document for the EditorEventManager")
         }
-        requestManager.didChange(changesParams)
-      } else {
-        LOG.error("Wrong document for the EditorEventManager")
       }
     }
   }
@@ -1178,11 +1233,17 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
     val runnable = getEditsRunnable(version, edits, name)
     writeAction(() => {
+/*      holdDCE.synchronized {
+        holdDCE = true
+      }*/
       if (runnable != null) CommandProcessor.getInstance().executeCommand(project, runnable, name, "LSPPlugin", editor.getDocument)
       if (closeAfter) {
         FileEditorManager.getInstance(project)
           .closeFile(PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument).getVirtualFile)
       }
+      /*      holdDCE.synchronized {
+              holdDCE = false
+            }*/
     })
     if (runnable != null) true else false
   }
@@ -1247,7 +1308,11 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val options = new FormattingOptions() //TODO
         params.setOptions(options)
         val request = requestManager.rangeFormatting(params)
-        if (request != null) request.thenAccept(formatting => if (formatting != null) invokeLater(() => applyEdit(edits = formatting.asScala, name = "Reformat selection")))
+        if (request != null)
+          request.thenAccept(formatting =>
+            if (formatting != null) invokeLater(() =>
+              if (!editor.isDisposed)
+                applyEdit(edits = formatting.asScala, name = "Reformat selection")))
       }
     })
   }
