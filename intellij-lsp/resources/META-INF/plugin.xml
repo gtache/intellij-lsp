@@ -13,6 +13,7 @@
             -Fixes Ctrl-Hovering sometimes raising NullPointerException
             -Fixes error when receiving line index greater than document
             -Fixes error when trying to get substring of empty line
+            -Fixes NullPointer getting raised sometimes when closing an editor
 ]]>
     </change-notes>
 
