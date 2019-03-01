@@ -519,42 +519,46 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     } else {
       if (!editor.isDisposed) {
         if (event.getDocument == editor.getDocument) {
-          predTime = System.nanoTime() //So that there are no hover events while typing
           changesParams.synchronized {
+            predTime = System.nanoTime() //So that there are no hover events while typing
             changesParams.getTextDocument.setVersion({
               version += 1
               version - 1
             })
-          }
-          syncKind match {
-            case TextDocumentSyncKind.None =>
-            case TextDocumentSyncKind.Incremental =>
-              val changeEvent = changesParams.getContentChanges.get(0)
-              val newText = event.getNewFragment
-              val offset = event.getOffset
-              val newTextLength = event.getNewLength
-              val lspPosition: Position = DocumentUtils.offsetToLSPPos(editor, offset)
-              val startLine = lspPosition.getLine
-              val startColumn = lspPosition.getCharacter
-              val oldText = event.getOldFragment
+            syncKind match {
+              case TextDocumentSyncKind.None =>
+              case TextDocumentSyncKind.Incremental =>
+                val changeEvent = new TextDocumentContentChangeEvent()
+                val newText = event.getNewFragment
+                val offset = event.getOffset
+                val newTextLength = event.getNewLength
+                val lspPosition: Position = DocumentUtils.offsetToLSPPos(editor, offset)
+                val startLine = lspPosition.getLine
+                val startColumn = lspPosition.getCharacter
+                val oldText = event.getOldFragment
 
-              //if text was deleted/replaced, calculate the end position of inserted/deleted text
-              val (endLine, endColumn) = if (oldText.length() > 0) {
-                val line = startLine + StringUtil.countNewLines(oldText)
-                val oldLines = oldText.toString.split('\n')
-                val oldTextLength = if (oldLines.isEmpty) 0 else oldLines.last.length
-                val column = if (oldLines.length == 1) startColumn + oldTextLength else oldTextLength
-                (line, column)
-              } else (startLine, startColumn) //if insert or no text change, the end position is the same
-            val range = new Range(new Position(startLine, startColumn), new Position(endLine, endColumn))
-              changeEvent.setRange(range)
-              changeEvent.setRangeLength(newTextLength)
-              changeEvent.setText(newText.toString)
+                //if text was deleted/replaced, calculate the end position of inserted/deleted text
+                val (endLine, endColumn) = if (oldText.length() > 0) {
+                  val line = startLine + StringUtil.countNewLines(oldText)
+                  val oldLines = oldText.toString.split('\n')
+                  val oldTextLength = if (oldLines.isEmpty) 0 else oldLines.last.length
+                  val column = if (oldLines.length == 1) startColumn + oldTextLength else oldTextLength
+                  (line, column)
+                } else (startLine, startColumn) //if insert or no text change, the end position is the same
+              val range = new Range(new Position(startLine, startColumn), new Position(endLine, endColumn))
+                changeEvent.setRange(range)
+                changeEvent.setRangeLength(newTextLength)
+                changeEvent.setText(newText.toString)
+                changesParams.getContentChanges.add(changeEvent)
 
-            case TextDocumentSyncKind.Full =>
-              changesParams.getContentChanges.get(0).setText(editor.getDocument.getText())
+              case TextDocumentSyncKind.Full =>
+                val changeEvent = new TextDocumentContentChangeEvent()
+                changeEvent.setText(editor.getDocument.getText)
+                changesParams.getContentChanges.add(changeEvent)
+            }
+            requestManager.didChange(changesParams)
+            changesParams.getContentChanges.clear()
           }
-          requestManager.didChange(changesParams)
         } else {
           LOG.error("Wrong document for the EditorEventManager")
         }
@@ -1233,9 +1237,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   def applyEdit(version: Int = Int.MaxValue, edits: Iterable[TextEdit], name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean = {
     val runnable = getEditsRunnable(version, edits, name)
     writeAction(() => {
-/*      holdDCE.synchronized {
-        holdDCE = true
-      }*/
+      /*      holdDCE.synchronized {
+              holdDCE = true
+            }*/
       if (runnable != null) CommandProcessor.getInstance().executeCommand(project, runnable, name, "LSPPlugin", editor.getDocument)
       if (closeAfter) {
         FileEditorManager.getInstance(project)
