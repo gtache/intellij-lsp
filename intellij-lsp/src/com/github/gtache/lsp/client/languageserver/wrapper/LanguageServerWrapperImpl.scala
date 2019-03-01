@@ -1,8 +1,9 @@
 /* Adapted from lsp4e */
 package com.github.gtache.lsp.client.languageserver.wrapper
 
-import java.io.IOException
+import java.io._
 import java.net.URI
+import java.util.{Date, Scanner}
 import java.util.concurrent._
 
 import com.github.gtache.lsp.PluginMain
@@ -78,6 +79,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private var initializeFuture: CompletableFuture[InitializeResult] = _
   private var capabilitiesAlreadyRequested = false
   private var initializeStartTime = 0L
+  private var logThreads: Seq[Thread] = Seq.empty
 
   override def getServerDefinition: LanguageServerDefinition = serverDefinition
 
@@ -260,6 +262,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     connectedEditors.foreach(e => disconnect(e._1))
     this.languageServer = null
     setStatus(STOPPED)
+    stopLoggingServer()
   }
 
   /**
@@ -285,6 +288,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       setStatus(STARTING)
       try {
         val (inputStream, outputStream) = serverDefinition.start(rootPath)
+        startLoggingServer()
         client = serverDefinition.createLanguageClient
         val initParams = new InitializeParams
         initParams.setRootUri(FileUtils.pathToUri(rootPath))
@@ -442,6 +446,37 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     if (editors.nonEmpty) {
       connect(editors.head)
     }
+  }
 
+  private def startLoggingServer(): Unit = {
+    case class ReaderPrinterRunnable(in: InputStream, outPath: String) extends Runnable {
+      override def run(): Unit = {
+        var notInterrupted = true
+        val scanner = new Scanner(in)
+        val out = new File(outPath)
+        val writer = new BufferedWriter(new FileWriter(out, true))
+        while (scanner.hasNextLine && notInterrupted) {
+          if (!Thread.currentThread().isInterrupted) {
+            writer.write(scanner.nextLine())
+          } else {
+            notInterrupted = false
+          }
+        }
+      }
+    }
+    val (outStream, errStream) = serverDefinition.getOutputStreams(rootPath)
+    val dir = new File(rootPath + "/lsp")
+    dir.mkdir()
+    import java.text.SimpleDateFormat
+    val date = new SimpleDateFormat("yyyyMMdd").format(new Date())
+    val basename = rootPath + "/lsp/" + serverDefinition.id.replace(";", "_")
+    val errRunnable = ReaderPrinterRunnable(errStream, basename + "_err_" + date + ".log")
+    val outRunnable = ReaderPrinterRunnable(outStream, basename + "_out_" + date + ".log")
+    logThreads = Seq(new Thread(errRunnable), new Thread(outRunnable))
+    logThreads.foreach(_.start)
+  }
+
+  private def stopLoggingServer(): Unit = {
+    logThreads.foreach(_.interrupt)
   }
 }

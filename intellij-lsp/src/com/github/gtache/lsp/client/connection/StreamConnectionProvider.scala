@@ -18,6 +18,8 @@ trait StreamConnectionProvider {
 
   def getOutputStream: OutputStream
 
+  def getErrorStream: InputStream
+
   /**
     * User provided initialization options.
     */

@@ -1,16 +1,14 @@
 <idea-plugin>
     <id>com.github.gtache.lsp</id>
     <name>LSP Support</name>
-    <version>1.5.2</version>
+    <version>1.5.3</version>
     <vendor email="guillaume.tache@epfl.ch" url="https://github.com/gtache">gtache</vendor>
 
     <description>Adds LSP (Language Server Protocol) support for IntelliJ</description>
 
     <change-notes>
         <![CDATA[
-            -Fixes Duplicate RPC Method textdocument/semanticHighlighting exception
-            -Uses guessProjectDir for rootPath
-            -Fixes exception related to logicalToLSPPos not running on dispatch thread
+            -Adds logging for server processes
 ]]>
     </change-notes>
 

@@ -58,6 +58,11 @@ class ProcessStreamConnectionProvider(private var commands: Seq[String], private
     else process.getOutputStream
   }
 
+  @Nullable override def getErrorStream: InputStream = {
+    if (process == null) null
+    else process.getErrorStream
+  }
+
   override def stop(): Unit = {
     if (process != null) process.destroy()
   }
