@@ -12,6 +12,7 @@
             -Fixes IllegalArgumentException with diagnostics
             -Fixes Ctrl-Hovering sometimes raising NullPointerException
             -Fixes error when receiving line index greater than document
+            -Fixes error when trying to get substring of empty line
 ]]>
     </change-notes>
 
