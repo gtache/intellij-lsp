@@ -76,8 +76,8 @@ object DocumentUtils {
     */
   def LSPPosToOffset(editor: Editor, pos: Position): Int = {
     computableReadAction(() => {
-      val line = pos.getLine
       val doc = editor.getDocument
+      val line = math.max(0, math.min(pos.getLine, doc.getLineCount))
       val lineText = doc.getText(DocumentUtil.getLineTextRange(doc, line))
       val lineTextForPosition = lineText.substring(0, min(lineText.length, pos.getCharacter))
       val tabs = StringUtil.countChars(lineTextForPosition, '\t')
