@@ -10,6 +10,7 @@
         <![CDATA[
             -Adds logging for server processes
             -Fixes IllegalArgumentException with diagnostics
+            -Fixes Ctrl-Hovering sometimes raising NullPointerException
 ]]>
     </change-notes>
 

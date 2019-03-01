@@ -913,7 +913,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   private def createCtrlRange(serverPos: Position, range: Range): Unit = {
     val loc = requestDefinition(serverPos)
-    if (loc != null) {
+    if (loc != null && loc.getRange != null && loc.getRange.getStart != null && loc.getRange.getEnd != null) {
       if (!editor.isDisposed) {
         val corRange = if (range == null) {
           val params = new TextDocumentPositionParams(identifier, serverPos)
