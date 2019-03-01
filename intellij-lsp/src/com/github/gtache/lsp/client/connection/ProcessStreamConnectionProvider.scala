@@ -29,10 +29,8 @@ class ProcessStreamConnectionProvider(private var commands: Seq[String], private
 
   protected def createProcessBuilder: ProcessBuilder = {
     import scala.collection.JavaConverters._
-    //TODO for cquery, REMOVE
-    val builder = new ProcessBuilder(getCommands.map(s => s.replace("\'", "")).asJava)
+    val builder = new ProcessBuilder(getCommands.asJava)
     builder.directory(new File(getWorkingDirectory))
-    builder.redirectError(ProcessBuilder.Redirect.INHERIT)
     builder
   }
 

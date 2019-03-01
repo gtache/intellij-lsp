@@ -289,7 +289,9 @@ class TestServer extends LanguageServer with LanguageClientAware with TextDocume
   }
 
   override def initialize(params: InitializeParams): CompletableFuture[InitializeResult] = {
-    CompletableFuture.completedFuture(new InitializeResult(capabilities))
+    val ret = CompletableFuture.completedFuture(new InitializeResult(capabilities))
+    println("Returning " + ret)
+    ret
   }
 
   override def connect(client: LanguageClient): Unit = this.client = client

@@ -457,9 +457,11 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         val writer = new BufferedWriter(new FileWriter(out, true))
         while (scanner.hasNextLine && notInterrupted) {
           if (!Thread.currentThread().isInterrupted) {
-            writer.write(scanner.nextLine())
+            writer.write(scanner.nextLine()+"\n")
+            writer.flush()
           } else {
             notInterrupted = false
+            writer.close()
           }
         }
       }
