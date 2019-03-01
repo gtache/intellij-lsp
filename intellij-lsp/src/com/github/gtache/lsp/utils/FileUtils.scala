@@ -7,7 +7,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Document, Editor}
 import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, TextEditor}
 import com.intellij.openapi.fileTypes.FileType
-import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.{Project, ProjectUtil}
 import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
 import com.intellij.psi.PsiFile
 import org.eclipse.lsp4j.TextDocumentIdentifier
@@ -150,7 +150,7 @@ object FileUtils {
   }
 
   def editorToProjectFolderPath(editor: Editor): String = {
-    new File(editor.getProject.getBasePath).getAbsolutePath
+    VFSToPath(ProjectUtil.guessProjectDir(editor.getProject))
   }
 
   def VFSToPath(file: VirtualFile): String = {

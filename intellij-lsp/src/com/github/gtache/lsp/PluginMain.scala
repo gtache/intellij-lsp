@@ -271,6 +271,7 @@ object PluginMain {
     * @param editor the editor.
     */
   def editorClosed(editor: Editor): Unit = {
+    // TODO Timing issue, editor dies / editor.getProject dies before it gets executed most likely
     ApplicationUtils.pool(() => {
       LanguageServerWrapperImpl.forEditor(editor).foreach(l => {
         LOG.info("Disconnecting " + FileUtils.editorToURIString(editor))
