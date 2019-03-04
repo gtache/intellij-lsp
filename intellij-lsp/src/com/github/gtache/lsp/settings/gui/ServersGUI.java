@@ -218,15 +218,18 @@ public final class ServersGUI implements LSPGUI {
         extField.setToolTipText(EXT_TOOLTIP);
         extField.setText(ext);
         final JLabel packgeLabel = new JLabel("Artifact");
-        final JTextField packgeField = new JTextField();
+        final JTextArea packgeField = new JTextArea();
+        packgeField.setLineWrap(true);
         packgeField.setToolTipText("e.g. ch.epfl.lamp:dotty-language-server_0.3:0.3.0-RC2");
         packgeField.setText(serv);
         final JLabel mainClassLabel = new JLabel("Main class");
-        final JTextField mainClassField = new JTextField();
+        final JTextArea mainClassField = new JTextArea();
+        mainClassField.setLineWrap(true);
         mainClassField.setToolTipText("e.g. dotty.tools.languageserver.Main");
         mainClassField.setText(mainClass);
         final JLabel argsLabel = new JLabel("Args");
-        final JTextField argsField = new JTextField();
+        final JTextArea argsField = new JTextArea();
+        argsField.setLineWrap(true);
         argsField.setToolTipText("e.g. -stdio");
         argsField.setText(args);
 
@@ -252,7 +255,8 @@ public final class ServersGUI implements LSPGUI {
         pathField.setText(path);
         pathField.addBrowseFolderListener(new TextBrowseFolderListener(new FileChooserDescriptor(true, false, true, true, true, false).withShowHiddenFiles(true)));
         final JLabel argsLabel = new JLabel("Args");
-        final JTextField argsField = new JTextField();
+        final JTextArea argsField = new JTextArea();
+        argsField.setLineWrap(true);
         argsField.setToolTipText("e.g. -stdio");
         argsField.setText(args);
 
@@ -272,16 +276,16 @@ public final class ServersGUI implements LSPGUI {
         extField.setToolTipText(EXT_TOOLTIP);
         extField.setText(ext);
         final JLabel commandLabel = new JLabel("Command");
-        final TextFieldWithBrowseButton commandField = new TextFieldWithBrowseButton();
-        commandField.setText(command);
-        commandField.setToolTipText("e.g. python.exe -m C:\\python-ls\\pyls");
-        commandField.addBrowseFolderListener(new TextBrowseFolderListener(new FileChooserDescriptor(true, false, true, true, true, false).withShowHiddenFiles(true)));
+        final JTextArea argsField = new JTextArea();
+        argsField.setLineWrap(true);
+        argsField.setText(command);
+        argsField.setToolTipText("e.g. python.exe -m C:\\python-ls\\pyls");
 
-        final List<JComponent> components = Arrays.asList(extLabel, extField, commandLabel, commandField);
+        final List<JComponent> components = Arrays.asList(extLabel, extField, commandLabel, argsField);
         final JPanel panel = createRow(components, RawCommandServerDefinition$.MODULE$.getPresentableTyp());
         final scala.collection.mutable.LinkedHashMap<String, JComponent> map = new scala.collection.mutable.LinkedHashMap<>();
         map.put(EXT, extField);
-        map.put(COMMAND, commandField);
+        map.put(COMMAND, argsField);
         rows.add(new ServersGUIRow(panel, RawCommandServerDefinition$.MODULE$.typ(), map));
         return panel;
     }
