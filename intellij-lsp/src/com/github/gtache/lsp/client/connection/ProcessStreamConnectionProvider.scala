@@ -29,7 +29,7 @@ class ProcessStreamConnectionProvider(private var commands: Seq[String], private
 
   protected def createProcessBuilder: ProcessBuilder = {
     import scala.collection.JavaConverters._
-    val builder = new ProcessBuilder(getCommands.asJava)
+    val builder = new ProcessBuilder(getCommands.map(s => s.replace("\'", "")).asJava)
     builder.directory(new File(getWorkingDirectory))
     builder
   }

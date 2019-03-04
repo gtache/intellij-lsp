@@ -288,11 +288,12 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       setStatus(STARTING)
       try {
         val (inputStream, outputStream) = serverDefinition.start(rootPath)
+        val outWriter = getOutWriter
         startLoggingServer()
         client = serverDefinition.createLanguageClient
         val initParams = new InitializeParams
         initParams.setRootUri(FileUtils.pathToUri(rootPath))
-        val launcher = LSPLauncher.createClientLauncher(client, inputStream, outputStream)
+        val launcher = LSPLauncher.createClientLauncher(client, inputStream, outputStream, false, outWriter)
 
         this.languageServer = launcher.getRemoteProxy
         client.connect(languageServer, this)
@@ -457,7 +458,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         val writer = new BufferedWriter(new FileWriter(out, true))
         while (scanner.hasNextLine && notInterrupted) {
           if (!Thread.currentThread().isInterrupted) {
-            writer.write(scanner.nextLine()+"\n")
+            writer.write(scanner.nextLine() + "\n")
             writer.flush()
           } else {
             notInterrupted = false
@@ -473,9 +474,16 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     val date = new SimpleDateFormat("yyyyMMdd").format(new Date())
     val basename = rootPath + "/lsp/" + serverDefinition.id.replace(";", "_")
     val errRunnable = ReaderPrinterRunnable(errStream, basename + "_err_" + date + ".log")
-    val outRunnable = ReaderPrinterRunnable(outStream, basename + "_out_" + date + ".log")
-    logThreads = Seq(new Thread(errRunnable), new Thread(outRunnable))
+    //val outRunnable = ReaderPrinterRunnable(outStream, basename + "_out_" + date + ".log")
+    logThreads = Seq(new Thread(errRunnable))
     logThreads.foreach(_.start)
+  }
+
+  private def getOutWriter: PrintWriter = {
+    import java.text.SimpleDateFormat
+    val date = new SimpleDateFormat("yyyyMMdd").format(new Date())
+    val name = rootPath + "/lsp/" + serverDefinition.id.replace(";", "_") + "_out_" + date + ".log"
+    new PrintWriter(new FileWriter(new File(name), true))
   }
 
   private def stopLoggingServer(): Unit = {
