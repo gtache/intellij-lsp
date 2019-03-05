@@ -14,6 +14,7 @@ import com.github.gtache.lsp.client.{DynamicRegistrationMethods, LanguageClientI
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.lsp.requests.{Timeout, Timeouts}
+import com.github.gtache.lsp.settings.LSPState
 import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils, LSPException}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
@@ -26,6 +27,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.{Either, Message, ResponseErrorCode, R
 import org.eclipse.lsp4j.launch.LSPLauncher
 import org.eclipse.lsp4j.services.LanguageServer
 import org.jetbrains.annotations.Nullable
+import sun.launcher.resources.launcher
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
@@ -288,12 +290,15 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       setStatus(STARTING)
       try {
         val (inputStream, outputStream) = serverDefinition.start(rootPath)
-        val outWriter = getOutWriter
         startLoggingServerErrors()
         client = serverDefinition.createLanguageClient
         val initParams = new InitializeParams
         initParams.setRootUri(FileUtils.pathToUri(rootPath))
-        val launcher = LSPLauncher.createClientLauncher(client, inputStream, outputStream, false, outWriter)
+        val outWriter = getOutWriter
+
+        val launcher =
+          if (LSPState.getInstance().isLoggingServersOutput) LSPLauncher.createClientLauncher(client, inputStream, outputStream, false, outWriter)
+          else LSPLauncher.createClientLauncher(client, inputStream, outputStream)
 
         this.languageServer = launcher.getRemoteProxy
         client.connect(languageServer, this)

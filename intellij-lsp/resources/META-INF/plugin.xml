@@ -8,12 +8,13 @@
 
     <change-notes>
         <![CDATA[
-            -Adds logging for server processes
-            -Fixes IllegalArgumentException with diagnostics
-            -Fixes Ctrl-Hovering sometimes raising NullPointerException
-            -Fixes error when receiving line index greater than document
-            -Fixes error when trying to get substring of empty line
-            -Fixes NullPointer getting raised sometimes when closing an editor
+            -Adds error logging with optional messages logging for server processes<br>
+            -Fixes IllegalArgumentException with diagnostics<br>
+            -Fixes Ctrl-Hovering sometimes raising NullPointerException<br>
+            -Fixes error when receiving line index greater than document<br>
+            -Fixes error when trying to get substring of empty line<br>
+            -Fixes NullPointer getting raised sometimes when closing an editor<br>
+            -Changes some TextField into TextArea for easier configuration
 ]]>
     </change-notes>
 
@@ -26,7 +27,7 @@
     <depends>com.intellij.modules.lang</depends>
 
     <extensionPoints>
-        <extensionPoint interface="com.github.gtache.lsp.contributors.icon.LSPIconProvider" name="LSPIconProvider"/>
+        <extensionPoint interface="com.github.gtache.lsp.contributors.icon.LSPIconProvider" name="lspIconProvider"/>
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.intellij">
