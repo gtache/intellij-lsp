@@ -271,10 +271,11 @@ object PluginMain {
     * @param editor the editor.
     */
   def editorClosed(editor: Editor): Unit = {
-    ApplicationUtils.pool(() => {
-      LanguageServerWrapperImpl.forEditor(editor).foreach(l => {
-        LOG.info("Disconnecting " + FileUtils.editorToURIString(editor))
-        l.disconnect(editor)
+    val uri = FileUtils.editorToURIString(editor)
+    LanguageServerWrapperImpl.forEditor(editor).foreach(l => {
+      ApplicationUtils.pool(() => {
+        LOG.info("Disconnecting " + uri)
+        l.disconnect(uri)
       })
     })
   }

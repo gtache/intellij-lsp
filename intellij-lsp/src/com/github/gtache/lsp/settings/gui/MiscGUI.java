@@ -15,6 +15,7 @@ public final class MiscGUI implements LSPGUI {
     private JPanel rootPanel;
     private JCheckBox alwaysSendRequestsCheckBox;
     private JButton resetCustomAssociationsButton;
+    private JCheckBox logServersCommunicationsCheckBox;
 
     public MiscGUI() {
         resetCustomAssociationsButton.addActionListener((e) -> {
@@ -31,17 +32,19 @@ public final class MiscGUI implements LSPGUI {
 
     @Override
     public boolean isModified() {
-        return state.isAlwaysSendRequests() != alwaysSendRequestsCheckBox.isSelected();
+        return state.isAlwaysSendRequests() != alwaysSendRequestsCheckBox.isSelected() || state.isLoggingServersOutput() != logServersCommunicationsCheckBox.isSelected();
     }
 
     @Override
     public void reset() {
         alwaysSendRequestsCheckBox.setSelected(state.isAlwaysSendRequests());
+        logServersCommunicationsCheckBox.setSelected(state.isLoggingServersOutput());
     }
 
     @Override
     public void apply() {
         state.setAlwaysSendRequests(alwaysSendRequestsCheckBox.isSelected());
+        state.setLogServersOutput(logServersCommunicationsCheckBox.isSelected());
     }
 
     {
@@ -94,6 +97,9 @@ public final class MiscGUI implements LSPGUI {
         alwaysSendRequestsCheckBox.setText("Always send requests");
         alwaysSendRequestsCheckBox.setToolTipText("Send requests even if a language plugin already supports it");
         rootPanel.add(alwaysSendRequestsCheckBox, new GridConstraints(7, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 1, false));
+        logServersCommunicationsCheckBox = new JCheckBox();
+        logServersCommunicationsCheckBox.setText("Log servers communications");
+        rootPanel.add(logServersCommunicationsCheckBox, new GridConstraints(6, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     }
 
     /**

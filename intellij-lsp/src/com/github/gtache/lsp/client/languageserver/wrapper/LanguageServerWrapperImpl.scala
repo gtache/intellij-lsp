@@ -1,9 +1,10 @@
 /* Adapted from lsp4e */
 package com.github.gtache.lsp.client.languageserver.wrapper
 
-import java.io.IOException
+import java.io._
 import java.net.URI
 import java.util.concurrent._
+import java.util.{Date, Scanner}
 
 import com.github.gtache.lsp.PluginMain
 import com.github.gtache.lsp.client.languageserver.requestmanager.{RequestManager, SimpleRequestManager}
@@ -13,6 +14,7 @@ import com.github.gtache.lsp.client.{DynamicRegistrationMethods, LanguageClientI
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.lsp.requests.{Timeout, Timeouts}
+import com.github.gtache.lsp.settings.LSPState
 import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils, LSPException}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
@@ -25,6 +27,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.{Either, Message, ResponseErrorCode, R
 import org.eclipse.lsp4j.launch.LSPLauncher
 import org.eclipse.lsp4j.services.LanguageServer
 import org.jetbrains.annotations.Nullable
+import sun.launcher.resources.launcher
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
@@ -78,6 +81,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private var initializeFuture: CompletableFuture[InitializeResult] = _
   private var capabilitiesAlreadyRequested = false
   private var initializeStartTime = 0L
+  private var errLogThread: Thread = _
 
   override def getServerDefinition: LanguageServerDefinition = serverDefinition
 
@@ -260,6 +264,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     connectedEditors.foreach(e => disconnect(e._1))
     this.languageServer = null
     setStatus(STOPPED)
+    stopLoggingServerErrors()
   }
 
   /**
@@ -285,10 +290,15 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       setStatus(STARTING)
       try {
         val (inputStream, outputStream) = serverDefinition.start(rootPath)
+        startLoggingServerErrors()
         client = serverDefinition.createLanguageClient
         val initParams = new InitializeParams
         initParams.setRootUri(FileUtils.pathToUri(rootPath))
-        val launcher = LSPLauncher.createClientLauncher(client, inputStream, outputStream)
+        val outWriter = getOutWriter
+
+        val launcher =
+          if (LSPState.getInstance().isLoggingServersOutput) LSPLauncher.createClientLauncher(client, inputStream, outputStream, false, outWriter)
+          else LSPLauncher.createClientLauncher(client, inputStream, outputStream)
 
         this.languageServer = launcher.getRemoteProxy
         client.connect(languageServer, this)
@@ -442,6 +452,46 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     if (editors.nonEmpty) {
       connect(editors.head)
     }
+  }
 
+  private def startLoggingServerErrors(): Unit = {
+    case class ReaderPrinterRunnable(in: InputStream, outPath: String) extends Runnable {
+      override def run(): Unit = {
+        var notInterrupted = true
+        val scanner = new Scanner(in)
+        val out = new File(outPath)
+        val writer = new BufferedWriter(new FileWriter(out, true))
+        while (scanner.hasNextLine && notInterrupted) {
+          if (!Thread.currentThread().isInterrupted) {
+            writer.write(scanner.nextLine() + "\n")
+            writer.flush()
+          } else {
+            notInterrupted = false
+            writer.close()
+          }
+        }
+      }
+    }
+    val (_, errStream) = serverDefinition.getOutputStreams(rootPath)
+    val errRunnable = ReaderPrinterRunnable(errStream, getLogPath("err"))
+    errLogThread = new Thread(errRunnable)
+    errLogThread.start()
+  }
+
+  private def getLogPath(suffix: String): String = {
+    val dir = new File(rootPath + "/lsp")
+    dir.mkdir()
+    import java.text.SimpleDateFormat
+    val date = new SimpleDateFormat("yyyyMMdd").format(new Date())
+    val basename = rootPath + "/lsp/" + serverDefinition.id.replace(";", "_")
+    basename + "_" + suffix + "_" + date + ".log"
+  }
+
+  private def getOutWriter: PrintWriter = {
+    new PrintWriter(new FileWriter(new File(getLogPath("out")), true))
+  }
+
+  private def stopLoggingServerErrors(): Unit = {
+    errLogThread.interrupt()
   }
 }

@@ -28,6 +28,7 @@ public final class LSPState implements PersistentStateComponent<LSPState> {
     private static final Logger LOG = Logger.getInstance(LSPState.class);
 
     //Must be public to be saved
+    public boolean logServersOutput;
     public boolean alwaysSendRequests;
     public Map<String, String[]> extToServ;
     public Map<Timeouts, Integer> timeouts;
@@ -77,6 +78,14 @@ public final class LSPState implements PersistentStateComponent<LSPState> {
         this.alwaysSendRequests = b;
     }
 
+    public boolean isLoggingServersOutput() {
+        return logServersOutput;
+    }
+
+    public void setLogServersOutput(final boolean b) {
+        this.logServersOutput = b;
+    }
+
     public Map<Timeouts, Integer> getTimeouts() {
         return timeouts;
     }
@@ -95,14 +104,24 @@ public final class LSPState implements PersistentStateComponent<LSPState> {
 
     @Override
     public int hashCode() {
-        return Boolean.hashCode(alwaysSendRequests) + 3 * extToServ.hashCode() + 7 * timeouts.hashCode() + 11 * coursierResolvers.hashCode() + 13 * forcedAssociations.hashCode();
+        return Boolean.hashCode(logServersOutput) +
+                17 * Boolean.hashCode(alwaysSendRequests) +
+                3 * extToServ.hashCode() +
+                7 * timeouts.hashCode() +
+                11 * coursierResolvers.hashCode() +
+                13 * forcedAssociations.hashCode();
     }
 
     @Override
     public boolean equals(final Object that) {
         if (that instanceof LSPState) {
             final LSPState thatS = (LSPState) that;
-            return alwaysSendRequests == thatS.alwaysSendRequests && extToServ.equals(thatS.extToServ) && timeouts.equals(thatS.timeouts) && coursierResolvers.equals(thatS.coursierResolvers) && forcedAssociations.equals(thatS.forcedAssociations);
+            return logServersOutput == thatS.logServersOutput &&
+                    alwaysSendRequests == thatS.alwaysSendRequests &&
+                    extToServ.equals(thatS.extToServ) &&
+                    timeouts.equals(thatS.timeouts) &&
+                    coursierResolvers.equals(thatS.coursierResolvers) &&
+                    forcedAssociations.equals(thatS.forcedAssociations);
         }
         return false;
     }

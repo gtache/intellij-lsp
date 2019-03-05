@@ -77,6 +77,14 @@ trait LanguageServerDefinition {
     }
   }
 
+  def getOutputStreams(workingDir: String): (InputStream, InputStream) = {
+    streamConnectionProviders.get(workingDir) match {
+      case Some(streamConnectionProvider) => (streamConnectionProvider.getInputStream, streamConnectionProvider.getErrorStream)
+      case None => LOG.warn("Trying to get streams of unstarted process")
+        null
+    }
+  }
+
   /**
     * Stops the Language server corresponding to the given working directory
     *
