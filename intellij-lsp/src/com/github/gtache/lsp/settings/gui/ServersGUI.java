@@ -12,7 +12,6 @@ import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBPanel;
-import com.intellij.ui.components.JBTextArea;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
@@ -29,7 +28,7 @@ import java.util.stream.Collectors;
 /**
  * The GUI for the LSP ServerDefinition settings
  */ //TODO improve
-    //TODO add checkbox "LOG messages to/from this server"
+//TODO add checkbox "LOG messages to/from this server"
 public final class ServersGUI implements LSPGUI {
 
     private static final String EXT_LABEL = "Extension";
@@ -223,17 +222,17 @@ public final class ServersGUI implements LSPGUI {
         extField.setToolTipText(EXT_TOOLTIP);
         extField.setText(ext);
         final JLabel packgeLabel = new JBLabel("Artifact");
-        final JTextArea packgeField = new JBTextArea();
+        final JTextArea packgeField = new JTextArea();
         packgeField.setLineWrap(true);
         packgeField.setToolTipText("e.g. ch.epfl.lamp:dotty-language-server_0.3:0.3.0-RC2");
         packgeField.setText(serv);
         final JLabel mainClassLabel = new JBLabel("Main class");
-        final JTextArea mainClassField = new JBTextArea();
+        final JTextArea mainClassField = new JTextArea();
         mainClassField.setLineWrap(true);
         mainClassField.setToolTipText("e.g. dotty.tools.languageserver.Main");
         mainClassField.setText(mainClass);
         final JLabel argsLabel = new JBLabel("Args");
-        final JTextArea argsField = new JBTextArea();
+        final JTextArea argsField = new JTextArea();
         argsField.setLineWrap(true);
         argsField.setToolTipText("e.g. -stdio");
         argsField.setText(args);
@@ -260,7 +259,7 @@ public final class ServersGUI implements LSPGUI {
         pathField.setText(path);
         pathField.addBrowseFolderListener(new TextBrowseFolderListener(new FileChooserDescriptor(true, false, true, true, true, false).withShowHiddenFiles(true)));
         final JLabel argsLabel = new JBLabel("Args");
-        final JTextArea argsField = new JBTextArea();
+        final JTextArea argsField = new JTextArea();
         argsField.setLineWrap(true);
         argsField.setToolTipText("e.g. -stdio");
         argsField.setText(args);
@@ -281,7 +280,7 @@ public final class ServersGUI implements LSPGUI {
         extField.setToolTipText(EXT_TOOLTIP);
         extField.setText(ext);
         final JLabel commandLabel = new JBLabel("Command");
-        final JTextArea argsField = new JBTextArea();
+        final JTextArea argsField = new JTextArea();
         argsField.setLineWrap(true);
         argsField.setText(command);
         argsField.setToolTipText("e.g. python.exe -m C:\\python-ls\\pyls");

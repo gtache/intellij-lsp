@@ -27,7 +27,6 @@ import org.eclipse.lsp4j.jsonrpc.messages.{Either, Message, ResponseErrorCode, R
 import org.eclipse.lsp4j.launch.LSPLauncher
 import org.eclipse.lsp4j.services.LanguageServer
 import org.jetbrains.annotations.Nullable
-import sun.launcher.resources.launcher
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
