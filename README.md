@@ -89,6 +89,15 @@ If you need/want to write an other implementation, you will need to at least imp
 ## Further extensions
 You can add a custom LSPIconProvider to provide custom icons for the completion/symbols items or for the server status. You need to register an LSPIconProvider extension in your plugin.xml and implement the required methods (or delegate to the default provider).
 
-
-
-There is a skeleton of a more concrete LSP plugin for Dotty with Syntax Highlighting in the intellij-lsp-dotty folder. Most of the code is taken and adapted from https://github.com/JetBrains/intellij-scala
+## FAQ
+- Where are the IDE logs?
+  - On your IDE, go to 'Help->Show Log in explorer', open the last log file and you should be able to see all the logs of the IDE. The logs related to the LSP can be filtered using com.github.gtache or simply gtache
+- How to specify multiple extensions for a single server?
+  - Simply separate them with a semicolon, i.e. "c;cpp;h"
+- How to force-link a file to a specific language server?
+  - Right-click either in the editor, the editor tab, or the file list on the left and choose 'Link to LSP server'
+- How to force the plugin to make the requests even if the actions are supported by another installed plugin or natively ?
+  - Simply check the "Always send requests" box in the Settings->Language->Language Server Protocol settings
+- How can I make modifications to the plugin and test them?
+  - Clone either master (for the latest release) or the current development branch, open the project in IntelliJ, set the project SDK to the IntelliJ SDK, java 8, and you should be able to simply run the plugin, which will start an IntelliJ sandbox with the plugin installed.
+  - Otherwise, use 'Build->Prepare plugin for development' and install the zipped plugin (Settings->Plugins->Install from disk)

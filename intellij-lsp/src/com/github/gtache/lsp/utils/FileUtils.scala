@@ -5,7 +5,7 @@ import java.net.{URI, URL}
 
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Document, Editor}
-import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditor, FileEditorManager, TextEditor}
+import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, TextEditor}
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.project.{Project, ProjectUtil}
 import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
@@ -154,7 +154,7 @@ object FileUtils {
   }
 
   def editorToProjectFolderPath(editor: Editor): String = {
-    new File(ProjectUtil.guessProjectDir(editor.getProject).getPath).getAbsolutePath
+    VFSToPath(ProjectUtil.guessProjectDir(editor.getProject))
   }
 
   def VFSToPath(file: VirtualFile): String = {

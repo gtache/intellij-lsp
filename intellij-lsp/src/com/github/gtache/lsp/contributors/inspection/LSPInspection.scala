@@ -45,11 +45,11 @@ class LSPInspection extends LocalInspectionTool {
             val element = LSPPsiElement(name, m.editor.getProject, start, end, file)
             val codeActionResult = m.codeAction(element)
             val fixes = if (codeActionResult != null) {
-                          val (commandsE, codeActionsE) = codeActionResult.filter(e => e != null && (e.isLeft || e.isRight)).partition(e => e.isLeft)
-                          val commands = commandsE.map(e => e.getLeft).map(c => new LSPCommandFix(uri, c))
-                          val codeActions = codeActionsE.map(e => e.getRight).map(c => new LSPCodeActionFix(uri, c))
-                          (commands ++ codeActions).toArray
-                        } else null
+              val (commandsE, codeActionsE) = codeActionResult.filter(e => e != null && (e.isLeft || e.isRight)).partition(e => e.isLeft)
+              val commands = commandsE.map(e => e.getLeft).map(c => new LSPCommandFix(uri, c))
+              val codeActions = codeActionsE.map(e => e.getRight).map(c => new LSPCodeActionFix(uri, c))
+              (commands ++ codeActions).toArray
+            } else null
             manager.createProblemDescriptor(element, null.asInstanceOf[TextRange], diagnostic.getMessage, severity, isOnTheFly, fixes: _*)
           } else null
         }.toArray.filter(d => d != null)

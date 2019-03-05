@@ -54,6 +54,8 @@ class ProcessOverSocketStreamConnectionProvider(commands: Seq[String], workingDi
 
   override def getOutputStream: OutputStream = outputStream
 
+  override def getErrorStream: InputStream = inputStream
+
   override def stop(): Unit = {
     super.stop()
     if (socket != null) try

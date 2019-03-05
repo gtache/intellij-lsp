@@ -8,6 +8,7 @@
 
     <change-notes>
         <![CDATA[
+
 ]]>
     </change-notes>
 
@@ -20,7 +21,7 @@
     <depends>com.intellij.modules.lang</depends>
 
     <extensionPoints>
-        <extensionPoint interface="com.github.gtache.lsp.contributors.icon.LSPIconProvider" name="LSPIconProvider"/>
+        <extensionPoint interface="com.github.gtache.lsp.contributors.icon.LSPIconProvider" name="lspIconProvider"/>
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.intellij">
