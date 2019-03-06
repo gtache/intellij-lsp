@@ -45,7 +45,7 @@ class TestServer extends LanguageServer with LanguageClientAware with TextDocume
       val d = new CompletionItem("D")
       d.setKind(CompletionItemKind.Method)
       d
-    },  {
+    }, {
       val e = new CompletionItem("E")
       e.setInsertTextFormat(InsertTextFormat.Snippet)
       e.setInsertText("Hello $1 how $2 are ${3:you}?")
@@ -167,12 +167,12 @@ class TestServer extends LanguageServer with LanguageClientAware with TextDocume
     client.logMessage(new MessageParams(MessageType.Info, "DidSave"))
   }
 
-  override def definition(position: TextDocumentPositionParams): CompletableFuture[util.List[_ <: Location]] = {
+  override def definition(position: TextDocumentPositionParams): CompletableFuture[messages.Either[util.List[_ <: Location], util.List[_ <: LocationLink]]] = {
     val uri = position.getTextDocument.getUri
     if (uri.contains("test1")) {
-      CompletableFuture.completedFuture(createList(new Location(uri, ranges(1))))
+      CompletableFuture.completedFuture(Either.forLeft(createList(new Location(uri, ranges(1)))))
     } else {
-      CompletableFuture.completedFuture(createList(new Location(uris.tail.head, ranges(4))))
+      CompletableFuture.completedFuture(Either.forRight(createList(new LocationLink(uris.tail.head, ranges(4), ranges(4)))))
     }
   }
 
