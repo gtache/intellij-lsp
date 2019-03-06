@@ -522,10 +522,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             case DiagnosticSeverity.Hint => (EffectType.BOLD_DOTTED_LINE, java.awt.Color.GRAY, HighlighterLayer.WARNING)
           }
 
-          val (start, end) = (DocumentUtils.LSPPosToOffset(editor, range.getStart), DocumentUtils.LSPPosToOffset(editor, range.getEnd))
-          if (start == end) {
-
-          }
+          val (start, end) = rangeToOffsets(range)
           diagnosticsHighlights.synchronized {
             diagnosticsHighlights
               .add(DiagnosticRangeHighlighter(markupModel.addRangeHighlighter(start, end, layer,
