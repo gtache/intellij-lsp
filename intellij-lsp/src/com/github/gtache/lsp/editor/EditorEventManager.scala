@@ -471,6 +471,15 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param diagnostics The diagnostics to apply from the server
     */
   def diagnostics(diagnostics: Iterable[Diagnostic]): Unit = {
+    def rangeToOffsets(range: Range): (Int, Int) = {
+      val (start, end) = (DocumentUtils.LSPPosToOffset(editor, range.getStart), DocumentUtils.LSPPosToOffset(editor, range.getEnd))
+      if (start == end) {
+        DocumentUtils.expandOffsetToToken(editor, start) //TODO improve if possible
+      } else {
+        (start, end)
+      }
+    }
+
     invokeLater(() => {
       if (!editor.isDisposed) {
         diagnosticsHighlights.synchronized {
@@ -493,6 +502,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           }
 
           val (start, end) = (DocumentUtils.LSPPosToOffset(editor, range.getStart), DocumentUtils.LSPPosToOffset(editor, range.getEnd))
+          if (start == end) {
+
+          }
           diagnosticsHighlights.synchronized {
             diagnosticsHighlights
               .add(DiagnosticRangeHighlighter(markupModel.addRangeHighlighter(start, end, layer,
