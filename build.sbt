@@ -1,4 +1,4 @@
-ideaBuild in ThisBuild := "173.3727.127" // Released November 28, 2017
+ideaBuild in ThisBuild := "181.2784.17" // Released November 28, 2017
 
 // Download the IDEA SDK on startup
 onLoad in Global := ((s: State) => { "updateIdea" :: s}) compose (onLoad in Global).value
@@ -49,10 +49,10 @@ lazy val `intellij-lsp` = (project in file("intellij-lsp")).
     ),
 
     libraryDependencies ++= Seq(
-      "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.6.0",
+      "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.7.0",
       "io.get-coursier" %% "coursier" % "1.0.3",
       "io.get-coursier" %% "coursier-cache" % "1.0.3",
-      "com.vladsch.flexmark" % "flexmark" % "0.34.58"
+      "com.vladsch.flexmark" % "flexmark" % "0.40.20"
     ),
   )
 

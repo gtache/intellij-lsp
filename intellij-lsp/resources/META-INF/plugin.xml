@@ -13,6 +13,7 @@
         -Adds restart server option when clicking on the status icon<br>
         -Adds semantic highlighting support<br>
         -Adds snippet completion support<br>
+        -Diagnostics are now shown when reported range length is 0
 ]]>
     </change-notes>
 
