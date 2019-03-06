@@ -16,6 +16,7 @@ import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.contributors.rename.LSPRenameProcessor
 import com.github.gtache.lsp.requests.{HoverHandler, SemanticHighlightingHandler, Timeouts, WorkspaceEditHandler}
 import com.github.gtache.lsp.settings.LSPState
+import com.github.gtache.lsp.utils.ConversionUtils._
 import com.github.gtache.lsp.utils.{DocumentUtils, FileUtils, GUIUtils}
 import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.codeInsight.completion.InsertionContext
@@ -1011,9 +1012,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   private def createCtrlRange(serverPos: Position, range: Range): Unit = {
-    val either = requestDefinition(serverPos)
-    //TODO
-    if (loc != null && loc.getRange != null && loc.getRange.getStart != null && loc.getRange.getEnd != null) {
+    val loc = requestDefinition(serverPos)
+    if (loc != null && loc.getTargetRange != null && loc.getTargetRange.getStart != null && loc.getTargetRange.getEnd != null) {
       if (!editor.isDisposed) {
         val corRange = if (range == null) {
           val params = new TextDocumentPositionParams(identifier, serverPos)
@@ -1041,7 +1041,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         } else range
         val startOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getStart)
         val endOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getEnd)
-        val isDefinition = DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) == startOffset
+        val isDefinition = DocumentUtils.LSPPosToOffset(editor, loc.getTargetRange.getStart) == startOffset
         invokeLater(() => {
           if (!editor.isDisposed) {
             if (ctrlRange != null) ctrlRange.dispose()
@@ -1060,7 +1060,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param position The position
     * @return The location of the definition
     */
-  private def requestDefinition(position: Position): Either[Location, LocationLink] = {
+  private def requestDefinition(position: Position): LocationLink = {
     val params = new TextDocumentPositionParams(identifier, position)
     val request = requestManager.definition(params)
     if (request != null) {
@@ -1072,14 +1072,14 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             val left = definition.getLeft
             if (left != null && !left.isEmpty) {
               val loc = left.get(0)
-              if (loc != null) Left(loc) else Left(null)
-            } else Left(null)
+              if (loc != null) loc else null
+            } else null
           } else {
             val right = definition.getRight
             if (right != null && !right.isEmpty) {
               val locLink = right.get(0)
-              if (locLink != null) Right(locLink) else Right(null)
-            } else Right(null)
+              if (locLink != null) locLink else null
+            } else null
           }
         } else null
       } catch {
