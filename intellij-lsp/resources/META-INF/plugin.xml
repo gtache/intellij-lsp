@@ -8,7 +8,11 @@
 
     <change-notes>
         <![CDATA[
-
+        -Update to lsp4j 0.7.0<br>
+        -Update to flexmark 0.40.20<br>
+        -Adds restart server option when clicking on the status icon<br>
+        -Adds semantic highlighting support<br>
+        -Adds snippet completion support<br>
 ]]>
     </change-notes>
 

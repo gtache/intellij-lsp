@@ -217,7 +217,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 val scalaSignatures = signatures.asScala
                 val activeSignatureIndex = signature.getActiveSignature
                 val activeParameterIndex = signature.getActiveParameter
-                val activeParameter = scalaSignatures(activeSignatureIndex).getParameters.get(activeParameterIndex).getLabel
+                val activeParameterLabel = scalaSignatures(activeSignatureIndex).getParameters.get(activeParameterIndex).getLabel
+                val activeParameter = if (activeParameterLabel.isLeft) activeParameterLabel.getLeft else
+                  scalaSignatures(activeSignatureIndex).getLabel.substring(activeParameterLabel.getRight.getFirst, activeParameterLabel.getRight.getSecond)
                 val builder = StringBuilder.newBuilder
                 builder.append("<html>")
                 scalaSignatures.take(activeSignatureIndex).foreach(sig => builder.append(sig.getLabel).append("<br>"))
@@ -1009,7 +1011,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   }
 
   private def createCtrlRange(serverPos: Position, range: Range): Unit = {
-    val loc = requestDefinition(serverPos)
+    val either = requestDefinition(serverPos)
+    //TODO
     if (loc != null && loc.getRange != null && loc.getRange.getStart != null && loc.getRange.getEnd != null) {
       if (!editor.isDisposed) {
         val corRange = if (range == null) {
@@ -1057,18 +1060,28 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param position The position
     * @return The location of the definition
     */
-  private def requestDefinition(position: Position): Location = {
+  private def requestDefinition(position: Position): Either[Location, LocationLink] = {
     val params = new TextDocumentPositionParams(identifier, position)
     val request = requestManager.definition(params)
     if (request != null) {
       try {
         val definition = request.get(DEFINITION_TIMEOUT, TimeUnit.MILLISECONDS)
         wrapper.notifySuccess(Timeouts.DEFINITION)
-        if (definition != null && !definition.isEmpty) {
-          definition.get(0)
-        } else {
-          null
-        }
+        if (definition != null) {
+          if (definition.isLeft) {
+            val left = definition.getLeft
+            if (left != null && !left.isEmpty) {
+              val loc = left.get(0)
+              if (loc != null) Left(loc) else Left(null)
+            } else Left(null)
+          } else {
+            val right = definition.getRight
+            if (right != null && !right.isEmpty) {
+              val locLink = right.get(0)
+              if (locLink != null) Right(locLink) else Right(null)
+            } else Right(null)
+          }
+        } else null
       } catch {
         case e: TimeoutException =>
           LOG.warn(e)

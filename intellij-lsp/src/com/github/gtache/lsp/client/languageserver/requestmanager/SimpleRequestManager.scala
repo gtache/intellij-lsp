@@ -229,7 +229,7 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
         null
     } else null
 
-  override def definition(params: TextDocumentPositionParams): CompletableFuture[java.util.List[_ <: Location]] =
+  override def definition(params: TextDocumentPositionParams): CompletableFuture[jsonrpc.messages.Either[java.util.List[_ <: Location], java.util.List[_ <: LocationLink]]] =
     if (checkStatus) try {
       if (serverCapabilities.getDefinitionProvider) textDocumentService.definition(params) else null
     } catch {

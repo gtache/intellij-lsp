@@ -82,7 +82,7 @@ trait RequestManager {
 
   def onTypeFormatting(params: DocumentOnTypeFormattingParams): CompletableFuture[java.util.List[_ <: TextEdit]]
 
-  def definition(params: TextDocumentPositionParams): CompletableFuture[java.util.List[_ <: Location]]
+  def definition(params: TextDocumentPositionParams): CompletableFuture[jsonrpc.messages.Either[java.util.List[_ <: Location], java.util.List[_ <: LocationLink]]]
 
   def codeAction(params: CodeActionParams): CompletableFuture[java.util.List[jsonrpc.messages.Either[Command, CodeAction]]]
 
