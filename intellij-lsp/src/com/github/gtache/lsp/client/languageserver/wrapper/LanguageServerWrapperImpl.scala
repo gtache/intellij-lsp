@@ -244,7 +244,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
 
   override def stop(): Unit = {
     if (this.initializeFuture != null) {
-      this.initializeFuture.cancel(true)
+      if (!this.initializeFuture.isCancelled) this.initializeFuture.cancel(true)
       this.initializeFuture = null
     }
     this.initializeResult = null
@@ -259,7 +259,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       // most likely closed externally
     }
     if (this.launcherFuture != null) {
-      this.launcherFuture.cancel(true)
+      if (!launcherFuture.isCancelled) this.launcherFuture.cancel(true)
       this.launcherFuture = null
     }
     if (this.serverDefinition != null) this.serverDefinition.stop(rootPath)
@@ -288,7 +288,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     */
   @throws[IOException]
   override def start(): Unit = {
-    if (status == STOPPED || status==FAILED) {
+    if (status == STOPPED || status == FAILED) {
       setStatus(STARTING)
       try {
         val (inputStream, outputStream) = serverDefinition.start(rootPath)
