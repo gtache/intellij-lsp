@@ -29,7 +29,7 @@
 
     <extensionPoints>
         <extensionPoint interface="com.github.gtache.lsp.contributors.icon.LSPIconProvider" name="lspIconProvider"/>
-        <extensionPoint interface="com.github.gtache.lsp.settings.LSPConfiguration" name="lspConfiguration"/>
+        <extensionPoint interface="com.github.gtache.lsp.settings.server.LSPConfiguration" name="lspConfiguration"/>
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.intellij">

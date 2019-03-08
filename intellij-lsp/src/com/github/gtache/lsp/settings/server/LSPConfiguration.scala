@@ -1,4 +1,4 @@
-package com.github.gtache.lsp.settings
+package com.github.gtache.lsp.settings.server
 
 import com.intellij.openapi.extensions.ExtensionPointName
 

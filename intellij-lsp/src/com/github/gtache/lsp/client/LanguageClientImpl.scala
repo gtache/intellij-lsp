@@ -42,7 +42,12 @@ class LanguageClientImpl extends LanguageClient {
   }
 
   override def configuration(configurationParams: ConfigurationParams): CompletableFuture[util.List[AnyRef]] = {
-    super.configuration(configurationParams)
+    val settings = wrapper.getConfiguration.getSettings
+    CompletableFuture.completedFuture(configurationParams.getItems.asScala.map(ci => {
+      if (settings.containsKey(ci.getScopeUri)) { //TODO check correct understanding
+        settings.get(ci.getScopeUri).getOrDefault(ci.getSection, null)
+      } else null
+    }).asJava)
   }
 
   override def workspaceFolders(): CompletableFuture[util.List[WorkspaceFolder]] = super.workspaceFolders()

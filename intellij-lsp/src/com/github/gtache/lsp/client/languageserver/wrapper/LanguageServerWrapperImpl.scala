@@ -13,7 +13,8 @@ import com.github.gtache.lsp.client.{DynamicRegistrationMethods, LanguageClientI
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.lsp.requests.{Timeout, Timeouts}
-import com.github.gtache.lsp.settings.{LSPConfiguration, LSPState}
+import com.github.gtache.lsp.settings.LSPState
+import com.github.gtache.lsp.settings.server.LSPConfiguration
 import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils, LSPException}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
@@ -509,7 +510,10 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     errLogThread.interrupt()
   }
 
-  def getConfiguration: LSPConfiguration = configuration
+  override def getConfiguration: LSPConfiguration = configuration
 
-  def setConfiguration(newConfiguration: LSPConfiguration): Unit = configuration = newConfiguration
+  override def setConfiguration(newConfiguration: LSPConfiguration): Unit = {
+    configuration = newConfiguration
+    requestManager.didChangeConfiguration(new DidChangeConfigurationParams(configuration.getSettings)) //TODO how does that really work
+  }
 }
