@@ -345,6 +345,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
           initializeResult = res
           LOG.info("Got initializeResult for " + serverDefinition + " ; " + rootPath)
           requestManager = new SimpleRequestManager(this, languageServer, client, res.getCapabilities)
+          requestManager.initialized(new InitializedParams()) //TODO That simple?
           setStatus(STARTED)
           res
         })
