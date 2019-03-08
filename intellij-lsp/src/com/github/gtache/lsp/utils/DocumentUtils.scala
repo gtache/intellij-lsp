@@ -96,4 +96,13 @@ object DocumentUtils {
     })
   }
 
+  def expandOffsetToToken(editor: Editor, offset: Int): (Int, Int) = {
+    computableReadAction(() => {
+      val text = editor.getDocument.getText
+      val negOffset = offset - text.take(offset).reverse.takeWhile(c => !c.isWhitespace).length
+      val posOffset = offset + text.drop(offset).takeWhile(c => !c.isWhitespace).length
+      (negOffset, posOffset)
+    })
+  }
+
 }

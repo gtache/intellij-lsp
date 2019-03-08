@@ -22,8 +22,8 @@ import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.codeInsight.completion.InsertionContext
 import com.intellij.codeInsight.hint.HintManager
 import com.intellij.codeInsight.lookup._
-import com.intellij.codeInsight.template.TemplateManager
 import com.intellij.codeInsight.template.impl.TemplateImpl
+import com.intellij.codeInsight.template.{Template, TemplateManager}
 import com.intellij.lang.LanguageDocumentation
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.command.CommandProcessor
@@ -302,26 +302,11 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             * @return The corresponding LookupElement
             */
           def createLookupItem(item: CompletionItem): LookupElement = {
-            //TODO improve
-            val addTextEdits = item.getAdditionalTextEdits
-            val command = item.getCommand
-            val commitChars = item.getCommitCharacters
-            val data = item.getData
-            val deprecated = item.getDeprecated
-            val detail = item.getDetail
-            val doc = item.getDocumentation
-            val filterText = item.getFilterText
-            val insertText = item.getInsertText
-            val insertFormat = item.getInsertTextFormat //TODO snippet
-            val kind = item.getKind
-            val label = item.getLabel
-            val textEdit = item.getTextEdit
-            val sortText = item.getSortText
-            val presentableText = if (label != null && label != "") label else if (insertText != null) insertText else ""
-            val tailText = if (detail != null) detail else ""
-            val iconProvider = GUIUtils.getIconProviderFor(wrapper.getServerDefinition)
-            val icon = iconProvider.getCompletionIcon(kind)
-            if (insertFormat == InsertTextFormat.Snippet) {
+            def execCommand(command: Command): Unit = {
+              if (command != null) executeCommands(Iterable(command))
+            }
+
+            def prepareTemplate(insertText: String): Template = {
               val startIndexes = 0.until(insertText.length).filter(insertText.startsWith("$", _))
               val variables = startIndexes.map(i => {
                 val sub = insertText.drop(i + 1)
@@ -345,9 +330,29 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               variables.foreach(t => {
                 template.addVariable(t._3, t._3, t._4, true)
               })
-              template.setInline(false)
-              TemplateManager.getInstance(project).startTemplate(editor, template)
+              template.setInline(true)
+              template
             }
+
+            //TODO improve
+            val addTextEdits = item.getAdditionalTextEdits
+            val command = item.getCommand
+            val commitChars = item.getCommitCharacters
+            val data = item.getData
+            val deprecated = item.getDeprecated
+            val detail = item.getDetail
+            val doc = item.getDocumentation
+            val filterText = item.getFilterText
+            val insertText = item.getInsertText
+            val insertFormat = item.getInsertTextFormat //TODO snippet
+            val kind = item.getKind
+            val label = item.getLabel
+            val textEdit = item.getTextEdit
+            val sortText = item.getSortText
+            val presentableText = if (label != null && label != "") label else if (insertText != null) insertText else ""
+            val tailText = if (detail != null) detail else ""
+            val iconProvider = GUIUtils.getIconProviderFor(wrapper.getServerDefinition)
+            val icon = iconProvider.getCompletionIcon(kind)
             var lookupElementBuilder: LookupElementBuilder = null
             /*            .withRenderer((element: LookupElement, presentation: LookupElementPresentation) => { //TODO later
                       presentation match {
@@ -361,19 +366,35 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 lookupElementBuilder = LookupElementBuilder.create(presentableText, "")
                   .withInsertHandler((context: InsertionContext, _: LookupElement) => {
                     context.commitDocument()
-                    invokeLater(() => {
-                      applyEdit(edits = addTextEdits.asScala :+ textEdit, name = "Completion : " + label)
-                      if (command != null) executeCommands(Iterable(command))
-                    })
+                    if (insertFormat == InsertTextFormat.Snippet) {
+                      val template = prepareTemplate(insertText)
+                      invokeLater(() => {
+                        TemplateManager.getInstance(project).startTemplate(editor, template)
+                        applyEdit(edits = addTextEdits.asScala, name = "Completion : " + label)
+                        execCommand(command)
+                      })
+                    } else {
+                      invokeLater(() => {
+                        applyEdit(edits = addTextEdits.asScala :+ textEdit, name = "Completion : " + label)
+                        execCommand(command)
+                      })
+                    }
                   })
                   .withLookupString(presentableText)
               } else {
                 lookupElementBuilder = LookupElementBuilder.create(presentableText, "")
                   .withInsertHandler((context: InsertionContext, _: LookupElement) => {
                     context.commitDocument()
+                    if (insertFormat == InsertTextFormat.Snippet) {
+                      val template = prepareTemplate(insertText)
+                      invokeLater(() => {
+                        TemplateManager.getInstance(project).startTemplate(editor, template)
+                        execCommand(command)
+                      })
+                    }
                     invokeLater(() => {
                       applyEdit(edits = Seq(textEdit), name = "Completion : " + label)
-                      if (command != null) executeCommands(Iterable(command))
+                      execCommand(command)
                       editor.getCaretModel.moveCaretRelatively(textEdit.getNewText.length, 0, false, false, true)
                     })
                   })
@@ -385,7 +406,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                   context.commitDocument()
                   invokeLater(() => {
                     applyEdit(edits = addTextEdits.asScala, name = "Completion : " + label)
-                    if (command != null) executeCommands(Iterable(command))
+                    execCommand(command)
                   })
                 })
                 .withLookupString(presentableText)
@@ -394,7 +415,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               if (command != null) lookupElementBuilder = lookupElementBuilder.withInsertHandler((context: InsertionContext, _: LookupElement) => {
                 context.commitDocument()
                 invokeLater(() => {
-                  executeCommands(Iterable(command))
+                  execCommand(command)
                 })
               })
             }
@@ -471,6 +492,15 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param diagnostics The diagnostics to apply from the server
     */
   def diagnostics(diagnostics: Iterable[Diagnostic]): Unit = {
+    def rangeToOffsets(range: Range): (Int, Int) = {
+      val (start, end) = (DocumentUtils.LSPPosToOffset(editor, range.getStart), DocumentUtils.LSPPosToOffset(editor, range.getEnd))
+      if (start == end) {
+        DocumentUtils.expandOffsetToToken(editor, start) //TODO improve if possible
+      } else {
+        (start, end)
+      }
+    }
+
     invokeLater(() => {
       if (!editor.isDisposed) {
         diagnosticsHighlights.synchronized {
@@ -492,7 +522,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             case DiagnosticSeverity.Hint => (EffectType.BOLD_DOTTED_LINE, java.awt.Color.GRAY, HighlighterLayer.WARNING)
           }
 
-          val (start, end) = (DocumentUtils.LSPPosToOffset(editor, range.getStart), DocumentUtils.LSPPosToOffset(editor, range.getEnd))
+          val (start, end) = rangeToOffsets(range)
           diagnosticsHighlights.synchronized {
             diagnosticsHighlights
               .add(DiagnosticRangeHighlighter(markupModel.addRangeHighlighter(start, end, layer,

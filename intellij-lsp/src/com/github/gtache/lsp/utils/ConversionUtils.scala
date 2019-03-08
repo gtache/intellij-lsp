@@ -2,6 +2,8 @@ package com.github.gtache.lsp.utils
 
 import org.eclipse.lsp4j.{Location, LocationLink}
 
+import scala.language.implicitConversions
+
 object ConversionUtils {
 
   implicit def locationToLocationLink(l: Location): LocationLink = {
