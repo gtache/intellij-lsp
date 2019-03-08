@@ -157,7 +157,7 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
         null
     } else null
 
-  override def completionItemResolve(unresolved: CompletionItem): CompletableFuture[CompletionItem] =
+  override def resolveCompletionItem(unresolved: CompletionItem): CompletableFuture[CompletionItem] =
     if (checkStatus) try {
       if (serverCapabilities.getCompletionProvider != null && serverCapabilities.getCompletionProvider.getResolveProvider) textDocumentService.resolveCompletionItem(unresolved) else null
     } catch {

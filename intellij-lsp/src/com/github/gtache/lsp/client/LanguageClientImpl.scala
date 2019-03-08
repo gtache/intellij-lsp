@@ -41,7 +41,9 @@ class LanguageClientImpl extends LanguageClient {
     })
   }
 
-  override def configuration(configurationParams: ConfigurationParams): CompletableFuture[util.List[AnyRef]] = super.configuration(configurationParams)
+  override def configuration(configurationParams: ConfigurationParams): CompletableFuture[util.List[AnyRef]] = {
+    super.configuration(configurationParams)
+  }
 
   override def workspaceFolders(): CompletableFuture[util.List[WorkspaceFolder]] = super.workspaceFolders()
 

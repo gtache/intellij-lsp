@@ -13,7 +13,7 @@ import com.github.gtache.lsp.client.{DynamicRegistrationMethods, LanguageClientI
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.lsp.requests.{Timeout, Timeouts}
-import com.github.gtache.lsp.settings.LSPState
+import com.github.gtache.lsp.settings.{LSPConfiguration, LSPState}
 import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils, LSPException}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
@@ -80,6 +80,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private var capabilitiesAlreadyRequested = false
   private var initializeStartTime = 0L
   private var errLogThread: Thread = _
+  private var configuration: LSPConfiguration = _
 
   override def getServerDefinition: LanguageServerDefinition = serverDefinition
 
@@ -507,4 +508,8 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private def stopLoggingServerErrors(): Unit = {
     errLogThread.interrupt()
   }
+
+  def getConfiguration: LSPConfiguration = configuration
+
+  def setConfiguration(newConfiguration: LSPConfiguration): Unit = configuration = newConfiguration
 }

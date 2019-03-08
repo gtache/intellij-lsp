@@ -1,4 +1,4 @@
-ideaBuild in ThisBuild := "181.2784.17" // Released November 28, 2017
+ideaBuild in ThisBuild := "182.2371.4"
 
 // Download the IDEA SDK on startup
 onLoad in Global := ((s: State) => { "updateIdea" :: s}) compose (onLoad in Global).value
