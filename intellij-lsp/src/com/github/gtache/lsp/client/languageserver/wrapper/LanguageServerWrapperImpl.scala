@@ -261,7 +261,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       // most likely closed externally
     }
     if (this.launcherFuture != null) {
-      if (!launcherFuture.isCancelled) this.launcherFuture.cancel(true)
+      if (!this.launcherFuture.isCancelled) this.launcherFuture.cancel(true)
       this.launcherFuture = null
     }
     if (this.serverDefinition != null) this.serverDefinition.stop(rootPath)
@@ -346,9 +346,9 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
           initializeResult = res
           LOG.info("Got initializeResult for " + serverDefinition + " ; " + rootPath)
-          requestManager = new SimpleRequestManager(this, languageServer, client, res.getCapabilities)
-          requestManager.initialized(new InitializedParams()) //TODO That simple?
           setStatus(STARTED)
+          requestManager = new SimpleRequestManager(this, languageServer, client, res.getCapabilities)
+          requestManager.initialized(new InitializedParams())
           res
         })
         initializeStartTime = System.currentTimeMillis

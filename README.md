@@ -25,7 +25,7 @@ Client :
 - publishDiagnostics
 
 The plugin should integrate seamlessly with another plugin supporting a same language (e.g. Scala language server and Scala plugin). The plugin will simply delegate to the Scala plugin any features it already supports (for example, if the Scala plugin supports formatting, the LSP plugin won't ask the language server to format.) The reason is that the current specific plugins are much more powerful than the current language servers at the moment.    
-I will probably add settings later to choose which plugin will be prioritized.
+You have the possibility to force sending the requests by checking the "Always send requests" checkbox in the settings.
 
 Concretely, what you can do with IntelliJ at the moment :     
 - Hover to get documentation (you can also use (by default) Ctrl+Q)    
@@ -92,6 +92,8 @@ You can add a custom LSPIconProvider to provide custom icons for the completion/
 ## FAQ
 - Where are the IDE logs?
   - On your IDE, go to 'Help->Show Log in explorer', open the last log file and you should be able to see all the logs of the IDE. The logs related to the LSP can be filtered using com.github.gtache or simply gtache
+- Where are the servers logs?
+  - In each project folder, you'll have an "lsp" folder. You'll find inside an error log file for each server for each day. If you check the "Log server communications" box in the settings, you'll also find a log file for the communications between server and client. Note that this communication log can grow very fast.
 - How to specify multiple extensions for a single server?
   - Simply separate them with a semicolon, i.e. "c;cpp;h"
 - How to force-link a file to a specific language server?
