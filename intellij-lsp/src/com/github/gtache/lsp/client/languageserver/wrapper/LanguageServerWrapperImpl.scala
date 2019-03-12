@@ -339,11 +339,11 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilities, textDocumentClientCapabilities, null))
         initParams.setInitializationOptions(this.serverDefinition.getInitializationOptions(URI.create(initParams.getRootUri)))
         initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
-          languageServer.initialized(new InitializedParams())
           initializeResult = res
           LOG.info("Got initializeResult for " + serverDefinition + " ; " + rootPath)
-          requestManager = new SimpleRequestManager(this, languageServer, client, res.getCapabilities)
           setStatus(STARTED)
+          requestManager = new SimpleRequestManager(this, languageServer, client, res.getCapabilities)
+          requestManager.initialized(new InitializedParams())
           res
         })
         initializeStartTime = System.currentTimeMillis
