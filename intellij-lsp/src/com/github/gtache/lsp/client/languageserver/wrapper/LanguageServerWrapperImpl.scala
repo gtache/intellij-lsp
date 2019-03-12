@@ -241,7 +241,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
 
   override def stop(): Unit = {
     if (this.initializeFuture != null) {
-      this.initializeFuture.cancel(true)
+      if (!this.initializeFuture.isCancelled) this.initializeFuture.cancel(true)
       this.initializeFuture = null
     }
     this.initializeResult = null
@@ -256,7 +256,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       // most likely closed externally
     }
     if (this.launcherFuture != null) {
-      this.launcherFuture.cancel(true)
+      if (!this.launcherFuture.isCancelled) this.launcherFuture.cancel(true)
       this.launcherFuture = null
     }
     if (this.serverDefinition != null) this.serverDefinition.stop(rootPath)
@@ -308,7 +308,10 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         //workspaceClientCapabilities.setDidChangeConfiguration(new DidChangeConfigurationCapabilities)
         workspaceClientCapabilities.setDidChangeWatchedFiles(new DidChangeWatchedFilesCapabilities)
         workspaceClientCapabilities.setExecuteCommand(new ExecuteCommandCapabilities)
-        workspaceClientCapabilities.setWorkspaceEdit(new WorkspaceEditCapabilities(true))
+        val wec = new WorkspaceEditCapabilities
+        //TODO set failureHandling and resourceOperations
+        wec.setDocumentChanges(true)
+        workspaceClientCapabilities.setWorkspaceEdit(wec)
         workspaceClientCapabilities.setSymbol(new SymbolCapabilities)
         workspaceClientCapabilities.setWorkspaceFolders(false)
         workspaceClientCapabilities.setConfiguration(false)
@@ -336,6 +339,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilities, textDocumentClientCapabilities, null))
         initParams.setInitializationOptions(this.serverDefinition.getInitializationOptions(URI.create(initParams.getRootUri)))
         initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
+          languageServer.initialized(new InitializedParams())
           initializeResult = res
           LOG.info("Got initializeResult for " + serverDefinition + " ; " + rootPath)
           requestManager = new SimpleRequestManager(this, languageServer, client, res.getCapabilities)

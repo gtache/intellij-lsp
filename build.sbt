@@ -52,7 +52,7 @@ lazy val `intellij-lsp` = (project in file("intellij-lsp")).
       "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.6.0",
       "io.get-coursier" %% "coursier" % "1.0.3",
       "io.get-coursier" %% "coursier-cache" % "1.0.3",
-      "com.vladsch.flexmark" % "flexmark" % "0.34.58"
+      "com.vladsch.flexmark" % "flexmark" % "0.40.20"
     ),
   )
 
