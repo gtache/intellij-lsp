@@ -1,20 +1,17 @@
 <idea-plugin>
     <id>com.github.gtache.lsp</id>
     <name>LSP Support</name>
-    <version>1.5.3</version>
+    <version>1.5.4</version>
     <vendor email="guillaume.tache@epfl.ch" url="https://github.com/gtache">gtache</vendor>
 
     <description>Adds LSP (Language Server Protocol) support for IntelliJ</description>
 
     <change-notes>
         <![CDATA[
-            -Adds error logging with optional messages logging for server processes<br>
-            -Fixes IllegalArgumentException with diagnostics<br>
-            -Fixes Ctrl-Hovering sometimes raising NullPointerException<br>
-            -Fixes error when receiving line index greater than document<br>
-            -Fixes error when trying to get substring of empty line<br>
-            -Fixes NullPointer getting raised sometimes when closing an editor<br>
-            -Changes some TextField into TextArea for easier configuration
+            -Fixes cancelling an already cancelled initializeFuture<br>
+            -Now sends initialized notification to the server<br>
+            -Updates to flexmark 0.40.20<br>
+            -Removes deprecated WorkspaceEditCapabilities
 ]]>
     </change-notes>
 
