@@ -22,7 +22,6 @@ import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.codeInsight.completion.InsertionContext
 import com.intellij.codeInsight.hint.HintManager
 import com.intellij.codeInsight.lookup._
-import com.intellij.codeInsight.template.impl.TemplateImpl
 import com.intellij.codeInsight.template.{Template, TemplateManager}
 import com.intellij.lang.LanguageDocumentation
 import com.intellij.openapi.actionSystem.ActionManager
@@ -324,13 +323,50 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               })
               var newInsertText = insertText
               variables.sortBy(t => -t._1).foreach(t => newInsertText = newInsertText.take(t._1) + "$" + t._3 + newInsertText.drop(t._2))
-              val text = newInsertText
-              val template = new TemplateImpl(Random.nextString(10), "lsp")
-              template.setString(text)
+              var idx = 0
+              val curSegm = new StringBuilder()
+              var isInVariable = false
+              val segments = ArrayBuffer[String]()
+              while (idx < newInsertText.length) {
+                val c = newInsertText.charAt(idx)
+                if (c == '$') {
+                  isInVariable = true
+                  if (curSegm.nonEmpty) {
+                    segments.append(curSegm.toString)
+                    curSegm.clear()
+                  }
+                } else {
+                  if (isInVariable) {
+                    if (!c.isDigit) {
+                      isInVariable = false
+                      segments.append(curSegm.toString)
+                      curSegm.clear()
+                    }
+                  }
+                }
+                curSegm.append(c)
+                idx += 1
+              }
+              if (curSegm.nonEmpty) {
+                segments.append(curSegm.toString)
+                curSegm.clear()
+              }
+
+              val template = TemplateManager.getInstance(project).createTemplate((1 to 10).map(_ => Random.nextPrintableChar()).mkString(""), "lsp")
+              segments.foreach(s => {
+                if (s.startsWith("$")) {
+                  template.addVariableSegment(s)
+                }
+                else {
+                  template.addTextSegment(s)
+                }
+              })
               variables.foreach(t => {
-                template.addVariable(t._3, t._3, t._4, true)
+                template.addVariable("$"+t._3, "$"+t._3, t._4, true)
               })
               template.setInline(true)
+              LOG.warn(template.getSegmentsCount.toString)
+              (0 until template.getSegmentsCount).foreach(i => LOG.warn(template.getSegmentName(i) + " ; " + template.getSegmentOffset(i)))
               template
             }
 
@@ -350,7 +386,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             val textEdit = item.getTextEdit
             val sortText = item.getSortText
             val presentableText = if (label != null && label != "") label else if (insertText != null) insertText else ""
-            val tailText = if (detail != null) detail else ""
+            val tailText = if (detail != null) "\t" + detail else ""
             val iconProvider = GUIUtils.getIconProviderFor(wrapper.getServerDefinition)
             val icon = iconProvider.getCompletionIcon(kind)
             var lookupElementBuilder: LookupElementBuilder = null

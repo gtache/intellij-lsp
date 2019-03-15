@@ -102,9 +102,9 @@ trait RequestManager extends LanguageServer with TextDocumentService with Worksp
 
   override def rename(params: RenameParams): CompletableFuture[WorkspaceEdit]
 
-  override def implementation(params: TextDocumentPositionParams): CompletableFuture[java.util.List[_ <: Location]]
+  override def implementation(params: TextDocumentPositionParams): CompletableFuture[messages.Either[java.util.List[_ <: Location], java.util.List[_ <: LocationLink]]]
 
-  override def typeDefinition(params: TextDocumentPositionParams): CompletableFuture[java.util.List[_ <: Location]]
+  override def typeDefinition(params: TextDocumentPositionParams): CompletableFuture[messages.Either[java.util.List[_ <: Location], java.util.List[_ <: LocationLink]]]
 
   override def documentColor(params: DocumentColorParams): CompletableFuture[java.util.List[ColorInformation]]
 
