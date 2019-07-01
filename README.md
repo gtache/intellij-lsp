@@ -1,4 +1,4 @@
-## Development resumes on 27/5
+## Development resumes today! Sorry for the wait
 # intellij-lsp
 Plugin adding support for Language Server Protocol for IntelliJ since version 2017.3     
 This plugin should be compatible with any JetBrains IDE (tested successfully on IntelliJ, PyCharm and CLion)    
