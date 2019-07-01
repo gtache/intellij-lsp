@@ -118,9 +118,7 @@ trait RequestManager extends LanguageServer with TextDocumentService with Worksp
 
   override def prepareRename(params: TextDocumentPositionParams): CompletableFuture[messages.Either[Range, PrepareRenameResult]]
 
-  override def callHierarchy(params: CallHierarchyParams): CompletableFuture[CallHierarchyItem]
-
-  override def resolveCallHierarchy(params: ResolveCallHierarchyItemParams): CompletableFuture[CallHierarchyItem]
+  override def callHierarchy(params: CallHierarchyParams): CompletableFuture[CallHierarchySymbol]
 
   override def typeHierarchy(params: TypeHierarchyParams): CompletableFuture[TypeHierarchyItem]
 

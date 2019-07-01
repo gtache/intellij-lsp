@@ -2,7 +2,6 @@ package com.github.gtache.lsp.settings.server.parser
 
 import java.io.{BufferedReader, File, FileReader}
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.gtache.lsp.settings.server.LSPConfiguration
 import javax.xml.parsers.DocumentBuilderFactory
 
@@ -51,7 +50,6 @@ trait ConfigurationParser {
 
 class JsonParser extends ConfigurationParser {
   override def parse(doc: String): LSPConfiguration = {
-    val map = new ObjectMapper().readValue(doc, classOf[java.util.HashMap[String, AnyRef]])
     ???
   }
 }
