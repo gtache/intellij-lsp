@@ -86,11 +86,11 @@ object DocumentUtils {
       val column = tabs * tabSize + lineTextForPosition.length - tabs
       val offset = editor.logicalPositionToOffset(new LogicalPosition(line, column))
       if (pos.getCharacter >= lineText.length) {
-        LOG.warn("LSPPOS outofbounds : " + pos + " line : " + lineText + " column : " + column + " offset : " + offset)
+        LOG.debug("LSPPOS outofbounds : " + pos + " line : " + lineText + " column : " + column + " offset : " + offset)
       }
       val docLength = doc.getTextLength
       if (offset > docLength) {
-        LOG.warn("Offset greater than text length : " + offset + " > " + docLength)
+        LOG.debug("Offset greater than text length : " + offset + " > " + docLength)
       }
       math.min(math.max(offset, 0), docLength)
     })

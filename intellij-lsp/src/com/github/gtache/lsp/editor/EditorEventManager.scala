@@ -22,6 +22,7 @@ import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.codeInsight.completion.InsertionContext
 import com.intellij.codeInsight.hint.HintManager
 import com.intellij.codeInsight.lookup._
+import com.intellij.codeInsight.template.impl.{TemplateImpl, TextExpression}
 import com.intellij.codeInsight.template.{Template, TemplateManager}
 import com.intellij.lang.LanguageDocumentation
 import com.intellij.openapi.actionSystem.ActionManager
@@ -322,50 +323,15 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 }
               })
               var newInsertText = insertText
-              variables.sortBy(t => -t._1).foreach(t => newInsertText = newInsertText.take(t._1) + "$" + t._3 + newInsertText.drop(t._2))
-              var idx = 0
-              val curSegm = new StringBuilder()
-              var isInVariable = false
-              val segments = ArrayBuffer[String]()
-              while (idx < newInsertText.length) {
-                val c = newInsertText.charAt(idx)
-                if (c == '$') {
-                  isInVariable = true
-                  if (curSegm.nonEmpty) {
-                    segments.append(curSegm.toString)
-                    curSegm.clear()
-                  }
-                } else {
-                  if (isInVariable) {
-                    if (!c.isDigit) {
-                      isInVariable = false
-                      segments.append(curSegm.toString)
-                      curSegm.clear()
-                    }
-                  }
-                }
-                curSegm.append(c)
-                idx += 1
-              }
-              if (curSegm.nonEmpty) {
-                segments.append(curSegm.toString)
-                curSegm.clear()
-              }
+              variables.sortBy(t => -t._1).foreach(t => newInsertText = newInsertText.take(t._1) + "$" + t._3 + "$" + newInsertText.drop(t._2))
 
-              val template = TemplateManager.getInstance(project).createTemplate((1 to 10).map(_ => Random.nextPrintableChar()).mkString(""), "lsp")
-              segments.foreach(s => {
-                if (s.startsWith("$")) {
-                  template.addVariableSegment(s)
-                }
-                else {
-                  template.addTextSegment(s)
-                }
-              })
+              val template = TemplateManager.getInstance(project).createTemplate("anon" + (1 to 5).map(_ => Random.nextPrintableChar()).mkString(""), "lsp")
+
               variables.foreach(t => {
-                template.addVariable("$"+t._3, "$"+t._3, t._4, true)
+                template.addVariable(t._3, new TextExpression(t._4), new TextExpression(t._4), true, false)
               })
               template.setInline(true)
-              LOG.warn(template.getSegmentsCount.toString)
+              template.asInstanceOf[TemplateImpl].setString(newInsertText)
               (0 until template.getSegmentsCount).foreach(i => LOG.warn(template.getSegmentName(i) + " ; " + template.getSegmentOffset(i)))
               template
             }
@@ -405,6 +371,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                     if (insertFormat == InsertTextFormat.Snippet) {
                       val template = prepareTemplate(insertText)
                       invokeLater(() => {
+                        writeAction(() => CommandProcessor.getInstance().executeCommand(project, () => editor.getDocument.insertString(editor.getCaretModel.getOffset, template.getTemplateText), "snippetInsert", "lsp", editor.getDocument))
                         TemplateManager.getInstance(project).startTemplate(editor, template)
                         applyEdit(edits = addTextEdits.asScala, name = "Completion : " + label)
                         execCommand(command)
@@ -424,15 +391,17 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                     if (insertFormat == InsertTextFormat.Snippet) {
                       val template = prepareTemplate(insertText)
                       invokeLater(() => {
+                        writeAction(() => CommandProcessor.getInstance().executeCommand(project, () => editor.getDocument.insertString(editor.getCaretModel.getOffset, template.getTemplateText), "snippetInsert", "lsp", editor.getDocument))
                         TemplateManager.getInstance(project).startTemplate(editor, template)
                         execCommand(command)
                       })
+                    } else {
+                      invokeLater(() => {
+                        applyEdit(edits = Seq(textEdit), name = "Completion : " + label)
+                        execCommand(command)
+                        editor.getCaretModel.moveCaretRelatively(textEdit.getNewText.length, 0, false, false, true)
+                      })
                     }
-                    invokeLater(() => {
-                      applyEdit(edits = Seq(textEdit), name = "Completion : " + label)
-                      execCommand(command)
-                      editor.getCaretModel.moveCaretRelatively(textEdit.getNewText.length, 0, false, false, true)
-                    })
                   })
                   .withLookupString(presentableText)
               }
