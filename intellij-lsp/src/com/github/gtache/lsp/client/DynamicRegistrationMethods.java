@@ -1,7 +1,7 @@
 package com.github.gtache.lsp.client;
 
 import java.util.Arrays;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 /**
  * Enum for methods which may support DynamicRegistration
@@ -33,8 +33,8 @@ public enum DynamicRegistrationMethods {
         this.name = name;
     }
 
-    public static DynamicRegistrationMethods forName(final String name) {
-        return Arrays.stream(DynamicRegistrationMethods.values()).filter(n -> n.name.equals(name)).collect(Collectors.toList()).get(0);
+    public static Optional<DynamicRegistrationMethods> forName(final String name) {
+        return Arrays.stream(DynamicRegistrationMethods.values()).filter(n -> n.name.equals(name)).findFirst();
     }
 
     public String getName() {

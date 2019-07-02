@@ -378,8 +378,10 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       params.getRegistrations.asScala.foreach(r => {
         val id = r.getId
         val method = DynamicRegistrationMethods.forName(r.getMethod)
-        val options = r.getRegisterOptions
-        registrations.put(id, method)
+        if(method.isPresent) {
+          val options = r.getRegisterOptions
+          registrations.put(id, method.get())
+        }
       })
     })
   }
@@ -390,12 +392,14 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       params.getUnregisterations.asScala.foreach(r => {
         val id = r.getId
         val method = DynamicRegistrationMethods.forName(r.getMethod)
-        if (registrations.contains(id)) {
-          registrations.remove(id)
-        } else {
-          val invert = registrations.map(mapping => (mapping._2, mapping._1))
-          if (invert.contains(method)) {
-            registrations.remove(invert(method))
+        if(method.isPresent) {
+          if (registrations.contains(id)) {
+            registrations.remove(id)
+          } else {
+            val invert = registrations.map(mapping => (mapping._2, mapping._1))
+            if (invert.contains(method.get())) {
+              registrations.remove(invert(method.get()))
+            }
           }
         }
       })
