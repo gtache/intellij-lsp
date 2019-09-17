@@ -47,7 +47,11 @@ object LanguageServerWrapperImpl {
     * @return The wrapper for the given editor, or None
     */
   def forEditor(editor: Editor): Option[LanguageServerWrapper] = {
-    uriToLanguageServerWrapper.get((FileUtils.editorToURIString(editor), FileUtils.editorToProjectFolderUri(editor)))
+    if (editor.getProject == null){
+      None
+    } else {
+      uriToLanguageServerWrapper.get((FileUtils.editorToURIString(editor), FileUtils.editorToProjectFolderUri(editor)))
+    }
   }
 }
 
