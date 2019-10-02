@@ -45,7 +45,11 @@ trait LanguageServerDefinition {
 
   import LanguageServerDefinition.LOG
 
-  private val mappedExtensions: mutable.Set[String] = mutable.Set(ext)
+  private val mappedExtensions: mutable.Set[String] = {
+    val set = mutable.Set[String]()
+    splitExtension(ext).foreach(set.add)
+    set
+  }
   private val streamConnectionProviders: mutable.Map[String, StreamConnectionProvider] = mutable.Map()
 
   /**
@@ -104,7 +108,16 @@ trait LanguageServerDefinition {
     * @param ext the extension
     */
   def addMappedExtension(ext: String): Unit = {
-    mappedExtensions.add(ext)
+    splitExtension(ext).foreach(mappedExtensions.add)
+  }
+
+  def splitExtension(ext: String): Seq[String] = {
+    val split = ext.split(";")
+    if (split.length > 1) {
+      split :+ ext
+    } else {
+      Array(ext)
+    }
   }
 
   /**

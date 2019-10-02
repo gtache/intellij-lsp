@@ -332,7 +332,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               })
               template.setInline(true)
               template.asInstanceOf[TemplateImpl].setString(newInsertText)
-              (0 until template.getSegmentsCount).foreach(i => LOG.warn(template.getSegmentName(i) + " ; " + template.getSegmentOffset(i)))
               template
             }
 
@@ -621,7 +620,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                   val column = if (oldLines.length == 1) startColumn + oldTextLength else oldTextLength
                   (line, column)
                 } else (startLine, startColumn) //if insert or no text change, the end position is the same
-              val range = new Range(new Position(startLine, startColumn), new Position(endLine, endColumn))
+                val range = new Range(new Position(startLine, startColumn), new Position(endLine, endColumn))
                 changeEvent.setRange(range)
                 changeEvent.setRangeLength(newTextLength)
                 changeEvent.setText(newText.toString)

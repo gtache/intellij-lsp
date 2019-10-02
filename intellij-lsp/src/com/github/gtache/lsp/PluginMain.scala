@@ -88,8 +88,15 @@ object PluginMain {
     flattenExt()
     nullDef.foreach(ext => LOG.error("Definition for " + ext + " is null"))
     ApplicationUtils.pool(() => {
-      val added = flattened.keys.filter(e => !oldServerDef.contains(e)).toSet
-      val removed = oldServerDef.keys.filter(e => !flattened.contains(e)).toSet
+      val modified = flattened.map(servdef => {
+        if (oldServerDef.contains(servdef._1) && oldServerDef(servdef._1) != servdef._2) {
+          servdef._1
+        } else {
+          None
+        }
+      }).collect { case s: String => s }.toSet
+      val added = flattened.keys.filter(e => !oldServerDef.contains(e)).toSet ++ modified
+      val removed = oldServerDef.keys.filter(e => !flattened.contains(e)).toSet ++ modified
       forcedAssociations.synchronized {
         forcedAssociationsInstances.synchronized {
           val newValues = flattened.values.toSet

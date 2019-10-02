@@ -91,6 +91,7 @@ object FileUtils {
     } catch {
       case e: Exception =>
         LOG.warn(e)
+        LOG.warn("Caused by "+file.getUrl)
         null
     }
   }

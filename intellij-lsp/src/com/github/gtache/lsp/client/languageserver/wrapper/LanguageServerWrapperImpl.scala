@@ -364,6 +364,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
 
   override def restart(): Unit = {
     if (status == ServerStatus.STARTED || status == ServerStatus.STARTING) {
+      LOG.info("Stopping "+serverDefinition+" for restart")
       stop()
     }
     getAllPotentialEditors.foreach(e => connect(e))
