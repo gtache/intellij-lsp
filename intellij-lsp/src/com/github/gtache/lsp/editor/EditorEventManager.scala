@@ -610,16 +610,18 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 val lspPosition: Position = DocumentUtils.offsetToLSPPos(editor, offset)
                 val startLine = lspPosition.getLine
                 val startColumn = lspPosition.getCharacter
-                val oldText = event.getOldFragment
-
+                val oldText = event.getOldFragment.toString
+                LOG.warn("\nnt : " + newText + " o : " + offset + " ntl : " + newTextLength + " sl : " + startLine + " sc : " + startColumn + " oldT : " + oldText)
                 //if text was deleted/replaced, calculate the end position of inserted/deleted text
                 val (endLine, endColumn) = if (oldText.length() > 0) {
                   val line = startLine + StringUtil.countNewLines(oldText)
-                  val oldLines = oldText.toString.split('\n')
+                  val oldLines = oldText.split('\n')
                   val oldTextLength = if (oldLines.isEmpty) 0 else oldLines.last.length
-                  val column = if (oldLines.length == 1) startColumn + oldTextLength else oldTextLength
+                  val column = if (oldText.endsWith("\n")) 0 else if (oldLines.length == 1) startColumn + oldTextLength else oldTextLength
+                  LOG.warn("l : " + line + " oldlines : " + oldLines.toString + "oldTL : " + oldTextLength + " c : " + column)
                   (line, column)
                 } else (startLine, startColumn) //if insert or no text change, the end position is the same
+                LOG.warn("el : " + endLine + " ec : " + endColumn)
                 val range = new Range(new Position(startLine, startColumn), new Position(endLine, endColumn))
                 changeEvent.setRange(range)
                 changeEvent.setRangeLength(newTextLength)

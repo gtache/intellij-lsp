@@ -13,9 +13,9 @@
         -Adds restart server option when clicking on the status icon<br>
         -Adds snippet completion support<br>
         -Adds initialized support<br>
-        -Begins semantic highlighting support<br>
         -Diagnostics are now shown when reported range length is 0<br>
-        -Fixes modifying server definitions for existing extensions
+        -Fixes modifying server definitions for existing extensions<br>
+        -Fixes incremental synchronisation on didChange
 ]]>
     </change-notes>
 
@@ -86,7 +86,7 @@
             <keyboard-shortcut first-keystroke="shift alt F6" keymap="$default"/>
         </action>
         <action class="com.github.gtache.lsp.actions.LSPLinkToServerAction" id="LSPForceLink"
-                text="Link to LSP server..." description="Forces linking a file with an LSP server">
+                text="Link to LSP Server..." description="Forces linking a file with an LSP server">
             <add-to-group group-id="EditorPopupMenu"/>
             <add-to-group group-id="EditorTabPopupMenu"/>
             <add-to-group group-id="ProjectViewPopupMenu"/>
