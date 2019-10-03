@@ -50,8 +50,8 @@ class LSPFindUsagesHandlerFactory extends FindUsagesHandlerFactory {
 
   override def canFindUsages(element: PsiElement): Boolean = {
     element match {
-      case p: PsiFile => true
-      case l: LSPPsiElement => true
+      case _: PsiFile => true
+      case _: LSPPsiElement => true
       case _ => false
     }
   }

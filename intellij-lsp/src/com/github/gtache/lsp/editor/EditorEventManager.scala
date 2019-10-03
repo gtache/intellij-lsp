@@ -542,15 +542,14 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     DCEs.synchronized {
       if (!editor.isDisposed) {
         changesParams.synchronized {
+          val changeEvent = new TextDocumentContentChangeEvent()
           syncKind match {
             case TextDocumentSyncKind.None =>
             case TextDocumentSyncKind.Full =>
-              val changeEvent = new TextDocumentContentChangeEvent()
               changeEvent.setText(editor.getDocument.getText)
               changesParams.getContentChanges.add(changeEvent)
             case TextDocumentSyncKind.Incremental =>
               DCEs.filter(e => e.getDocument == editor.getDocument).map(event => {
-                val changeEvent = new TextDocumentContentChangeEvent()
                 val newText = event.getNewFragment
                 val offset = event.getOffset
                 val newTextLength = event.getNewLength
@@ -600,10 +599,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               version += 1
               version - 1
             })
+            val changeEvent = new TextDocumentContentChangeEvent()
             syncKind match {
               case TextDocumentSyncKind.None =>
               case TextDocumentSyncKind.Incremental =>
-                val changeEvent = new TextDocumentContentChangeEvent()
                 val newText = event.getNewFragment
                 val offset = event.getOffset
                 val newTextLength = event.getNewLength
@@ -629,7 +628,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 changesParams.getContentChanges.add(changeEvent)
 
               case TextDocumentSyncKind.Full =>
-                val changeEvent = new TextDocumentContentChangeEvent()
                 changeEvent.setText(editor.getDocument.getText)
                 changesParams.getContentChanges.add(changeEvent)
             }

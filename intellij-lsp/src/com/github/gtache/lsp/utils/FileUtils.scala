@@ -3,9 +3,10 @@ package com.github.gtache.lsp.utils
 import java.io.File
 import java.net.{URI, URL}
 
+import com.github.gtache.lsp.utils.ApplicationUtils.computableWriteAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Document, Editor}
-import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, TextEditor}
+import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, OpenFileDescriptor, TextEditor}
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.project.{Project, ProjectUtil}
 import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
@@ -42,6 +43,16 @@ object FileUtils {
 
   def virtualFileFromURI(uri: String): VirtualFile = {
     LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
+  }
+
+  def openClosedEditor(uri: String, project: Project): (VirtualFile, Editor) = {
+    val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(FileUtils.sanitizeURI(uri))))
+    val fileEditorManager = FileEditorManager.getInstance(project)
+    val descriptor = new OpenFileDescriptor(project, file)
+    val editor: Editor = computableWriteAction(() => {
+      fileEditorManager.openTextEditor(descriptor, false)
+    })
+    (file, editor)
   }
 
   /**
@@ -91,7 +102,7 @@ object FileUtils {
     } catch {
       case e: Exception =>
         LOG.warn(e)
-        LOG.warn("Caused by "+file.getUrl)
+        LOG.warn("Caused by " + file.getUrl)
         null
     }
   }
