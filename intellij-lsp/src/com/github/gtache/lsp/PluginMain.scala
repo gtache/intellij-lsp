@@ -321,7 +321,7 @@ object PluginMain {
                 null
             }
           }
-          ).filter(r => r._2 != null)
+          ).filter(r => r != null && r._2 != null)
           servDefToSymb.flatMap(res => {
             val definition = res._1
             val symbols = res._2

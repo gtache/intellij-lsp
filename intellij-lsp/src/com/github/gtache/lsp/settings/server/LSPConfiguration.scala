@@ -1,12 +1,11 @@
 package com.github.gtache.lsp.settings.server
 
-import com.intellij.openapi.extensions.ExtensionPointName
+import scala.collection.JavaConverters._
 
-trait LSPConfiguration {
-  def getSettings: java.util.Map[String, java.util.Map[String, AnyRef]]
-}
+case class LSPConfiguration(settings: Map[String, Map[String, AnyRef]]) {
+  def getJavaSettings: java.util.Map[String, java.util.Map[String, AnyRef]] = {
+    settings.map(pair => pair._1 -> pair._2.asJava).asJava
+  }
 
-object LSPConfiguration {
-  val EP_NAME: ExtensionPointName[LSPConfiguration] = ExtensionPointName.create("com.github.gtache.lsp.contributors.icon.lspConfiguration")
-
+  def getSettings: Map[String, Map[String, AnyRef]] = settings
 }

@@ -13,6 +13,7 @@
         -Adds restart server option when clicking on the status icon<br>
         -Adds snippet completion support<br>
         -Adds initialized support<br>
+        -Adds configuration and didChangeConfiguration support<br>
         -Diagnostics are now shown when reported range length is 0<br>
         -Fixes modifying server definitions for existing extensions<br>
         -Fixes incremental synchronisation on didChange
@@ -29,7 +30,6 @@
 
     <extensionPoints>
         <extensionPoint interface="com.github.gtache.lsp.contributors.icon.LSPIconProvider" name="lspIconProvider"/>
-        <extensionPoint interface="com.github.gtache.lsp.settings.server.LSPConfiguration" name="lspConfiguration"/>
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.intellij">

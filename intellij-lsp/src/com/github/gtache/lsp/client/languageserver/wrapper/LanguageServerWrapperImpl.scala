@@ -364,7 +364,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
 
   override def restart(): Unit = {
     if (status == ServerStatus.STARTED || status == ServerStatus.STARTING) {
-      LOG.info("Stopping "+serverDefinition+" for restart")
+      LOG.info("Stopping " + serverDefinition + " for restart")
       stop()
     }
     getAllPotentialEditors.foreach(e => connect(e))
@@ -508,13 +508,13 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   }
 
   private def stopLoggingServerErrors(): Unit = {
-    errLogThread.interrupt()
+    if (errLogThread != null) errLogThread.interrupt()
   }
 
   override def getConfiguration: LSPConfiguration = configuration
 
   override def setConfiguration(newConfiguration: LSPConfiguration): Unit = {
     configuration = newConfiguration
-    requestManager.didChangeConfiguration(new DidChangeConfigurationParams(configuration.getSettings)) //TODO how does that really work
+    requestManager.didChangeConfiguration(new DidChangeConfigurationParams(configuration.getJavaSettings.get("global"))) //TODO how does that really work
   }
 }
