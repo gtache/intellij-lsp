@@ -20,9 +20,13 @@ object FileUtils {
   val os: OS.Value = if (System.getProperty("os.name").toLowerCase.contains("win")) OS.WINDOWS else OS.UNIX
   val COLON_ENCODED: String = "%3A"
   val SPACE_ENCODED: String = "%20"
-  val URI_FILE_BEGIN = "file:"
+  val URI_FILE_BEGIN: String = "file:"
   val URI_VALID_FILE_BEGIN: String = "file:///"
   val URI_PATH_SEP: Char = '/'
+
+  val LSP_ROOT_DIR: String = "lsp/"
+  val LSP_LOG_DIR: String = LSP_ROOT_DIR + "out/"
+  val LSP_CONFIG_DIR: String = LSP_ROOT_DIR + "conf/"
   private val LOG: Logger = Logger.getInstance(this.getClass)
 
   def extFromPsiFile(psiFile: PsiFile): String = {

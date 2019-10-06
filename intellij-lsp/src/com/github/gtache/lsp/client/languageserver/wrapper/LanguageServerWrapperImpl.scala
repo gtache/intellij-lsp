@@ -285,6 +285,46 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     this.languageServer
   }
 
+  private def prepareWorkspaceClientCapabilities: WorkspaceClientCapabilities = {
+    val workspaceClientCapabilities = new WorkspaceClientCapabilities
+    workspaceClientCapabilities.setApplyEdit(true)
+    //workspaceClientCapabilities.setDidChangeConfiguration(new DidChangeConfigurationCapabilities)
+    workspaceClientCapabilities.setDidChangeWatchedFiles(new DidChangeWatchedFilesCapabilities)
+    workspaceClientCapabilities.setExecuteCommand(new ExecuteCommandCapabilities)
+    val wec = new WorkspaceEditCapabilities
+    //TODO set failureHandling and resourceOperations
+    wec.setDocumentChanges(true)
+    workspaceClientCapabilities.setWorkspaceEdit(wec)
+    workspaceClientCapabilities.setSymbol(new SymbolCapabilities)
+    workspaceClientCapabilities.setWorkspaceFolders(false)
+    workspaceClientCapabilities.setConfiguration(true)
+    workspaceClientCapabilities
+  }
+
+  private def prepareTextDocumentClientCapabilities: TextDocumentClientCapabilities = {
+    val textDocumentClientCapabilities = new TextDocumentClientCapabilities
+    textDocumentClientCapabilities.setCodeAction(new CodeActionCapabilities)
+    //textDocumentClientCapabilities.setCodeLens(new CodeLensCapabilities)
+    //textDocumentClientCapabilities.setColorProvider(new ColorProviderCapabilities)
+    textDocumentClientCapabilities.setCompletion(new CompletionCapabilities(new CompletionItemCapabilities(true)))
+    textDocumentClientCapabilities.setDefinition(new DefinitionCapabilities)
+    textDocumentClientCapabilities.setDocumentHighlight(new DocumentHighlightCapabilities)
+    //textDocumentClientCapabilities.setDocumentLink(new DocumentLinkCapabilities)
+    //textDocumentClientCapabilities.setDocumentSymbol(new DocumentSymbolCapabilities)
+    //textDocumentClientCapabilities.setFoldingRange(new FoldingRangeCapabilities)
+    textDocumentClientCapabilities.setFormatting(new FormattingCapabilities)
+    textDocumentClientCapabilities.setHover(new HoverCapabilities)
+    //textDocumentClientCapabilities.setImplementation(new ImplementationCapabilities)
+    textDocumentClientCapabilities.setOnTypeFormatting(new OnTypeFormattingCapabilities)
+    textDocumentClientCapabilities.setRangeFormatting(new RangeFormattingCapabilities)
+    textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
+    textDocumentClientCapabilities.setRename(new RenameCapabilities)
+    textDocumentClientCapabilities.setSemanticHighlightingCapabilities(new SemanticHighlightingCapabilities(false))
+    textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
+    textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, true, true))
+    textDocumentClientCapabilities
+  }
+
   /**
     * Starts the LanguageServer
     */
@@ -295,6 +335,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       try {
         val (inputStream, outputStream) = serverDefinition.start(rootPath)
         startLoggingServerErrors()
+        loadConfiguration()
         client = serverDefinition.createLanguageClient
         val initParams = new InitializeParams
         initParams.setRootUri(FileUtils.pathToUri(rootPath))
@@ -308,41 +349,12 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         client.connect(languageServer, this)
         this.launcherFuture = launcher.startListening
         //TODO update capabilities when implemented
-        val workspaceClientCapabilities = new WorkspaceClientCapabilities
-        workspaceClientCapabilities.setApplyEdit(true)
-        //workspaceClientCapabilities.setDidChangeConfiguration(new DidChangeConfigurationCapabilities)
-        workspaceClientCapabilities.setDidChangeWatchedFiles(new DidChangeWatchedFilesCapabilities)
-        workspaceClientCapabilities.setExecuteCommand(new ExecuteCommandCapabilities)
-        val wec = new WorkspaceEditCapabilities
-        //TODO set failureHandling and resourceOperations
-        wec.setDocumentChanges(true)
-        workspaceClientCapabilities.setWorkspaceEdit(wec)
-        workspaceClientCapabilities.setSymbol(new SymbolCapabilities)
-        workspaceClientCapabilities.setWorkspaceFolders(false)
-        workspaceClientCapabilities.setConfiguration(false)
-        val textDocumentClientCapabilities = new TextDocumentClientCapabilities
-        textDocumentClientCapabilities.setCodeAction(new CodeActionCapabilities)
-        //textDocumentClientCapabilities.setCodeLens(new CodeLensCapabilities)
-        //textDocumentClientCapabilities.setColorProvider(new ColorProviderCapabilities)
-        textDocumentClientCapabilities.setCompletion(new CompletionCapabilities(new CompletionItemCapabilities(true)))
-        textDocumentClientCapabilities.setDefinition(new DefinitionCapabilities)
-        textDocumentClientCapabilities.setDocumentHighlight(new DocumentHighlightCapabilities)
-        //textDocumentClientCapabilities.setDocumentLink(new DocumentLinkCapabilities)
-        //textDocumentClientCapabilities.setDocumentSymbol(new DocumentSymbolCapabilities)
-        //textDocumentClientCapabilities.setFoldingRange(new FoldingRangeCapabilities)
-        textDocumentClientCapabilities.setFormatting(new FormattingCapabilities)
-        textDocumentClientCapabilities.setHover(new HoverCapabilities)
-        //textDocumentClientCapabilities.setImplementation(new ImplementationCapabilities)
-        textDocumentClientCapabilities.setOnTypeFormatting(new OnTypeFormattingCapabilities)
-        textDocumentClientCapabilities.setRangeFormatting(new RangeFormattingCapabilities)
-        textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
-        textDocumentClientCapabilities.setRename(new RenameCapabilities)
-        textDocumentClientCapabilities.setSemanticHighlightingCapabilities(new SemanticHighlightingCapabilities(false))
-        textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
-        textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, true, true))
+        val workspaceClientCapabilities = prepareWorkspaceClientCapabilities
+        val textDocumentClientCapabilities = prepareTextDocumentClientCapabilities
         //textDocumentClientCapabilities.setTypeDefinition(new TypeDefinitionCapabilities)
         initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilities, textDocumentClientCapabilities, null))
         initParams.setInitializationOptions(this.serverDefinition.getInitializationOptions(URI.create(initParams.getRootUri)))
+
         initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
           initializeResult = res
           LOG.info("Got initializeResult for " + serverDefinition + " ; " + rootPath)
@@ -494,12 +506,24 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     errLogThread.start()
   }
 
+  private def loadConfiguration(): Unit = {
+    val file = new File(getConfPath)
+    if (!file.exists()) {
+      file.createNewFile()
+    }
+    configuration = LSPConfiguration.forFile(file)
+  }
+
+  private def getConfPath: String = {
+    rootPath + "/" + FileUtils.LSP_CONFIG_DIR + serverDefinition.id.replace(";", "_") + ".json"
+  }
+
   private def getLogPath(suffix: String): String = {
-    val dir = new File(rootPath + "/lsp")
-    dir.mkdir()
+    val dir = new File(rootPath + "/" + FileUtils.LSP_LOG_DIR)
+    dir.mkdirs()
     import java.text.SimpleDateFormat
     val date = new SimpleDateFormat("yyyyMMdd").format(new Date())
-    val basename = rootPath + "/lsp/" + serverDefinition.id.replace(";", "_")
+    val basename = rootPath + "/" + FileUtils.LSP_LOG_DIR + serverDefinition.id.replace(";", "_")
     basename + "_" + suffix + "_" + date + ".log"
   }
 

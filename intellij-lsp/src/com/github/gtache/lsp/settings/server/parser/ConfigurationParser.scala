@@ -46,6 +46,21 @@ object ConfigurationParser {
   def forExt(ext: String): Option[ConfigurationParser] = {
     forType(ConfigType.forExt(ext))
   }
+
+  def combineConfigurations(firstConfig: Map[String, Map[String, AnyRef]], secondConfig: Map[String, Map[String, AnyRef]]): Map[String, Map[String, AnyRef]] = {
+    val concatMap = mutable.Map[String, mutable.Map[String, AnyRef]]()
+    firstConfig.keySet.foreach(key => {
+      concatMap.update(key, mutable.Map(firstConfig(key).toSeq: _*))
+    })
+    secondConfig.keySet.foreach(key => {
+      if (concatMap.contains(key)) {
+        secondConfig(key).keySet.foreach(subkey => concatMap(key).update(subkey, secondConfig(key)(subkey)))
+      } else {
+        concatMap.update(key, mutable.Map(secondConfig(key).toSeq: _*))
+      }
+    })
+    concatMap.map(pair => pair._1 -> pair._2.toMap).toMap
+  }
 }
 
 trait ConfigurationParser {
@@ -85,18 +100,7 @@ class JsonParser extends ConfigurationParser {
           obj.keySet().asScala.map(key => {
             flatten(trueScope, if (trueKey != null) trueKey + "." + key else key, obj.get(key), updatedMap)
           }).fold(updatedMap)((map1, map2) => {
-            val concatMap = mutable.Map[String, mutable.Map[String, AnyRef]]()
-            map1.keySet.foreach(key => {
-              concatMap.update(key, mutable.Map(map1(key).toSeq: _*))
-            })
-            map2.keySet.foreach(key => {
-              if (concatMap.contains(key)) {
-                map2(key).keySet.foreach(subkey => concatMap(key).update(subkey, map2(key)(subkey)))
-              } else {
-                concatMap.update(key, mutable.Map(map2(key).toSeq: _*))
-              }
-            })
-            concatMap.map(pair => pair._1 -> pair._2.toMap).toMap
+            ConfigurationParser.combineConfigurations(map1, map2)
           })
         case arr: JsonArray =>
           val javaArr = arr.asScala.toArray
