@@ -42,7 +42,6 @@ class LanguageClientImpl extends LanguageClient {
   }
 
   override def configuration(configurationParams: ConfigurationParams): CompletableFuture[util.List[AnyRef]] = {
-    LOG.warn(wrapper.getConfiguration.toString)
     val settings = wrapper.getConfiguration.getJavaSettings
     CompletableFuture.completedFuture(configurationParams.getItems.asScala.map(ci => {
       val scope = ci.getScopeUri
