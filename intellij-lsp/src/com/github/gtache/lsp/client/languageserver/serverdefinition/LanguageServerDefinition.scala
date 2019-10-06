@@ -60,7 +60,7 @@ trait LanguageServerDefinition {
   /**
     * @return The id of the language server (same as extension)
     */
-  def id: String = ext
+  def id: String = splitExtension(ext).map(splitExt => LanguageIdentifier.extToLanguageId(splitExt)).find(id => id != null).getOrElse(ext)
 
 
   /**

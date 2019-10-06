@@ -84,6 +84,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private var errLogThread: Thread = _
   private var configuration: LSPConfiguration = _
   private var fileWatchers: Iterable[FileSystemWatcher] = Iterable.empty
+  private val id: String = serverDefinition.id
 
   override def getServerDefinition: LanguageServerDefinition = serverDefinition
 
