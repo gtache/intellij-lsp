@@ -25,7 +25,7 @@ object FileUtils {
   val URI_PATH_SEP: Char = '/'
 
   val LSP_ROOT_DIR: String = "lsp/"
-  val LSP_LOG_DIR: String = LSP_ROOT_DIR + "out/"
+  val LSP_LOG_DIR: String = LSP_ROOT_DIR + "log/"
   val LSP_CONFIG_DIR: String = LSP_ROOT_DIR + "conf/"
   private val LOG: Logger = Logger.getInstance(this.getClass)
 
