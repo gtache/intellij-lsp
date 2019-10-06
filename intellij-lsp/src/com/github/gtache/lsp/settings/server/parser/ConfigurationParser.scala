@@ -70,62 +70,67 @@ trait ConfigurationParser {
 class JsonParser extends ConfigurationParser {
   override def parse(file: File): LSPConfiguration = {
     val reader = new FileReader(file)
-    val json = new gson.JsonParser().parse(reader)
-    if (json != null && json.isJsonObject) {
-      val jsonObject = json.getAsJsonObject
-      val configMap = Map[String, Map[String, AnyRef]]("global" -> Map[String, AnyRef]())
+    try {
+      val json = new gson.JsonParser().parse(reader)
+      if (json != null && json.isJsonObject) {
+        val jsonObject = json.getAsJsonObject
+        val configMap = Map[String, Map[String, AnyRef]]("global" -> Map[String, AnyRef]())
 
-      def flatten(scope: String, key: String, elem: JsonElement, map: Map[String, Map[String, AnyRef]]): Map[String, Map[String, AnyRef]] = {
-        var trueScope = scope
-        var trueKey = key
-        if (scope == null) {
-          if (trueKey == null) {
-            trueScope = null
-            trueKey = null
-          }
-          else if (trueKey != null && trueKey.startsWith("[") && trueKey.endsWith("]")) {
-            if (!elem.isJsonObject) {
-              throw new IllegalArgumentException("Check JSON file " + file.getAbsolutePath)
+        def flatten(scope: String, key: String, elem: JsonElement, map: Map[String, Map[String, AnyRef]]): Map[String, Map[String, AnyRef]] = {
+          var trueScope = scope
+          var trueKey = key
+          if (scope == null) {
+            if (trueKey == null) {
+              trueScope = null
+              trueKey = null
             }
-            trueScope = key
-            trueKey = null
-          } else {
-            trueScope = "global"
-            trueKey = key
-          }
-        }
-        val updatedMap = if (trueScope != null && !map.contains(trueScope)) {
-          map.updated(trueScope, Map[String, AnyRef]())
-        } else map
-        elem match {
-          case obj: JsonObject =>
-            obj.keySet().asScala.map(key => {
-              flatten(trueScope, if (trueKey != null) trueKey + "." + key else key, obj.get(key), updatedMap)
-            }).fold(updatedMap)((map1, map2) => {
-              ConfigurationParser.combineConfigurations(map1, map2)
-            })
-          case arr: JsonArray =>
-            val javaArr = arr.asScala.toArray
-            updatedMap.updated(trueScope, updatedMap(trueScope).updated(trueKey, javaArr))
-          case _: JsonNull =>
-            updatedMap.updated(trueScope, updatedMap(trueScope).updated(trueKey, null))
-          case prim: JsonPrimitive =>
-            if (prim.isBoolean) {
-              updatedMap.updated(trueScope, updatedMap(trueScope).updated(trueKey, prim.getAsBoolean.asInstanceOf[java.lang.Boolean]))
-            } else if (prim.isNumber) {
-              updatedMap.updated(trueScope, updatedMap(trueScope).updated(trueKey, prim.getAsNumber))
-            } else if (prim.isString) {
-              updatedMap.updated(trueScope, updatedMap(trueScope).updated(trueKey, prim.getAsString))
+            else if (trueKey != null && trueKey.startsWith("[") && trueKey.endsWith("]")) {
+              if (!elem.isJsonObject) {
+                throw new IllegalArgumentException("Check JSON file " + file.getAbsolutePath)
+              }
+              trueScope = key
+              trueKey = null
             } else {
-              updatedMap.updated(trueScope, updatedMap(trueScope).updated(trueKey, null))
+              trueScope = "global"
+              trueKey = key
             }
-          case _ => updatedMap.updated(trueScope, updatedMap(trueScope).updated(trueKey, null))
+          }
+          val updatedMap = if (trueScope != null && !map.contains(trueScope)) {
+            map.updated(trueScope, Map[String, AnyRef]())
+          } else map
+          elem match {
+            case obj: JsonObject =>
+              obj.keySet().asScala.map(key => {
+                flatten(trueScope, if (trueKey != null) trueKey + "." + key else key, obj.get(key), updatedMap)
+              }).fold(updatedMap)((map1, map2) => {
+                ConfigurationParser.combineConfigurations(map1, map2)
+              })
+            case arr: JsonArray =>
+              val javaArr = arr.asScala.toArray
+              updatedMap.updated(trueScope, updatedMap(trueScope).updated(trueKey, javaArr))
+            case _: JsonNull =>
+              updatedMap.updated(trueScope, updatedMap(trueScope).updated(trueKey, null))
+            case prim: JsonPrimitive =>
+              if (prim.isBoolean) {
+                updatedMap.updated(trueScope, updatedMap(trueScope).updated(trueKey, prim.getAsBoolean.asInstanceOf[java.lang.Boolean]))
+              } else if (prim.isNumber) {
+                updatedMap.updated(trueScope, updatedMap(trueScope).updated(trueKey, prim.getAsNumber))
+              } else if (prim.isString) {
+                updatedMap.updated(trueScope, updatedMap(trueScope).updated(trueKey, prim.getAsString))
+              } else {
+                updatedMap.updated(trueScope, updatedMap(trueScope).updated(trueKey, null))
+              }
+            case _ => updatedMap.updated(trueScope, updatedMap(trueScope).updated(trueKey, null))
+          }
         }
-      }
 
-      LSPConfiguration(flatten(null, null, jsonObject, configMap))
-    } else {
-      LSPConfiguration.emptyConfiguration
+        LSPConfiguration(flatten(null, null, jsonObject, configMap))
+      } else {
+        LSPConfiguration.invalidConfiguration
+      }
+    } catch {
+      case e: Exception => LSPConfiguration.invalidConfiguration
+      case _ => LSPConfiguration.invalidConfiguration
     }
   }
 }

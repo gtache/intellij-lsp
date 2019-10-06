@@ -12,10 +12,11 @@ case class LSPConfiguration(settings: Map[String, Map[String, AnyRef]]) {
   }
 
   def getSettings: Map[String, Map[String, AnyRef]] = settings
+
+  def isValid: Boolean = this != LSPConfiguration.invalidConfiguration
 }
 
 object LSPConfiguration {
-
   def fromFile(file: File): LSPConfiguration = {
     ConfigurationParser.getConfiguration(file)
   }
@@ -29,5 +30,6 @@ object LSPConfiguration {
   }
 
   val emptyConfiguration: LSPConfiguration = LSPConfiguration(Map("global" -> Map[String, AnyRef]()))
+  val invalidConfiguration: LSPConfiguration = LSPConfiguration(null)
 
 }

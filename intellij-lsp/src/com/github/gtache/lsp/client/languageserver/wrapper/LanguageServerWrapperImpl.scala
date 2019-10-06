@@ -555,8 +555,10 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   override def getConfiguration: LSPConfiguration = configuration
 
   override def setConfiguration(newConfiguration: LSPConfiguration): Unit = {
-    configuration = newConfiguration
-    requestManager.didChangeConfiguration(new DidChangeConfigurationParams(configuration.getJavaSettings.get("global"))) //TODO how does that really work
+    if (newConfiguration.isValid) {
+      configuration = newConfiguration
+      requestManager.didChangeConfiguration(new DidChangeConfigurationParams(configuration.getJavaSettings.get("global"))) //TODO how does that really work
+    }
   }
 
   override def didChangeWatchedFiles(uri: String, typ: FileChangeType): Unit = {
