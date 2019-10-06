@@ -562,7 +562,9 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   override def didChangeWatchedFiles(uri: String, typ: FileChangeType): Unit = {
     import scala.collection.JavaConverters._
     val params = new DidChangeWatchedFilesParams(Seq(new FileEvent(uri, typ)).asJava)
-    if (Files.isSameFile(new File(new URI(uri)).toPath, new File(getConfPath).toPath)) {
+    val uriFile = new File(new URI(uri))
+    val confFile = new File(getConfPath)
+    if (uriFile.exists && confFile.exists && Files.isSameFile(uriFile.toPath, confFile.toPath)) {
       setConfiguration(LSPConfiguration.fromFile(new File(getConfPath)))
     }
     if (registrations.values.toSet.contains(DynamicRegistrationMethods.DID_CHANGE_WATCHED_FILES)) {
