@@ -14,6 +14,23 @@ case class LSPConfiguration(settings: Map[String, Map[String, AnyRef]]) {
   def getSettings: Map[String, Map[String, AnyRef]] = settings
 
   def isValid: Boolean = this != LSPConfiguration.invalidConfiguration
+
+  def getScopeForUri(uri: String): String = "global" //TODO manage different scopes
+
+  def getAttributesForSectionAndScope(section: String, scope: String = "global"): Map[String, AnyRef] = {
+    settings.get(scope).map(m => m.filterKeys(key => key.startsWith(section)).map(keyValue => {
+      val strippedKey = keyValue._1.stripPrefix(section)
+      if (strippedKey.startsWith(".")) {
+        strippedKey.stripPrefix(".") -> keyValue._2
+      } else {
+        strippedKey -> keyValue._2
+      }
+    })).orNull
+  }
+
+  def getAttributesForSectionAndUri(section: String, uri: String): Map[String, AnyRef] = {
+    getAttributesForSectionAndScope(section, getScopeForUri(uri))
+  }
 }
 
 object LSPConfiguration {

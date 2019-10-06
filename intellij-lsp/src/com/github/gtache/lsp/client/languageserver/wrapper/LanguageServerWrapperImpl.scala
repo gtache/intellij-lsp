@@ -487,7 +487,6 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private def setFailed(): Unit = {
     stop()
     statusWidget.setStatus(ServerStatus.FAILED)
-    //PluginMain.removeWrapper(this)
   }
 
   private def connect(uri: String): Unit = {
@@ -558,7 +557,8 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   override def setConfiguration(newConfiguration: LSPConfiguration): Unit = {
     if (newConfiguration.isValid) {
       configuration = newConfiguration
-      requestManager.didChangeConfiguration(new DidChangeConfigurationParams(configuration.getJavaSettings.get("global"))) //TODO how does that really work
+      //TODO generally servers just resend a "configuration" request, so the params are ignored
+      requestManager.didChangeConfiguration(new DidChangeConfigurationParams(configuration.getAttributesForSectionAndUri("", "global")))
     }
   }
 

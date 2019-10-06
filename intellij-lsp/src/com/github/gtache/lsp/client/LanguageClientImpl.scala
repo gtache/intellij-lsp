@@ -42,17 +42,12 @@ class LanguageClientImpl extends LanguageClient {
   }
 
   override def configuration(configurationParams: ConfigurationParams): CompletableFuture[util.List[AnyRef]] = {
-    val settings = wrapper.getConfiguration.getJavaSettings
+    val config = wrapper.getConfiguration
+    val settings = config.getJavaSettings
     CompletableFuture.completedFuture(configurationParams.getItems.asScala.map(ci => {
-      val scope = ci.getScopeUri
+      val uri = ci.getScopeUri
       val section = ci.getSection
-      if (scope != null) {
-        if (settings.containsKey(scope)) {
-          settings.get(ci.getScopeUri).getOrDefault(section, null)
-        } else settings.get("global").getOrDefault(section, null) //TODO change when more infos/examples
-      } else {
-        settings.get("global").getOrDefault(section, null)
-      }
+      config.getAttributesForSectionAndUri(section, uri).asJava.asInstanceOf[AnyRef]
     }).asJava)
   }
 
