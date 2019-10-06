@@ -335,6 +335,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               template
             }
 
+
             //TODO improve
             val addTextEdits = item.getAdditionalTextEdits
             val command = item.getCommand
@@ -362,6 +363,30 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                           }
                       }
                     })*/
+
+            def runSnippet(template: Template): Unit = {
+              invokeLater(() => {
+                writeAction(() => CommandProcessor.getInstance().executeCommand(project, () => editor.getDocument.insertString(editor.getCaretModel.getOffset, template.getTemplateText), "snippetInsert", "lsp", editor.getDocument))
+                TemplateManager.getInstance(project).startTemplate(editor, template)
+                if (addTextEdits != null) {
+                  applyEdit(edits = addTextEdits.asScala, name = "Additional Completions : " + label)
+                }
+                execCommand(command)
+              })
+            }
+
+            def applyEdits(edit: Seq[TextEdit], moveToCaret: Boolean): Unit = {
+              invokeLater(() => {
+                if (edit != null && edit.nonEmpty) {
+                  applyEdit(edits = edit, name = "Completion : " + label)
+                }
+                execCommand(command)
+                if (moveToCaret) {
+                  editor.getCaretModel.moveCaretRelatively(textEdit.getNewText.length, 0, false, false, true)
+                }
+              })
+            }
+
             if (textEdit != null) {
               if (addTextEdits != null) {
                 lookupElementBuilder = LookupElementBuilder.create(presentableText, "")
@@ -369,17 +394,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                     context.commitDocument()
                     if (insertFormat == InsertTextFormat.Snippet) {
                       val template = prepareTemplate(textEdit.getNewText)
-                      invokeLater(() => {
-                        writeAction(() => CommandProcessor.getInstance().executeCommand(project, () => editor.getDocument.insertString(editor.getCaretModel.getOffset, template.getTemplateText), "snippetInsert", "lsp", editor.getDocument))
-                        TemplateManager.getInstance(project).startTemplate(editor, template)
-                        applyEdit(edits = addTextEdits.asScala, name = "Additional Completions : " + label)
-                        execCommand(command)
-                      })
+                      runSnippet(template)
                     } else {
-                      invokeLater(() => {
-                        applyEdit(edits = addTextEdits.asScala :+ textEdit, name = "Completion : " + label)
-                        execCommand(command)
-                      })
+                      applyEdits(textEdit +: addTextEdits.asScala, moveToCaret = true)
                     }
                   })
                   .withLookupString(presentableText)
@@ -389,17 +406,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                     context.commitDocument()
                     if (insertFormat == InsertTextFormat.Snippet) {
                       val template = prepareTemplate(textEdit.getNewText)
-                      invokeLater(() => {
-                        writeAction(() => CommandProcessor.getInstance().executeCommand(project, () => editor.getDocument.insertString(editor.getCaretModel.getOffset, template.getTemplateText), "snippetInsert", "lsp", editor.getDocument))
-                        TemplateManager.getInstance(project).startTemplate(editor, template)
-                        execCommand(command)
-                      })
+                      runSnippet(template)
                     } else {
-                      invokeLater(() => {
-                        applyEdit(edits = Seq(textEdit), name = "Completion : " + label)
-                        execCommand(command)
-                        editor.getCaretModel.moveCaretRelatively(textEdit.getNewText.length, 0, false, false, true)
-                      })
+                      applyEdits(Seq(textEdit), moveToCaret = true)
                     }
                   })
                   .withLookupString(presentableText)
@@ -410,17 +419,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                   context.commitDocument()
                   if (insertFormat == InsertTextFormat.Snippet) {
                     val template = prepareTemplate(if (insertText != null && insertText != "") insertText else label)
-                    invokeLater(() => {
-                      writeAction(() => CommandProcessor.getInstance().executeCommand(project, () => editor.getDocument.insertString(editor.getCaretModel.getOffset, template.getTemplateText), "snippetInsert", "lsp", editor.getDocument))
-                      TemplateManager.getInstance(project).startTemplate(editor, template)
-                      applyEdit(edits = addTextEdits.asScala, name = "Completion : " + label)
-                      execCommand(command)
-                    })
+                    runSnippet(template)
                   } else {
-                    invokeLater(() => {
-                      applyEdit(edits = addTextEdits.asScala, name = "Completion : " + label)
-                      execCommand(command)
-                    })
+                    applyEdits(addTextEdits.asScala, moveToCaret = false)
                   }
                 })
                 .withLookupString(presentableText)
@@ -430,15 +431,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 context.commitDocument()
                 if (insertFormat == InsertTextFormat.Snippet) {
                   val template = prepareTemplate(if (insertText != null && insertText != "") insertText else label)
-                  invokeLater(() => {
-                    writeAction(() => CommandProcessor.getInstance().executeCommand(project, () => editor.getDocument.insertString(editor.getCaretModel.getOffset, template.getTemplateText), "snippetInsert", "lsp", editor.getDocument))
-                    TemplateManager.getInstance(project).startTemplate(editor, template)
-                    execCommand(command)
-                  })
+                  runSnippet(template)
                 }
-                invokeLater(() => {
-                  execCommand(command)
-                })
+                applyEdits(Seq.empty, moveToCaret = false)
               })
             }
             if (kind == CompletionItemKind.Keyword) lookupElementBuilder = lookupElementBuilder.withBoldness(true)
@@ -1371,6 +1366,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             val range = edit.getRange
             val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
             val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+
             if (text == "" || text == null) {
               document.deleteString(start, end)
             } else if (end - start <= 0) {
