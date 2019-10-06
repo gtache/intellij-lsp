@@ -21,7 +21,7 @@ object FileUtils {
   val COLON_ENCODED: String = "%3A"
   val SPACE_ENCODED: String = "%20"
   val URI_FILE_BEGIN: String = "file:"
-  val URI_VALID_FILE_BEGIN: String = "file:///"
+  val URI_VALID_FILE_BEGIN: String = URI_FILE_BEGIN + "///"
   val URI_PATH_SEP: Char = '/'
 
   val LSP_ROOT_DIR: String = "lsp/"
@@ -38,15 +38,11 @@ object FileUtils {
   }
 
   def editorFromUri(uri: String, project: Project): Editor = {
-    editorFromVirtualFile(virtualFileFromURI(uri), project)
+    editorFromVirtualFile(URIToVFS(uri), project)
   }
 
   def editorFromVirtualFile(file: VirtualFile, project: Project): Editor = {
     FileEditorManager.getInstance(project).getAllEditors(file).collectFirst { case t: TextEditor => t.getEditor }.orNull
-  }
-
-  def virtualFileFromURI(uri: String): VirtualFile = {
-    LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
   }
 
   def openClosedEditor(uri: String, project: Project): (VirtualFile, Editor) = {
@@ -101,8 +97,7 @@ object FileUtils {
     */
   def VFSToURI(file: VirtualFile): String = {
     try {
-      val uri = sanitizeURI(new URL(file.getUrl.replace(" ", SPACE_ENCODED)).toURI.toString)
-      uri
+      sanitizeURI(new URL(file.getUrl.replace(" ", SPACE_ENCODED)).toURI.toString)
     } catch {
       case e: Exception =>
         LOG.warn(e)
@@ -155,8 +150,7 @@ object FileUtils {
     * @return The virtual file
     */
   def URIToVFS(uri: String): VirtualFile = {
-    val res = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
-    res
+    LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
   }
 
   /**
@@ -185,6 +179,10 @@ object FileUtils {
     */
   def pathToUri(path: String): String = {
     sanitizeURI(new File(path.replace(" ", SPACE_ENCODED)).toURI.toString)
+  }
+
+  def uriToPath(uri: String): String = {
+    new File(new URI(uri)).getAbsolutePath
   }
 
   def projectToUri(project: Project): String = {

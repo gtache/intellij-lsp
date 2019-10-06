@@ -6,7 +6,7 @@ public enum ConfigType {
     FLAT, JSON, XML;
 
     @Nullable
-    public static ConfigType forExt(final String ext) {
+    public static ConfigType fromExt(final String ext) {
         if ("FLAT".equalsIgnoreCase(ext)) {
             return FLAT;
         } else if ("JSON".equalsIgnoreCase(ext)) {

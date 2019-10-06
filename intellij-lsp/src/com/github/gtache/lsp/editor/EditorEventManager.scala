@@ -1259,7 +1259,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             val start = l.getRange.getStart
             val end = l.getRange.getEnd
             val uri = FileUtils.sanitizeURI(l.getUri)
-            val file = FileUtils.virtualFileFromURI(uri)
+            val file = FileUtils.URIToVFS(uri)
             var curEditor = FileUtils.editorFromUri(uri, project)
             if (curEditor == null) {
               val descriptor = new OpenFileDescriptor(project, file)

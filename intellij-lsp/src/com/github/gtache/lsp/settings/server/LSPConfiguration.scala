@@ -16,13 +16,13 @@ case class LSPConfiguration(settings: Map[String, Map[String, AnyRef]]) {
 
 object LSPConfiguration {
 
-  def forFile(file: File): LSPConfiguration = {
+  def fromFile(file: File): LSPConfiguration = {
     ConfigurationParser.getConfiguration(file)
   }
 
   //TODO manage User config < Workspace config
-  def forFiles(files: Seq[File]): LSPConfiguration = {
-    val configs = files.map(forFile).map(_.settings)
+  def fromFiles(files: Seq[File]): LSPConfiguration = {
+    val configs = files.map(fromFile).map(_.settings)
     LSPConfiguration(configs.foldLeft(Map[String, Map[String, AnyRef]]())((configTop, configBottom) => {
       ConfigurationParser.combineConfigurations(configTop, configBottom)
     }))

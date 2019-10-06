@@ -44,7 +44,7 @@ object ConfigurationParser {
   }
 
   def forExt(ext: String): Option[ConfigurationParser] = {
-    forType(ConfigType.forExt(ext))
+    forType(ConfigType.fromExt(ext))
   }
 
   def combineConfigurations(firstConfig: Map[String, Map[String, AnyRef]], secondConfig: Map[String, Map[String, AnyRef]]): Map[String, Map[String, AnyRef]] = {

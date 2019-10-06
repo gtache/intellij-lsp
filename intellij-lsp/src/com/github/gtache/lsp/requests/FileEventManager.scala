@@ -42,8 +42,8 @@ object FileEventManager {
     if (uri != null) {
       EditorEventManager.forUri(uri) match {
         case Some(m) => m.documentSaved()
-          notifyWrappers(uri, FileChangeType.Changed, m.wrapper)
-        case None => notifyWrappers(uri, FileChangeType.Changed)
+          notifyServers(uri, FileChangeType.Changed, m.wrapper)
+        case None => notifyServers(uri, FileChangeType.Changed)
       }
     }
   }
@@ -65,11 +65,11 @@ object FileEventManager {
   def fileDeleted(file: VirtualFile): Unit = {
     val uri = FileUtils.VFSToURI(file)
     if (uri != null) {
-      notifyWrappers(uri, FileChangeType.Deleted)
+      notifyServers(uri, FileChangeType.Deleted)
     }
   }
 
-  private def notifyWrappers(uri: String, typ: FileChangeType, wrapper: LanguageServerWrapper = null): Unit = {
+  private def notifyServers(uri: String, typ: FileChangeType, wrapper: LanguageServerWrapper = null): Unit = {
     ApplicationUtils.pool(() => {
       val wrappers = PluginMain.getAllServerWrappers
       if (wrappers != null)
@@ -97,7 +97,7 @@ object FileEventManager {
   def fileCreated(file: VirtualFile): Unit = {
     val uri = FileUtils.VFSToURI(file)
     if (uri != null) {
-      notifyWrappers(uri, FileChangeType.Created)
+      notifyServers(uri, FileChangeType.Created)
     }
   }
 

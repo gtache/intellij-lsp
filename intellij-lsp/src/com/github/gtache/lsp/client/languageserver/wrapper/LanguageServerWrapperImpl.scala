@@ -3,7 +3,7 @@ package com.github.gtache.lsp.client.languageserver.wrapper
 
 import java.io._
 import java.net.URI
-import java.nio.file.{FileSystems, Paths}
+import java.nio.file.{FileSystems, Files, Paths}
 import java.util.concurrent._
 import java.util.{Date, Scanner}
 
@@ -290,7 +290,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private def prepareWorkspaceClientCapabilities: WorkspaceClientCapabilities = {
     val workspaceClientCapabilities = new WorkspaceClientCapabilities
     workspaceClientCapabilities.setApplyEdit(true)
-    //workspaceClientCapabilities.setDidChangeConfiguration(new DidChangeConfigurationCapabilities)
+    workspaceClientCapabilities.setDidChangeConfiguration(new DidChangeConfigurationCapabilities)
     workspaceClientCapabilities.setDidChangeWatchedFiles(new DidChangeWatchedFilesCapabilities(true))
     workspaceClientCapabilities.setExecuteCommand(new ExecuteCommandCapabilities)
     val wec = new WorkspaceEditCapabilities
@@ -526,7 +526,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     if (!file.exists()) {
       file.createNewFile()
     }
-    configuration = LSPConfiguration.forFile(file)
+    configuration = LSPConfiguration.fromFile(file)
   }
 
   private def getConfPath: String = {
@@ -562,6 +562,9 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   override def didChangeWatchedFiles(uri: String, typ: FileChangeType): Unit = {
     import scala.collection.JavaConverters._
     val params = new DidChangeWatchedFilesParams(Seq(new FileEvent(uri, typ)).asJava)
+    if (Files.isSameFile(new File(new URI(uri)).toPath, new File(getConfPath).toPath)) {
+      setConfiguration(LSPConfiguration.fromFile(new File(getConfPath)))
+    }
     if (registrations.values.toSet.contains(DynamicRegistrationMethods.DID_CHANGE_WATCHED_FILES)) {
       if (fileWatchers.exists(fw => {
         val pattern = fw.getGlobPattern
