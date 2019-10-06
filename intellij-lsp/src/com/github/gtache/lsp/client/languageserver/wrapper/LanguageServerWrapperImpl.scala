@@ -515,15 +515,17 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   }
 
   private def getConfPath: String = {
+    val dir = rootPath + "/" + FileUtils.LSP_CONFIG_DIR
+    new File(dir).mkdirs()
     rootPath + "/" + FileUtils.LSP_CONFIG_DIR + serverDefinition.id.replace(";", "_") + ".json"
   }
 
   private def getLogPath(suffix: String): String = {
-    val dir = new File(rootPath + "/" + FileUtils.LSP_LOG_DIR)
-    dir.mkdirs()
+    val dir = rootPath + "/" + FileUtils.LSP_LOG_DIR
+    new File(dir).mkdirs()
     import java.text.SimpleDateFormat
     val date = new SimpleDateFormat("yyyyMMdd").format(new Date())
-    val basename = rootPath + "/" + FileUtils.LSP_LOG_DIR + serverDefinition.id.replace(";", "_")
+    val basename = dir + serverDefinition.id.replace(";", "_")
     basename + "_" + suffix + "_" + date + ".log"
   }
 

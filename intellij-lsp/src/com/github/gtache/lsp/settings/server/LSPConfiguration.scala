@@ -27,4 +27,7 @@ object LSPConfiguration {
       ConfigurationParser.combineConfigurations(configTop, configBottom)
     }))
   }
+
+  val emptyConfiguration: LSPConfiguration = LSPConfiguration(Map("global" -> Map[String, AnyRef]()))
+
 }
