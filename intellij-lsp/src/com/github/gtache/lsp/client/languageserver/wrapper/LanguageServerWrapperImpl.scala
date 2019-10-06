@@ -3,6 +3,7 @@ package com.github.gtache.lsp.client.languageserver.wrapper
 
 import java.io._
 import java.net.URI
+import java.nio.file.{FileSystems, Paths}
 import java.util.concurrent._
 import java.util.{Date, Scanner}
 
@@ -82,6 +83,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private var initializeStartTime = 0L
   private var errLogThread: Thread = _
   private var configuration: LSPConfiguration = _
+  private var fileWatchers: Iterable[FileSystemWatcher] = Iterable.empty
 
   override def getServerDefinition: LanguageServerDefinition = serverDefinition
 
@@ -289,7 +291,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     val workspaceClientCapabilities = new WorkspaceClientCapabilities
     workspaceClientCapabilities.setApplyEdit(true)
     //workspaceClientCapabilities.setDidChangeConfiguration(new DidChangeConfigurationCapabilities)
-    workspaceClientCapabilities.setDidChangeWatchedFiles(new DidChangeWatchedFilesCapabilities)
+    workspaceClientCapabilities.setDidChangeWatchedFiles(new DidChangeWatchedFilesCapabilities(true))
     workspaceClientCapabilities.setExecuteCommand(new ExecuteCommandCapabilities)
     val wec = new WorkspaceEditCapabilities
     //TODO set failureHandling and resourceOperations
@@ -405,6 +407,15 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         val method = DynamicRegistrationMethods.forName(r.getMethod)
         val options = r.getRegisterOptions
         registrations.put(id, method)
+        method match {
+          case DynamicRegistrationMethods.DID_CHANGE_WATCHED_FILES =>
+            options match {
+              case o: DidChangeWatchedFilesRegistrationOptions =>
+                fileWatchers = o.getWatchers.asScala
+              case _ => LOG.warn("Mismatched options type : expected DidChangeWatchedFilesRegistrationOptions, got " + options.getClass)
+            }
+          case _ =>
+        }
       })
     })
   }
@@ -422,6 +433,10 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
           if (invert.contains(method)) {
             registrations.remove(invert(method))
           }
+        }
+        method match {
+          case DynamicRegistrationMethods.DID_CHANGE_WATCHED_FILES =>
+            fileWatchers = Iterable.empty
         }
       })
     })
@@ -542,5 +557,27 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   override def setConfiguration(newConfiguration: LSPConfiguration): Unit = {
     configuration = newConfiguration
     requestManager.didChangeConfiguration(new DidChangeConfigurationParams(configuration.getJavaSettings.get("global"))) //TODO how does that really work
+  }
+
+  override def didChangeWatchedFiles(uri: String, typ: FileChangeType): Unit = {
+    import scala.collection.JavaConverters._
+    val params = new DidChangeWatchedFilesParams(Seq(new FileEvent(uri, typ)).asJava)
+    if (registrations.values.toSet.contains(DynamicRegistrationMethods.DID_CHANGE_WATCHED_FILES)) {
+      if (fileWatchers.exists(fw => {
+        val pattern = fw.getGlobPattern
+        val event = fw.getKind
+        val typInt = typ match {
+          case FileChangeType.Changed => 2
+          case FileChangeType.Created => 1
+          case FileChangeType.Deleted => 4
+        }
+        (event & typInt) != 0 && FileSystems.getDefault.getPathMatcher("glob:" + pattern).matches(Paths.get(new URI(uri)))
+      })) {
+        requestManager.didChangeWatchedFiles(params)
+      }
+    } else {
+      //If the server didn't register for file events, send anyway
+      requestManager.didChangeWatchedFiles(params)
+    }
   }
 }

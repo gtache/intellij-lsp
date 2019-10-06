@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.requests
 
-import java.net.{URI, URL}
+import java.net.URL
 import java.util
 
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
@@ -8,9 +8,9 @@ import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.utils.{DocumentUtils, FileUtils}
 import com.intellij.openapi.command.{CommandProcessor, UndoConfirmationPolicy}
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.fileEditor.{FileEditorManager}
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.{Project, ProjectManager, ProjectUtil}
-import com.intellij.openapi.vfs.{VirtualFile}
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.refactoring.listeners.RefactoringElementListener
 import com.intellij.usageView.UsageInfo

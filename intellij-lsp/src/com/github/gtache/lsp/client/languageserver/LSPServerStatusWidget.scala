@@ -3,7 +3,7 @@ package com.github.gtache.lsp.client.languageserver
 import java.awt.Point
 import java.awt.event.MouseEvent
 
-import com.github.gtache.lsp.client.languageserver.wrapper.{LanguageServerWrapper, LanguageServerWrapperImpl}
+import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.requests.Timeouts
 import com.github.gtache.lsp.utils.{ApplicationUtils, GUIUtils}
 import com.intellij.icons.AllIcons

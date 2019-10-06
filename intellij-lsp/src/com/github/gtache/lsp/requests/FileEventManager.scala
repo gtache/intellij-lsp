@@ -8,7 +8,7 @@ import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils}
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.vfs.VirtualFile
-import org.eclipse.lsp4j.{DidChangeWatchedFilesParams, FileChangeType, FileEvent}
+import org.eclipse.lsp4j.FileChangeType
 
 /**
   * Handles all file events (save, willSave, changed, etc)
@@ -42,8 +42,8 @@ object FileEventManager {
     if (uri != null) {
       EditorEventManager.forUri(uri) match {
         case Some(m) => m.documentSaved()
-          changedConfiguration(uri, FileChangeType.Changed, m.wrapper)
-        case None => changedConfiguration(uri, FileChangeType.Changed)
+          notifyWrappers(uri, FileChangeType.Changed, m.wrapper)
+        case None => notifyWrappers(uri, FileChangeType.Changed)
       }
     }
   }
@@ -65,20 +65,17 @@ object FileEventManager {
   def fileDeleted(file: VirtualFile): Unit = {
     val uri = FileUtils.VFSToURI(file)
     if (uri != null) {
-      changedConfiguration(uri, FileChangeType.Deleted)
+      notifyWrappers(uri, FileChangeType.Deleted)
     }
   }
 
-  private def changedConfiguration(uri: String, typ: FileChangeType, wrapper: LanguageServerWrapper = null): Unit = {
-    import scala.collection.JavaConverters._
+  private def notifyWrappers(uri: String, typ: FileChangeType, wrapper: LanguageServerWrapper = null): Unit = {
     ApplicationUtils.pool(() => {
-      val event = new FileEvent(uri, typ)
-      val params = new DidChangeWatchedFilesParams(Seq(event).asJava)
       val wrappers = PluginMain.getAllServerWrappers
       if (wrappers != null)
         wrappers.foreach(w =>
           if (w != wrapper && w.getRequestManager != null && w.getStatus == ServerStatus.STARTED)
-            w.getRequestManager.didChangeWatchedFiles(params))
+            w.didChangeWatchedFiles(uri, typ))
     })
   }
 
@@ -100,7 +97,7 @@ object FileEventManager {
   def fileCreated(file: VirtualFile): Unit = {
     val uri = FileUtils.VFSToURI(file)
     if (uri != null) {
-      changedConfiguration(uri, FileChangeType.Created)
+      notifyWrappers(uri, FileChangeType.Created)
     }
   }
 

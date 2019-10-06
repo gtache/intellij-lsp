@@ -13,7 +13,7 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import org.eclipse.lsp4j.jsonrpc.messages.Message
 import org.eclipse.lsp4j.services.LanguageServer
-import org.eclipse.lsp4j.{RegistrationParams, ServerCapabilities, UnregistrationParams}
+import org.eclipse.lsp4j.{FileChangeType, RegistrationParams, ServerCapabilities, UnregistrationParams}
 import org.jetbrains.annotations.Nullable
 
 /**
@@ -152,7 +152,7 @@ trait LanguageServerWrapper {
 
   def getConfiguration: LSPConfiguration
 
-  def setConfiguration(newConfig : LSPConfiguration): Unit
+  def setConfiguration(newConfig: LSPConfiguration): Unit
 
-
+  def didChangeWatchedFiles(uri: String, typ: FileChangeType): Unit
 }
