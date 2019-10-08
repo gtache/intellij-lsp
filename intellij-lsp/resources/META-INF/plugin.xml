@@ -2,7 +2,7 @@
     <id>com.github.gtache.lsp</id>
     <name>LSP Support</name>
     <version>1.6.0</version>
-    <vendor email="guillaume.tache@epfl.ch" url="https://github.com/gtache">gtache</vendor>
+    <vendor email="guillaume.tache@hotmail.com" url="https://github.com/gtache">gtache</vendor>
 
     <description>Adds LSP (Language Server Protocol) support for IntelliJ</description>
 
