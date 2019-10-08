@@ -80,7 +80,7 @@ object DocumentUtils {
       val doc = editor.getDocument
       val line = math.max(0, math.min(pos.getLine, doc.getLineCount))
       val lineText = doc.getText(DocumentUtil.getLineTextRange(doc, line))
-      val lineTextForPosition = if (lineText.nonEmpty) lineText.substring(0, min(lineText.length, pos.getCharacter)) else ""
+      val lineTextForPosition = if (lineText.nonEmpty) lineText.substring(0, min(lineText.length - 1, pos.getCharacter)) else ""
       val tabs = StringUtil.countChars(lineTextForPosition, '\t')
       val tabSize = editor.getSettings.getTabSize(editor.getProject)
       val column = tabs * tabSize + lineTextForPosition.length - tabs
@@ -89,10 +89,10 @@ object DocumentUtils {
         LOG.warn("LSPPOS outofbounds : " + pos + " line : " + lineText + " column : " + column + " offset : " + offset)
       }
       val docLength = doc.getTextLength
-      if (offset > docLength) {
+      if (offset >= docLength) {
         LOG.warn("Offset greater than text length : " + offset + " > " + docLength)
       }
-      math.min(math.max(offset, 0), docLength)
+      math.min(math.max(offset, 0), docLength - 1)
     })
   }
 
