@@ -633,7 +633,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 } else (startLine, startColumn) //if insert or no text change, the end position is the same
                 val range = new Range(new Position(startLine, startColumn), new Position(endLine, endColumn))
                 changeEvent.setRange(range)
-                changeEvent.setRangeLength(newTextLength)
+                changeEvent.setRangeLength(DocumentUtils.LSPPosToOffset(editor, range.getEnd) - DocumentUtils.LSPPosToOffset(editor, range.getStart))
                 changeEvent.setText(newText.toString)
                 changesParams.getContentChanges.add(changeEvent)
 
