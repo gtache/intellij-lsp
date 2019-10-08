@@ -13,7 +13,7 @@
         -Adds restart server option when clicking on the status icon<br>
         -Adds (wonky) snippet completion support<br>
         -Adds initialized support<br>
-        -Adds configuration and didChangeConfiguration support<br>
+        -Adds configuration and didChangeConfiguration support<br>1
         -Adds dynamic DidChangeWatchedFiles registration to filter file events<br>
         -Adds standards LanguageID<br>
         -Diagnostics are now shown when reported range length is 0<br>

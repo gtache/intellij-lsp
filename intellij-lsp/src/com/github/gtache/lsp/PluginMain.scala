@@ -187,50 +187,52 @@ object PluginMain {
 
   private def getWrapperFor(ext: String, editor: Editor, serverDefinition: LanguageServerDefinition): LanguageServerWrapper = {
     val project: Project = editor.getProject
-    val rootVFS: VirtualFile = ProjectUtil.guessProjectDir(project)
-    if (rootVFS == null) {
-      val docName = FileDocumentManager.getInstance().getFile(editor.getDocument).getCanonicalPath
-      LOG.warn("Null rootPath for " + docName)
-      Messages.showErrorDialog(project, "Can't infer project directory from project\nThe plugin won't work for " + docName, "LSP error")
-      null
-    } else {
-      val rootPath: String = FileUtils.VFSToPath(rootVFS)
-      val rootUri: String = FileUtils.pathToUri(rootPath)
-      forcedAssociationsInstances.synchronized {
-        val wrapper = forcedAssociationsInstances.get((FileUtils.editorToURIString(editor), FileUtils.projectToUri(project))).orNull
-        if (wrapper == null || wrapper.getServerDefinition != serverDefinition) {
+    if (project != null) {
+      val rootVFS: VirtualFile = ProjectUtil.guessProjectDir(project)
+      if (rootVFS == null) {
+        val docName = FileDocumentManager.getInstance().getFile(editor.getDocument).getCanonicalPath
+        LOG.warn("Null rootPath for " + docName)
+        Messages.showErrorDialog(project, "Can't infer project directory from project\nThe plugin won't work for " + docName, "LSP error")
+        null
+      } else {
+        val rootPath: String = FileUtils.VFSToPath(rootVFS)
+        val rootUri: String = FileUtils.pathToUri(rootPath)
+        forcedAssociationsInstances.synchronized {
+          val wrapper = forcedAssociationsInstances.get((FileUtils.editorToURIString(editor), FileUtils.projectToUri(project))).orNull
+          if (wrapper == null || wrapper.getServerDefinition != serverDefinition) {
 
-          extToLanguageWrapper.synchronized {
-            var wrapper = extToLanguageWrapper.get((ext, rootUri)).orNull
-            wrapper match {
-              case null =>
-                LOG.info("Instantiating wrapper for " + ext + " : " + rootUri)
-                wrapper = new LanguageServerWrapperImpl(serverDefinition, project)
-                val exts = serverDefinition.ext.split(LanguageServerDefinition.SPLIT_CHAR)
-                exts.foreach(ext => extToLanguageWrapper.put((ext, rootUri), wrapper))
-                extToLanguageWrapper.put((serverDefinition.ext, rootUri), wrapper)
-                projectToLanguageWrappers.get(rootUri) match {
-                  case Some(set) =>
-                    set.add(wrapper)
-                  case None =>
-                    projectToLanguageWrappers.put(rootUri, mutable.Set(wrapper))
-                }
-              case _: LanguageServerWrapperImpl =>
-                LOG.info("Wrapper already existing for " + ext + " , " + rootUri)
+            extToLanguageWrapper.synchronized {
+              var wrapper = extToLanguageWrapper.get((ext, rootUri)).orNull
+              wrapper match {
+                case null =>
+                  LOG.info("Instantiating wrapper for " + ext + " : " + rootUri)
+                  wrapper = new LanguageServerWrapperImpl(serverDefinition, project)
+                  val exts = serverDefinition.ext.split(LanguageServerDefinition.SPLIT_CHAR)
+                  exts.foreach(ext => extToLanguageWrapper.put((ext, rootUri), wrapper))
+                  extToLanguageWrapper.put((serverDefinition.ext, rootUri), wrapper)
+                  projectToLanguageWrappers.get(rootUri) match {
+                    case Some(set) =>
+                      set.add(wrapper)
+                    case None =>
+                      projectToLanguageWrappers.put(rootUri, mutable.Set(wrapper))
+                  }
+                case _: LanguageServerWrapperImpl =>
+                  LOG.info("Wrapper already existing for " + ext + " , " + rootUri)
+              }
+              forcedAssociationsInstances.synchronized {
+                forcedAssociations.foreach(t => {
+                  if (t._2 == serverDefinition && t._1._2 == rootUri) {
+                    forcedAssociationsInstances.update(t._1, wrapper)
+                  }
+                })
+                forcedAssociationsInstances.update((FileUtils.editorToURIString(editor), rootUri), wrapper)
+              }
+              wrapper
             }
-            forcedAssociationsInstances.synchronized {
-              forcedAssociations.foreach(t => {
-                if (t._2 == serverDefinition && t._1._2 == rootUri) {
-                  forcedAssociationsInstances.update(t._1, wrapper)
-                }
-              })
-              forcedAssociationsInstances.update((FileUtils.editorToURIString(editor), rootUri), wrapper)
-            }
-            wrapper
-          }
-        } else wrapper
+          } else wrapper
+        }
       }
-    }
+    } else null
   }
 
   /**

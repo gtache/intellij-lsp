@@ -166,7 +166,10 @@ object FileUtils {
   }
 
   def editorToProjectFolderPath(editor: Editor): String = {
-    VFSToPath(ProjectUtil.guessProjectDir(editor.getProject))
+    val project = editor.getProject
+    if (project!=null) {
+      VFSToPath(ProjectUtil.guessProjectDir(project))
+    } else null
   }
 
   def VFSToPath(file: VirtualFile): String = {
