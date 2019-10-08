@@ -800,10 +800,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       if (!editor.isDisposed) {
         val params = new TextDocumentPositionParams(identifier, DocumentUtils.offsetToLSPPos(editor, offset))
         val future = requestManager.documentHighlight(params)
+        LOG.warn(params.toString)
         if (future != null) {
           try {
             val res = future.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
             wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
+            //LOG.warn(res.toString)
             if (res != null && !editor.isDisposed)
               res.asScala.map(dh => new TextRange(DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart), DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)))
                 .find(range => range.getStartOffset <= offset && offset <= range.getEndOffset)
@@ -1006,7 +1008,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param point     The point at which to show the window
     */
   private def showReferencesWindow(locations: Array[(String, Int, Int, String)], name: String, point: Point): Unit = {
-    LOG.info("Showing references for " + locations.mkString("\n"))
     if (locations.isEmpty) {
       invokeLater(() => if (!editor.isDisposed) currentHint = createAndShowEditorHint(editor, "No usages found", point))
     } else {
@@ -1361,12 +1362,14 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       val document = editor.getDocument
       if (document.isWritable) {
         () => {
-          edits.foreach(edit => {
-            val text = edit.getNewText
-            val range = edit.getRange
-            val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
-            val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
-
+          edits.map(te => {
+            (document.createRangeMarker(DocumentUtils.LSPPosToOffset(editor, te.getRange.getStart),
+              DocumentUtils.LSPPosToOffset(editor, te.getRange.getEnd)),
+              te.getNewText)
+          }).foreach(markerText => {
+            val start = markerText._1.getStartOffset
+            val end = markerText._1.getEndOffset
+            val text = markerText._2
             if (text == "" || text == null) {
               document.deleteString(start, end)
             } else if (end - start <= 0) {
@@ -1374,6 +1377,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             } else {
               document.replaceString(start, end, text)
             }
+            markerText._1.dispose()
           })
           saveDocument()
         }

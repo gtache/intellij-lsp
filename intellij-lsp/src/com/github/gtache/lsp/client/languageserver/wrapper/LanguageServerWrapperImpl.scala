@@ -29,6 +29,7 @@ import org.eclipse.lsp4j.launch.LSPLauncher
 import org.eclipse.lsp4j.services.LanguageServer
 import org.jetbrains.annotations.Nullable
 
+import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
@@ -325,6 +326,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     textDocumentClientCapabilities.setSemanticHighlightingCapabilities(new SemanticHighlightingCapabilities(false))
     textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
     textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, true, true))
+    //textDocumentClientCapabilities.setTypeDefinition(new TypeDefinitionCapabilities)
     textDocumentClientCapabilities
   }
 
@@ -354,7 +356,6 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         //TODO update capabilities when implemented
         val workspaceClientCapabilities = prepareWorkspaceClientCapabilities
         val textDocumentClientCapabilities = prepareTextDocumentClientCapabilities
-        //textDocumentClientCapabilities.setTypeDefinition(new TypeDefinitionCapabilities)
         initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilities, textDocumentClientCapabilities, null))
         initParams.setInitializationOptions(this.serverDefinition.getInitializationOptions(URI.create(initParams.getRootUri)))
 
@@ -438,6 +439,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         method match {
           case DynamicRegistrationMethods.DID_CHANGE_WATCHED_FILES =>
             fileWatchers = Iterable.empty
+          case _ =>
         }
       })
     })
@@ -557,8 +559,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   override def setConfiguration(newConfiguration: LSPConfiguration): Unit = {
     if (newConfiguration.isValid) {
       configuration = newConfiguration
-      //TODO generally servers just resend a "configuration" request, so the params are ignored
-      requestManager.didChangeConfiguration(new DidChangeConfigurationParams(configuration.getAttributesForSectionAndUri("", "global")))
+      requestManager.didChangeConfiguration(new DidChangeConfigurationParams(configuration.getAttributesForSectionAndUri("", "global").asJava))
     }
   }
 
@@ -567,16 +568,21 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     val params = new DidChangeWatchedFilesParams(Seq(new FileEvent(uri, typ)).asJava)
     val uriFile = new File(new URI(uri))
     val confFile = new File(getConfPath)
-    if (uriFile.exists && confFile.exists && Files.isSameFile(uriFile.toPath, confFile.toPath)) {
-      setConfiguration(LSPConfiguration.fromFile(new File(getConfPath)))
+    try {
+      if (uriFile.exists && confFile.exists && Files.isSameFile(uriFile.toPath, confFile.toPath)) {
+        setConfiguration(LSPConfiguration.fromFile(new File(getConfPath)))
+      }
+    } catch {
+      case e: Exception => LOG.warn(e)
+      case _: Throwable =>
     }
     if (registrations.values.toSet.contains(DynamicRegistrationMethods.DID_CHANGE_WATCHED_FILES)) {
       if (fileWatchers.exists(fw => {
         val pattern = fw.getGlobPattern
         val event = fw.getKind
         val typInt = typ match {
-          case FileChangeType.Changed => 2
           case FileChangeType.Created => 1
+          case FileChangeType.Changed => 2
           case FileChangeType.Deleted => 4
         }
         (event & typInt) != 0 && FileSystems.getDefault.getPathMatcher("glob:" + pattern).matches(Paths.get(new URI(uri)))

@@ -18,7 +18,8 @@
         -Adds standards LanguageID<br>
         -Diagnostics are now shown when reported range length is 0<br>
         -Fixes modifying server definitions for existing extensions<br>
-        -Fixes incremental synchronisation on didChange
+        -Fixes incremental synchronisation on didChange<br>
+        -Fixes offsets while doing multiple edits
 ]]>
     </change-notes>
 

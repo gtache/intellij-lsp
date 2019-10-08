@@ -96,14 +96,16 @@ object FileUtils {
     * @return the URI
     */
   def VFSToURI(file: VirtualFile): String = {
-    try {
-      sanitizeURI(new URL(file.getUrl.replace(" ", SPACE_ENCODED)).toURI.toString)
-    } catch {
-      case e: Exception =>
-        LOG.warn(e)
-        LOG.warn("Caused by " + file.getUrl)
-        null
-    }
+    if (file != null) {
+      try {
+        sanitizeURI(new URL(file.getUrl.replace(" ", SPACE_ENCODED)).toURI.toString)
+      } catch {
+        case e: Exception =>
+          LOG.warn(e)
+          LOG.warn("Caused by " + file.getUrl)
+          null
+      }
+    } else null
   }
 
   /**
