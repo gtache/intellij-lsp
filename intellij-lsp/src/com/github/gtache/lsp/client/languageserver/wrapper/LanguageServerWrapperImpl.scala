@@ -406,17 +406,20 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       import scala.collection.JavaConverters._
       params.getRegistrations.asScala.foreach(r => {
         val id = r.getId
-        val method = DynamicRegistrationMethods.forName(r.getMethod)
-        val options = r.getRegisterOptions
-        registrations.put(id, method)
-        method match {
-          case DynamicRegistrationMethods.DID_CHANGE_WATCHED_FILES =>
-            options match {
-              case o: DidChangeWatchedFilesRegistrationOptions =>
-                fileWatchers = o.getWatchers.asScala
-              case _ => LOG.warn("Mismatched options type : expected DidChangeWatchedFilesRegistrationOptions, got " + options.getClass)
-            }
-          case _ =>
+        val methodO = DynamicRegistrationMethods.forName(r.getMethod)
+        if (methodO.isPresent) {
+          val method = methodO.get
+          val options = r.getRegisterOptions
+          registrations.put(id, method)
+          method match {
+            case DynamicRegistrationMethods.DID_CHANGE_WATCHED_FILES =>
+              options match {
+                case o: DidChangeWatchedFilesRegistrationOptions =>
+                  fileWatchers = o.getWatchers.asScala
+                case _ => LOG.warn("Mismatched options type : expected DidChangeWatchedFilesRegistrationOptions, got " + options.getClass)
+              }
+            case _ =>
+          }
         }
       })
     })
@@ -427,20 +430,24 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       import scala.collection.JavaConverters._
       params.getUnregisterations.asScala.foreach(r => {
         val id = r.getId
-        val method = DynamicRegistrationMethods.forName(r.getMethod)
-        if (registrations.contains(id)) {
-          registrations.remove(id)
-        } else {
-          val invert = registrations.map(mapping => (mapping._2, mapping._1))
-          if (invert.contains(method)) {
-            registrations.remove(invert(method))
+        val methodO = DynamicRegistrationMethods.forName(r.getMethod)
+        if (methodO.isPresent) {
+          val method = methodO.get
+          if (registrations.contains(id)) {
+            registrations.remove(id)
+          } else {
+            val invert = registrations.map(mapping => (mapping._2, mapping._1))
+            if (invert.contains(method)) {
+              registrations.remove(invert(method))
+            }
+          }
+          method match {
+            case DynamicRegistrationMethods.DID_CHANGE_WATCHED_FILES =>
+              fileWatchers = Iterable.empty
+            case _ =>
           }
         }
-        method match {
-          case DynamicRegistrationMethods.DID_CHANGE_WATCHED_FILES =>
-            fileWatchers = Iterable.empty
-          case _ =>
-        }
+
       })
     })
   }

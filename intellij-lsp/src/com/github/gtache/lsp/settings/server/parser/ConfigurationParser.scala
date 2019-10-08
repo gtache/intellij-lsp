@@ -132,8 +132,7 @@ class JsonParser extends ConfigurationParser {
           LSPConfiguration.invalidConfiguration
         }
       } catch {
-        case e: Exception => LSPConfiguration.invalidConfiguration
-        case _ => LSPConfiguration.invalidConfiguration
+        case _: Throwable => LSPConfiguration.invalidConfiguration
       }
     }
   }
