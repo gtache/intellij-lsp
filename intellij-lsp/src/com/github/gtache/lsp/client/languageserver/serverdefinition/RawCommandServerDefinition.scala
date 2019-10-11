@@ -13,7 +13,7 @@ object RawCommandServerDefinition extends UserConfigurableServerDefinitionObject
     if (arr.head == typ) {
       val arrTail = arr.tail
       if (arrTail.length > 1) {
-        RawCommandServerDefinition(arrTail.head, Utils.parseArgs(arrTail.tail))
+        new RawCommandServerDefinition(arrTail.head, Utils.parseArgs(arrTail.tail))
       } else {
         null
       }
@@ -33,9 +33,13 @@ object RawCommandServerDefinition extends UserConfigurableServerDefinitionObject
   * @param ext     The extension
   * @param command The command to run
   */
-case class RawCommandServerDefinition(ext: String, command: Array[String]) extends CommandServerDefinition {
+case class RawCommandServerDefinition(langId: String,  ext: String, command: Array[String]) extends CommandServerDefinition {
 
   import RawCommandServerDefinition.typ
+
+  def this(ext: String, command: Array[String]) =  this(ext, ext, command)
+
+  override def id: String = langId
 
   /**
     * @return The array corresponding to the server definition
@@ -45,7 +49,7 @@ case class RawCommandServerDefinition(ext: String, command: Array[String]) exten
   override def toString: String = typ + " : " + command.mkString(" ")
 
   override def equals(obj: scala.Any): Boolean = obj match {
-    case RawCommandServerDefinition(ext1, commands1) =>
+    case RawCommandServerDefinition(langId1, ext1, commands1) =>
       ext == ext1 && command.toSeq == commands1.toSeq
     case _ => false
   }

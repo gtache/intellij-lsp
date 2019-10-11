@@ -130,10 +130,22 @@ object PluginMain {
         if (forced == null) {
           val forcedDef = forcedAssociations.get((uri, pUri)).orNull
           if (forcedDef == null) {
+            var connected: Boolean = false;
             extToServerDefinition.get(ext).foreach(s => {
               val wrapper = getWrapperFor(ext, editor, s)
               if (wrapper != null) {
                 LOG.info("Adding file " + file.getName)
+                wrapper.connect(editor)
+                connected = true
+              }
+            })
+
+            // if not connected try with full file name, may the extention is a specific file name.
+            val fname = file.getName
+            extToServerDefinition.get(fname).foreach(s => {
+              val wrapper = getWrapperFor(fname, editor, s)
+              if (wrapper != null) {
+                LOG.info("Adding file [Full File Name Mode] " + file.getName)
                 wrapper.connect(editor)
               }
             })
