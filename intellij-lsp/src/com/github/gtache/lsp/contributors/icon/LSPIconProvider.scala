@@ -7,7 +7,7 @@ import javax.swing.Icon
 import org.eclipse.lsp4j.{CompletionItemKind, SymbolKind}
 
 object LSPIconProvider {
-  val EP_NAME: ExtensionPointName[LSPIconProvider] = ExtensionPointName.create("com.github.gtache.lsp.contributors.icon.LSPIconProvider")
+  val EP_NAME: ExtensionPointName[LSPIconProvider] = ExtensionPointName.create("com.github.gtache.lsp.lspIconProvider")
 
   def getDefaultCompletionIcon(kind: CompletionItemKind): Icon = LSPDefaultIconProvider.getCompletionIcon(kind)
 
