@@ -58,12 +58,8 @@ object DocumentUtils {
     */
   def offsetToLSPPos(editor: Editor, offset: Int): Position = {
     computableReadAction(() => {
-      val doc = editor.getDocument
-      val line = doc.getLineNumber(offset)
-      val lineStart = doc.getLineStartOffset(line)
-      val lineTextBeforeOffset = doc.getText(TextRange.create(lineStart, offset))
-      val column = lineTextBeforeOffset.length
-      new Position(line, column)
+      val position = editor.offsetToLogicalPosition(offset)
+      new Position(position.line, position.column)
     })
   }
 
@@ -76,23 +72,7 @@ object DocumentUtils {
     */
   def LSPPosToOffset(editor: Editor, pos: Position): Int = {
     computableReadAction(() => {
-      //TODO abort if basically wrong line?
-      val doc = editor.getDocument
-      val line = math.max(0, math.min(pos.getLine, doc.getLineCount))
-      val lineText = doc.getText(DocumentUtil.getLineTextRange(doc, line))
-      val lineTextForPosition = if (lineText.nonEmpty) lineText.substring(0, min(lineText.length - 1, pos.getCharacter)) else ""
-      val tabs = StringUtil.countChars(lineTextForPosition, '\t')
-      val tabSize = editor.getSettings.getTabSize(editor.getProject)
-      val column = tabs * tabSize + lineTextForPosition.length - tabs
-      val offset = editor.logicalPositionToOffset(new LogicalPosition(line, column))
-      if (pos.getCharacter >= lineText.length) {
-        LOG.warn("LSPPOS outofbounds : " + pos + " line : " + lineText + " column : " + column + " offset : " + offset)
-      }
-      val docLength = doc.getTextLength
-      if (offset >= docLength) {
-        LOG.warn("Offset greater than text length : " + offset + " > " + docLength)
-      }
-      math.min(math.max(offset, 0), docLength - 1)
+      editor.logicalPositionToOffset(new LogicalPosition(pos.getLine, pos.getCharacter))
     })
   }
 
