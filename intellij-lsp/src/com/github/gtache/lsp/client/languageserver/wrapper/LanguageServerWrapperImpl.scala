@@ -49,7 +49,7 @@ object LanguageServerWrapperImpl {
     * @return The wrapper for the given editor, or None
     */
   def forEditor(editor: Editor): Option[LanguageServerWrapper] = {
-    if (editor.getProject == null){
+    if (editor.getProject == null) {
       None
     } else {
       uriToLanguageServerWrapper.get((FileUtils.editorToURIString(editor), FileUtils.editorToProjectFolderUri(editor)))
@@ -254,7 +254,13 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
 
   override def stop(): Unit = {
     if (this.initializeFuture != null) {
-      if (!this.initializeFuture.isCancelled) this.initializeFuture.cancel(true)
+      if (!this.initializeFuture.isCancelled) {
+        try {
+          this.initializeFuture.cancel(true)
+        } catch {
+          case e: CancellationException => LOG.warn(e)
+        }
+      }
       this.initializeFuture = null
     }
     this.initializeResult = null

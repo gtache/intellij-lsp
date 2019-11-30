@@ -187,7 +187,7 @@ object PluginMain {
 
   private def getWrapperFor(ext: String, editor: Editor, serverDefinition: LanguageServerDefinition): LanguageServerWrapper = {
     val project: Project = editor.getProject
-    if (project != null) {
+    if (project != null && !project.isDefault) {
       val rootVFS: VirtualFile = ProjectUtil.guessProjectDir(project)
       if (rootVFS == null) {
         val docName = FileDocumentManager.getInstance().getFile(editor.getDocument).getCanonicalPath

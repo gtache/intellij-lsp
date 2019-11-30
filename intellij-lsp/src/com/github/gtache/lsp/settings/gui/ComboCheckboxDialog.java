@@ -39,6 +39,7 @@ public class ComboCheckboxDialog extends DialogWrapper {
         super.doCancelAction();
     }
 
+    @Override
     public int getExitCode() {
         return exitCode;
     }

@@ -167,7 +167,7 @@ object FileUtils {
 
   def editorToProjectFolderPath(editor: Editor): String = {
     val project = editor.getProject
-    if (project!=null) {
+    if (project != null && !project.isDefault) {
       VFSToPath(ProjectUtil.guessProjectDir(project))
     } else null
   }

@@ -84,6 +84,7 @@ object WorkspaceEditHandler {
         def manageUnopenedEditor(edits: Iterable[TextEdit], uri: String, version: Int = Int.MaxValue): Runnable = {
           val projects = ProjectManager.getInstance().getOpenProjects
           val project = projects //Infer the project from the uri
+            .filter(p => !p.isDefault)
             .map(p => (FileUtils.VFSToURI(ProjectUtil.guessProjectDir(p)), p))
             .filter(p => uri.startsWith(p._1))
             .sortBy(s => s._1.length).reverse
