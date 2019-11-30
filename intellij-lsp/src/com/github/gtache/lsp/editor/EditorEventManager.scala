@@ -1512,7 +1512,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         selectedSymbHighlights.clear()
         if (editor.getSelectionModel.hasSelection) {
           val ideRange = e.getNewRange
-          val LSPPos = DocumentUtils.offsetToLSPPos(editor, ideRange.getStartOffset)
+          val LSPPos = DocumentUtils.offsetToLSPPos(editor, (ideRange.getEndOffset + ideRange.getStartOffset) / 2)
           val request = requestManager.documentHighlight(new TextDocumentPositionParams(identifier, LSPPos))
           if (request != null) {
             pool(() => {
