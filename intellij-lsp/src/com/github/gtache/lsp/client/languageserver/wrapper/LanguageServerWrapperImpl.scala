@@ -17,6 +17,7 @@ import com.github.gtache.lsp.requests.{Timeout, Timeouts}
 import com.github.gtache.lsp.settings.LSPState
 import com.github.gtache.lsp.settings.server.LSPConfiguration
 import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils, LSPException}
+import com.google.gson.JsonObject
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.{FileEditorManager, TextEditor}
@@ -426,7 +427,18 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
               options match {
                 case o: DidChangeWatchedFilesRegistrationOptions =>
                   fileWatchers = o.getWatchers.asScala
-                case _ => LOG.warn("Mismatched options type : expected DidChangeWatchedFilesRegistrationOptions, got " + options.getClass)
+                case json: JsonObject =>
+                  try {
+                    val watchers = json.getAsJsonArray("watchers")
+                    fileWatchers = (0 until watchers.size()).map(i => {
+                      val watcher = watchers.get(i).asInstanceOf[JsonObject]
+                      new FileSystemWatcher(watcher.getAsJsonPrimitive("globPattern").getAsString, watcher.getAsJsonPrimitive("kind").getAsInt)
+                    })
+                  } catch {
+                    case e: Exception => LOG.warn(e)
+                  }
+                case _ =>
+                  LOG.warn("Mismatched options type : expected DidChangeWatchedFilesRegistrationOptions, got " + options.getClass)
               }
             case _ =>
           }
