@@ -3,6 +3,7 @@ package com.github.gtache.lsp.contributors.fixes
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.intellij.codeInspection.{LocalQuickFix, ProblemDescriptor}
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import org.eclipse.lsp4j.Command
 
@@ -13,6 +14,7 @@ import org.eclipse.lsp4j.Command
   * @param command The command to run
   */
 class LSPCommandFix(uri: String, command: Command) extends LocalQuickFix {
+  import LSPCommandFix._
   override def applyFix(project: Project, descriptor: ProblemDescriptor): Unit = {
     descriptor.getPsiElement match {
       case _: LSPPsiElement =>
@@ -27,4 +29,7 @@ class LSPCommandFix(uri: String, command: Command) extends LocalQuickFix {
     command.getTitle
   }
 
+}
+object LSPCommandFix {
+  private val LOG : Logger = Logger.getInstance(LSPCommandFix.getClass)
 }

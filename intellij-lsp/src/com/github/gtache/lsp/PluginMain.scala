@@ -133,25 +133,27 @@ object PluginMain {
         LOG.info("Opened " + file.getName)
         val uri = FileUtils.editorToURIString(editor)
         val pUri = FileUtils.editorToProjectFolderUri(editor)
-        val forced = forcedAssociationsInstances.get((uri, pUri)).orNull
-        if (forced == null) {
-          val forcedDef = forcedAssociations.get((uri, pUri)).orNull
-          if (forcedDef == null) {
-            extToServerDefinition.get(ext).foreach(s => {
-              val wrapper = getWrapperFor(ext, editor, s)
+        if (uri != null && pUri != null) {
+          val forced = forcedAssociationsInstances.get((uri, pUri)).orNull
+          if (forced == null) {
+            val forcedDef = forcedAssociations.get((uri, pUri)).orNull
+            if (forcedDef == null) {
+              extToServerDefinition.get(ext).foreach(s => {
+                val wrapper = getWrapperFor(ext, editor, s)
+                if (wrapper != null) {
+                  LOG.info("Adding file " + file.getName)
+                  wrapper.connect(editor)
+                }
+              })
+            } else {
+              val wrapper = getWrapperFor(ext, editor, forcedDef)
               if (wrapper != null) {
                 LOG.info("Adding file " + file.getName)
                 wrapper.connect(editor)
               }
-            })
-          } else {
-            val wrapper = getWrapperFor(ext, editor, forcedDef)
-            if (wrapper != null) {
-              LOG.info("Adding file " + file.getName)
-              wrapper.connect(editor)
             }
-          }
-        } else forced.connect(editor)
+          } else forced.connect(editor)
+        }
       })
     } else {
       LOG.warn("File for editor " + editor.getDocument.getText + " is null")
@@ -164,22 +166,24 @@ object PluginMain {
     if (file != null) {
       val uri = FileUtils.editorToURIString(editor)
       val pUri = FileUtils.projectToUri(project)
-      forcedAssociations.synchronized {
-        forcedAssociations.update((uri, pUri), serverDefinition)
-      }
-      ApplicationUtils.pool(() => {
-        LanguageServerWrapperImpl.forEditor(editor).foreach(l => {
-          LOG.info("Disconnecting " + FileUtils.editorToURIString(editor))
-          l.disconnect(editor)
-        })
-        LOG.info("Opened " + file.getName)
-        val wrapper = getWrapperFor(serverDefinition.ext, editor, serverDefinition)
-        if (wrapper != null) {
-          LSPState.getInstance().setForcedAssociations(forcedAssociations.map(mapping => Array(mapping._1._1, mapping._1._2) -> mapping._2.toArray).asJava)
-          wrapper.connect(editor)
-          LOG.info("Adding file " + file.getName)
+      if (uri != null && pUri != null) {
+        forcedAssociations.synchronized {
+          forcedAssociations.update((uri, pUri), serverDefinition)
         }
-      })
+        ApplicationUtils.pool(() => {
+          LanguageServerWrapperImpl.forEditor(editor).foreach(l => {
+            LOG.info("Disconnecting " + FileUtils.editorToURIString(editor))
+            l.disconnect(editor)
+          })
+          LOG.info("Opened " + file.getName)
+          val wrapper = getWrapperFor(serverDefinition.ext, editor, serverDefinition)
+          if (wrapper != null) {
+            LSPState.getInstance().setForcedAssociations(forcedAssociations.map(mapping => Array(mapping._1._1, mapping._1._2) -> mapping._2.toArray).asJava)
+            wrapper.connect(editor)
+            LOG.info("Adding file " + file.getName)
+          }
+        })
+      }
     } else {
       LOG.warn("File for editor " + editor.getDocument.getText + " is null")
     }

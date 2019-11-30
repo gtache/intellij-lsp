@@ -476,10 +476,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     pool(() => {
       if (!editor.isDisposed) {
         commands.map(c => {
-          val params = new ExecuteCommandParams()
-          params.setArguments(c.getArguments)
-          params.setCommand(c.getCommand)
-          requestManager.executeCommand(params)
+          requestManager.executeCommand(new ExecuteCommandParams(c.getCommand, c.getArguments))
         }).foreach(f => {
           if (f != null) {
             try {
@@ -488,6 +485,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               ret match {
                 case e: WorkspaceEdit => WorkspaceEditHandler.applyEdit(e, name = "Execute command")
                 case _ =>
+                  LOG.warn("ExecuteCommand returned "+ret)
               }
             } catch {
               case e: TimeoutException =>

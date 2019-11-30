@@ -15,7 +15,7 @@ import com.intellij.openapi.diagnostic.Logger
   * @param port
   */
 class ProcessOverSocketStreamConnectionProvider(commands: Seq[String], workingDir: String, port: Int = 0) extends ProcessStreamConnectionProvider(commands, workingDir) {
-  private val LOG = Logger.getInstance(classOf[ProcessOverSocketStreamConnectionProvider])
+  import ProcessOverSocketStreamConnectionProvider._
   private var socket: Socket = _
   private var inputStream: InputStream = _
   private var outputStream: OutputStream = _
@@ -70,4 +70,8 @@ class ProcessOverSocketStreamConnectionProvider(commands: Seq[String], workingDi
     val result = super.hashCode
     result ^ Objects.hashCode(this.port)
   }
+}
+
+object ProcessOverSocketStreamConnectionProvider {
+  private val LOG = Logger.getInstance(classOf[ProcessOverSocketStreamConnectionProvider])
 }
