@@ -96,7 +96,7 @@ object FileUtils {
     * @return the URI
     */
   def VFSToURI(file: VirtualFile): String = {
-    if (file != null && !file.getUrl.startsWith("mock") && !file.getUrl.startsWith("dbsrc")) {
+    if (file != null && !file.getUrl.startsWith("mock") && !file.getUrl.startsWith("dbSrc")) {
       try {
         sanitizeURI(new URL(file.getUrl.replace(" ", SPACE_ENCODED)).toURI.toString)
       } catch {

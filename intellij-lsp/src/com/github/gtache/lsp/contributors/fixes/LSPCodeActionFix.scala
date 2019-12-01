@@ -16,8 +16,6 @@ import org.eclipse.lsp4j.CodeAction
   */
 class LSPCodeActionFix(uri: String, codeAction: CodeAction) extends LocalQuickFix {
 
-  import LSPCodeActionFix._
-
   override def applyFix(project: Project, descriptor: ProblemDescriptor): Unit = {
     descriptor.getPsiElement match {
       case _: LSPPsiElement =>

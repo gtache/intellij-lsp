@@ -14,7 +14,7 @@ import org.eclipse.lsp4j.Command
   * @param command The command to run
   */
 class LSPCommandFix(uri: String, command: Command) extends LocalQuickFix {
-  import LSPCommandFix._
+
   override def applyFix(project: Project, descriptor: ProblemDescriptor): Unit = {
     descriptor.getPsiElement match {
       case _: LSPPsiElement =>
@@ -30,6 +30,7 @@ class LSPCommandFix(uri: String, command: Command) extends LocalQuickFix {
   }
 
 }
+
 object LSPCommandFix {
-  private val LOG : Logger = Logger.getInstance(LSPCommandFix.getClass)
+  private val LOG: Logger = Logger.getInstance(LSPCommandFix.getClass)
 }

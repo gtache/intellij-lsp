@@ -485,7 +485,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               ret match {
                 case e: WorkspaceEdit => WorkspaceEditHandler.applyEdit(e, name = "Execute command")
                 case _ =>
-                  LOG.warn("ExecuteCommand returned "+ret)
+                  LOG.warn("ExecuteCommand returned " + ret)
               }
             } catch {
               case e: TimeoutException =>

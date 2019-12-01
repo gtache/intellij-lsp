@@ -4,11 +4,8 @@ import com.github.gtache.lsp.utils.ApplicationUtils.computableReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.util.TextRange
-import com.intellij.openapi.util.text.StringUtil
 import com.intellij.util.DocumentUtil
 import org.eclipse.lsp4j.Position
-
-import scala.math.min
 
 /**
   * Various methods to convert offsets / logical position / server position
@@ -77,18 +74,12 @@ object DocumentUtils {
   def LSPPosToOffset(editor: Editor, pos: Position): Int = {
     computableReadAction(() => {
       //TODO abort if basically wrong line?
+      //TODO manage surrogates ?
+      //TODO manage different sized-tabs
       val doc = editor.getDocument
       val line = math.max(0, math.min(pos.getLine, doc.getLineCount - 1))
-      val lineText = doc.getText(DocumentUtil.getLineTextRange(doc, line))
-      val lineTextForPosition = if (lineText.nonEmpty) lineText.substring(0, min(lineText.length - 1, pos.getCharacter)) else ""
-      val tabs = StringUtil.countChars(lineTextForPosition, '\t')
-      val tabSize = editor.getSettings.getTabSize(editor.getProject)
-      val column = tabs * tabSize + lineTextForPosition.length - tabs
-      val offset = editor.logicalPositionToOffset(new LogicalPosition(line, column))
-      if (pos.getCharacter >= lineText.length) {
-        LOG.debug("LSPPOS outofbounds : " + pos + " line : " + lineText + " column : " + column + " offset : " + offset)
-      }
       val docLength = doc.getTextLength
+      val offset = doc.getLineStartOffset(line) + pos.getCharacter
       if (!DocumentUtil.isValidOffset(offset, doc)) {
         LOG.debug("Invalid offset : " + offset + ", doclength " + docLength)
       }
