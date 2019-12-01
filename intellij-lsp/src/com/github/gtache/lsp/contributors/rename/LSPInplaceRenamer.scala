@@ -3,12 +3,15 @@ package com.github.gtache.lsp.contributors.rename
 import java.util
 
 import com.github.gtache.lsp.editor.EditorEventManager
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.psi.search.SearchScope
 import com.intellij.psi.{PsiElement, PsiNamedElement, PsiReference}
 import com.intellij.refactoring.rename.inplace.MemberInplaceRenamer
 
 class LSPInplaceRenamer(elementToRename: PsiNamedElement, substituted: PsiElement, editor: Editor)(initialName: String = elementToRename.getName, oldName: String = elementToRename.getName) extends MemberInplaceRenamer(elementToRename, substituted, editor, initialName, oldName) {
+
+  import LSPInplaceRenamer._
 
   override def collectRefs(referencesSearchScope: SearchScope): util.Collection[PsiReference] = {
     import scala.collection.JavaConverters._
@@ -20,4 +23,8 @@ class LSPInplaceRenamer(elementToRename: PsiNamedElement, substituted: PsiElemen
       case None => List().asJava
     }
   }
+}
+
+object LSPInplaceRenamer {
+  private val LOG: Logger = Logger.getInstance(LSPInplaceRenamer.getClass)
 }

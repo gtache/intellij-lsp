@@ -795,16 +795,14 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       if (!editor.isDisposed) {
         val params = new TextDocumentPositionParams(identifier, DocumentUtils.offsetToLSPPos(editor, offset))
         val future = requestManager.documentHighlight(params)
-        LOG.warn(params.toString)
         if (future != null) {
           try {
             val res = future.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
             wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
-            //LOG.warn(res.toString)
             if (res != null && !editor.isDisposed)
               res.asScala.map(dh => new TextRange(DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart), DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)))
                 .find(range => range.getStartOffset <= offset && offset <= range.getEndOffset)
-                .map(range => LSPPsiElement(editor.getDocument.getText(range), project, range.getStartOffset, range.getEndOffset, PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument)))
+                .map(range => LSPPsiElement(editor.getDocument.getText(range), project, range.getStartOffset, range.getEndOffset, PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument), editor))
                 .orNull
             else null
           } catch {
@@ -1275,7 +1273,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             val logicalStart = DocumentUtils.LSPPosToOffset(curEditor, start)
             val logicalEnd = DocumentUtils.LSPPosToOffset(curEditor, end)
             val name = curEditor.getDocument.getText(new TextRange(logicalStart, logicalEnd))
-            LSPPsiElement(name, project, logicalStart, logicalEnd, PsiDocumentManager.getInstance(project).getPsiFile(curEditor.getDocument))
+            LSPPsiElement(name, project, logicalStart, logicalEnd, PsiDocumentManager.getInstance(project).getPsiFile(curEditor.getDocument), curEditor)
               .asInstanceOf[PsiElement]
           })
           if (close) {

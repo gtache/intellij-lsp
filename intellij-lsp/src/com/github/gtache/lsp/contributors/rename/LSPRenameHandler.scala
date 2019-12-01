@@ -7,6 +7,7 @@ import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.codeInsight.template.impl.TemplateManagerImpl
 import com.intellij.openapi.actionSystem.{CommonDataKeys, DataContext}
 import com.intellij.openapi.command.impl.StartMarkAction
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.impl.source.tree.injected.InjectedLanguageUtil
@@ -15,6 +16,9 @@ import com.intellij.refactoring.rename.inplace.{InplaceRefactoring, MemberInplac
 import com.intellij.refactoring.rename.{PsiElementRenameHandler, RenameHandler, RenameHandlerRegistry, RenamePsiElementProcessor}
 
 class LSPRenameHandler extends RenameHandler {
+
+  import LSPRenameHandler._
+
   override def invoke(project: Project, elements: Array[PsiElement], dataContext: DataContext): Unit = {
     if (elements.length == 1) new MemberInplaceRenameHandler().doRename(elements(0), dataContext.getData(CommonDataKeys.EDITOR), dataContext)
     else invoke(project, dataContext.getData(CommonDataKeys.EDITOR), dataContext.getData(CommonDataKeys.PSI_FILE), dataContext)
@@ -69,7 +73,9 @@ class LSPRenameHandler extends RenameHandler {
     new LSPInplaceRenamer(element.asInstanceOf[PsiNamedElement], elementToRename, editor)()
   }
 
-  override def isRenaming(dataContext: DataContext): Boolean = isAvailableOnDataContext(dataContext)
+  override def isRenaming(dataContext: DataContext): Boolean = {
+    isAvailableOnDataContext(dataContext)
+  }
 
   protected def checkAvailable(elementToRename: PsiElement, editor: Editor, dataContext: DataContext): Boolean = {
     if (!isAvailableOnDataContext(dataContext)) {
@@ -96,4 +102,8 @@ class LSPRenameHandler extends RenameHandler {
     }
   }
 
+}
+
+object LSPRenameHandler {
+  private val LOG: Logger = Logger.getInstance(LSPRenameHandler.getClass)
 }

@@ -8,6 +8,8 @@
 
     <change-notes>
         <![CDATA[
+        -Fixes versioning problem which caused LSP rename (Ctrl+Shift+F6) to fail<br>
+        -Fixes inplace renaming (Shift+F6)
 ]]>
     </change-notes>
 

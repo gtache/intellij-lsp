@@ -42,7 +42,7 @@ class LSPInspection extends LocalInspectionTool {
               case DiagnosticSeverity.Hint => ProblemHighlightType.INFORMATION
               case _ => null
             }
-            val element = LSPPsiElement(name, m.editor.getProject, start, end, file)
+            val element = LSPPsiElement(name, m.editor.getProject, start, end, file, m.editor)
             val codeActionResult = m.codeAction(element)
             val fixes = if (codeActionResult != null) {
               val (commandsE, codeActionsE) = codeActionResult.filter(e => e != null && (e.isLeft || e.isRight)).partition(e => e.isLeft)
