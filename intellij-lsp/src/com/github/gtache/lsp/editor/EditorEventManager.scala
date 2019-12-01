@@ -170,7 +170,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private val project: Project = editor.getProject
   @volatile var needSave = false
   private var hoverThread = new Timer("Hover", true)
-  private var version: Int = -1
+  private var version: Int = 0
   private var predTime: Long = -1L
   private var ctrlTime: Long = -1L
   private var isOpen: Boolean = false
@@ -608,7 +608,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             predTime = System.nanoTime() //So that there are no hover events while typing
             changesParams.getTextDocument.setVersion({
               version += 1
-              version - 1
+              version
             })
             val changeEvent = new TextDocumentContentChangeEvent()
             syncKind match {
@@ -671,10 +671,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         if (isOpen) {
           LOG.warn("Editor " + editor + " was already open")
         } else {
-          requestManager.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(identifier.getUri, wrapper.serverDefinition.id, {
-            version += 1
-            version - 1
-          }, editor.getDocument.getText)))
+          requestManager.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(identifier.getUri, wrapper.serverDefinition.id, version, editor.getDocument.getText)))
           isOpen = true
         }
       }
