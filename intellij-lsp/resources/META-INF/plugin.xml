@@ -13,12 +13,14 @@
         -Adds restart server option when clicking on the status icon<br>
         -Adds (wonky) snippet completion support<br>
         -Adds initialized support<br>
-        -Adds configuration and didChangeConfiguration support<br>1
+        -Adds configuration and didChangeConfiguration support<br>
         -Adds dynamic DidChangeWatchedFiles registration to filter file events<br>
-        -Adds standards LanguageID<br>
+        -Adds standard LanguageID<br>
         -Diagnostics are now shown when reported range length is 0<br>
         -Fixes modifying server definitions for existing extensions<br>
-        -Fixes incremental synchronisation on didChange<br>
+        -Fixes incremental synchronization on didChange<br>
+        -Fixes document highlights<br>
+        -Fixes offsets with tabs having different sizes<br>
         -Fixes offsets while doing multiple edits
 ]]>
     </change-notes>

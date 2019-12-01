@@ -1,4 +1,4 @@
-ideaBuild in ThisBuild := "192.6817.14"
+ideaBuild in ThisBuild := "193.5233.102"
 
 // Download the IDEA SDK on startup
 onLoad in Global := ((s: State) => { "updateIdea" :: s}) compose (onLoad in Global).value

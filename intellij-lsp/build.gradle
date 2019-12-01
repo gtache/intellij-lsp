@@ -9,13 +9,13 @@ repositories {
 apply plugin: 'org.jetbrains.intellij'
 
 intellij {
-    version '2019.2'
+    version '2019.3'
     plugins 'IntelliLang'
     pluginName 'LSP Support'
 }
 
 patchPluginXml {
-    untilBuild '2019.2'
+    untilBuild '2019.3'
 }
 
 dependencies {
