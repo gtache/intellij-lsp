@@ -5,3 +5,5 @@ out/
 *.zip
 *.ps1
 target/
+todo.txt
+lib/

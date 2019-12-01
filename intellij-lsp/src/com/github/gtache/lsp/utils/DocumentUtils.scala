@@ -4,11 +4,8 @@ import com.github.gtache.lsp.utils.ApplicationUtils.computableReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Editor, LogicalPosition}
 import com.intellij.openapi.util.TextRange
-import com.intellij.openapi.util.text.StringUtil
 import com.intellij.util.DocumentUtil
 import org.eclipse.lsp4j.Position
-
-import scala.math.min
 
 /**
   * Various methods to convert offsets / logical position / server position
@@ -77,22 +74,25 @@ object DocumentUtils {
   def LSPPosToOffset(editor: Editor, pos: Position): Int = {
     computableReadAction(() => {
       //TODO abort if basically wrong line?
+      //TODO manage surrogates ?
+      //TODO manage different sized-tabs
       val doc = editor.getDocument
-      val line = math.max(0, math.min(pos.getLine, doc.getLineCount))
-      val lineText = doc.getText(DocumentUtil.getLineTextRange(doc, line))
-      val lineTextForPosition = if (lineText.nonEmpty) lineText.substring(0, min(lineText.length - 1, pos.getCharacter)) else ""
-      val tabs = StringUtil.countChars(lineTextForPosition, '\t')
-      val tabSize = editor.getSettings.getTabSize(editor.getProject)
-      val column = tabs * tabSize + lineTextForPosition.length - tabs
-      val offset = editor.logicalPositionToOffset(new LogicalPosition(line, column))
-      if (pos.getCharacter >= lineText.length) {
-        LOG.warn("LSPPOS outofbounds : " + pos + " line : " + lineText + " column : " + column + " offset : " + offset)
-      }
+      val line = math.max(0, math.min(pos.getLine, doc.getLineCount - 1))
       val docLength = doc.getTextLength
-      if (offset >= docLength) {
-        LOG.warn("Offset greater than text length : " + offset + " > " + docLength)
+      val offset = doc.getLineStartOffset(line) + pos.getCharacter
+      if (!DocumentUtil.isValidOffset(offset, doc)) {
+        LOG.debug("Invalid offset : " + offset + ", doclength " + docLength)
       }
       math.min(math.max(offset, 0), docLength - 1)
+    })
+  }
+
+  def expandOffsetToToken(editor: Editor, offset: Int): (Int, Int) = {
+    computableReadAction(() => {
+      val text = editor.getDocument.getText
+      val negOffset = offset - text.take(offset).reverse.takeWhile(c => !c.isWhitespace).length
+      val posOffset = offset + text.drop(offset).takeWhile(c => !c.isWhitespace).length
+      (negOffset, posOffset)
     })
   }
 

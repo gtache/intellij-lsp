@@ -1,7 +1,6 @@
 package com.github.gtache.lsp.requests
 
-import java.io.File
-import java.net.{URI, URL}
+import java.net.URL
 import java.util
 
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
@@ -9,10 +8,9 @@ import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.utils.{DocumentUtils, FileUtils}
 import com.intellij.openapi.command.{CommandProcessor, UndoConfirmationPolicy}
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.fileEditor.{FileEditorManager, OpenFileDescriptor}
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.{Project, ProjectManager, ProjectUtil}
-import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.refactoring.listeners.RefactoringElementListener
 import com.intellij.usageView.UsageInfo
@@ -86,18 +84,14 @@ object WorkspaceEditHandler {
         def manageUnopenedEditor(edits: Iterable[TextEdit], uri: String, version: Int = Int.MaxValue): Runnable = {
           val projects = ProjectManager.getInstance().getOpenProjects
           val project = projects //Infer the project from the uri
+            .filter(p => !p.isDefault)
             .map(p => (FileUtils.VFSToURI(ProjectUtil.guessProjectDir(p)), p))
             .filter(p => uri.startsWith(p._1))
             .sortBy(s => s._1.length).reverse
             .map(p => p._2)
             .headOption
             .getOrElse(projects(0))
-          val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(FileUtils.sanitizeURI(uri))))
-          val fileEditorManager = FileEditorManager.getInstance(project)
-          val descriptor = new OpenFileDescriptor(project, file)
-          val editor: Editor = computableWriteAction(() => {
-            fileEditorManager.openTextEditor(descriptor, false)
-          })
+          val (file, editor) = FileUtils.openClosedEditor(uri, project)
           openedEditors += file
           curProject = editor.getProject
           var runnable: Runnable = null

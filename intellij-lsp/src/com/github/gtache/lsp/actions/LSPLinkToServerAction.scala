@@ -1,20 +1,15 @@
 package com.github.gtache.lsp.actions
 
-import java.io.File
-import java.net.URI
-
 import com.github.gtache.lsp.PluginMain
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapperImpl
 import com.github.gtache.lsp.settings.gui.ComboCheckboxDialog
-import com.github.gtache.lsp.utils.ApplicationUtils.computableWriteAction
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.openapi.actionSystem.{ActionPlaces, AnActionEvent, CommonDataKeys}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, OpenFileDescriptor}
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.{DumbAwareAction, Project}
 import com.intellij.openapi.ui.Messages
-import com.intellij.openapi.vfs.LocalFileSystem
 
 class LSPLinkToServerAction extends DumbAwareAction {
   private val LOG: Logger = Logger.getInstance(classOf[LSPLinkToServerAction])
@@ -60,7 +55,7 @@ class LSPLinkToServerAction extends DumbAwareAction {
           if (PluginMain.isExtensionSupported(fileType.getDefaultExtension)) {
             val ret = Messages.showOkCancelDialog(editor.getProject,
               "This file extension" + fileType.getDefaultExtension + " is already supported by a Language Server, continue?",
-              "Known extension", Messages.getWarningIcon)
+              "Known extension", "Ok", "Cancel", Messages.getWarningIcon)
             if (ret == Messages.OK) {
               PluginMain.forceEditorOpened(editor, allDefinitions(exitCode), project)
             }
@@ -74,12 +69,8 @@ class LSPLinkToServerAction extends DumbAwareAction {
     uris.map(uri => {
       var editor = FileUtils.editorFromUri(uri, project)
       if (editor == null) {
-        val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(FileUtils.sanitizeURI(uri))))
-        val fileEditorManager = FileEditorManager.getInstance(project)
-        val descriptor = new OpenFileDescriptor(project, file)
-        editor = computableWriteAction(() => {
-          fileEditorManager.openTextEditor(descriptor, false)
-        })
+        val (_, e) = FileUtils.openClosedEditor(uri, project)
+        editor = e
       }
       editor
     }).toArray

@@ -10,6 +10,7 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.{FileEditorManager, TextEditor}
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.search.SearchScope
 import com.intellij.psi.{PsiElement, PsiFile, PsiNamedElement, PsiReference}
 import com.intellij.refactoring.listeners.RefactoringElementListener
 import com.intellij.refactoring.rename.{RenameDialog, RenamePsiElementProcessor}
@@ -26,7 +27,7 @@ class LSPRenameProcessor extends RenamePsiElementProcessor {
 
   override def canProcessElement(element: PsiElement): Boolean = {
     element match {
-      case lsp: LSPPsiElement => true
+      case _: LSPPsiElement => true
       case file: PsiFile =>
         val editorO = FileEditorManager.getInstance(file.getProject).getAllEditors(file.getVirtualFile).collectFirst { case t: TextEditor => t.getEditor }
         val manager = editorO.collect { case e: Editor if EditorEventManager.forEditor(e).nonEmpty => EditorEventManager.forEditor(e).get }
@@ -66,6 +67,10 @@ class LSPRenameProcessor extends RenamePsiElementProcessor {
 
   override def findReferences(element: PsiElement): util.Collection[PsiReference] = {
     findReferences(element, searchInCommentsAndStrings = false)
+  }
+
+  override def findReferences(element: PsiElement, searchScope: SearchScope, searchInCommentsAndStrings: Boolean): util.Collection[PsiReference] = {
+    findReferences(element, searchInCommentsAndStrings)
   }
 
   override def findReferences(element: PsiElement, searchInCommentsAndStrings: Boolean): util.Collection[PsiReference] = {

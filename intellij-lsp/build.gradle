@@ -9,22 +9,22 @@ repositories {
 apply plugin: 'org.jetbrains.intellij'
 
 intellij {
-    version '2017.3'
+    version '2019.3'
     plugins 'IntelliLang'
     pluginName 'LSP Support'
 }
 
 patchPluginXml {
-    untilBuild '2018.3'
+    untilBuild '2019.3'
 }
 
 dependencies {
-    compile group: 'org.eclipse.lsp4j', name: 'org.eclipse.lsp4j', version: '0.6.0'
+    compile group: 'org.eclipse.lsp4j', name: 'org.eclipse.lsp4j', version: '0.8.1'
     compile group: 'io.get-coursier', name: 'coursier_2.12', version: '1.0.3'
     compile group: 'io.get-coursier', name: 'coursier-cache_2.12', version: '1.0.3'
-    compile group: 'com.vladsch.flexmark', name: 'flexmark', version: '0.40.20'
-    compile 'org.scala-lang:scala-compiler:2.12.7'
-    compile 'org.scala-lang:scala-library:2.12.7'
+    compile group: 'com.vladsch.flexmark', name: 'flexmark', version: '0.42.12'
+    compile 'org.scala-lang:scala-compiler:2.12.10'
+    compile 'org.scala-lang:scala-library:2.12.10'
 }
 
 apply plugin: 'scala'

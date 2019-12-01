@@ -14,13 +14,16 @@ import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapperImpl
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.contributors.rename.LSPRenameProcessor
-import com.github.gtache.lsp.requests.{HoverHandler, Timeouts, WorkspaceEditHandler}
+import com.github.gtache.lsp.requests.{HoverHandler, SemanticHighlightingHandler, Timeouts, WorkspaceEditHandler}
 import com.github.gtache.lsp.settings.LSPState
+import com.github.gtache.lsp.utils.ConversionUtils._
 import com.github.gtache.lsp.utils.{DocumentUtils, FileUtils, GUIUtils}
 import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.codeInsight.completion.InsertionContext
 import com.intellij.codeInsight.hint.HintManager
 import com.intellij.codeInsight.lookup._
+import com.intellij.codeInsight.template.impl.{TemplateImpl, TextExpression}
+import com.intellij.codeInsight.template.{Template, TemplateManager}
 import com.intellij.lang.LanguageDocumentation
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.command.CommandProcessor
@@ -42,9 +45,11 @@ import com.intellij.uiDesigner.core.{GridConstraints, GridLayoutManager, Spacer}
 import javax.swing.{JFrame, JLabel, JPanel}
 import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.jsonrpc.JsonRpcException
+import org.eclipse.lsp4j.util.SemanticHighlightingTokens
 
-import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.collection.{JavaConverters, mutable}
+import scala.util.Random
 
 object EditorEventManager {
   private val HOVER_TIME_THRES: Long = EditorSettingsExternalizable.getInstance().getQuickDocOnMouseOverElementDelayMillis * 1000000
@@ -136,6 +141,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
   private val changesParams = new DidChangeTextDocumentParams(new VersionedTextDocumentIdentifier(), new util.ArrayList[TextDocumentContentChangeEvent]())
   private val selectedSymbHighlights: mutable.Set[RangeHighlighter] = mutable.HashSet()
   private val diagnosticsHighlights: mutable.Set[DiagnosticRangeHighlighter] = mutable.HashSet()
+  private val semanticHighlights: mutable.Map[Int, Seq[RangeHighlighter]] = mutable.Map()
   private val syncKind = serverOptions.syncKind
 
   private val completionTriggers =
@@ -157,9 +163,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     else
       Set[String]()
 
-  private val semanticHighlightingScopes: Seq[Seq[String]] =
+  private val semanticHighlightingScopes: IndexedSeq[Seq[String]] =
     if (serverOptions.semanticHighlightingOptions != null && serverOptions.semanticHighlightingOptions.getScopes != null)
-      serverOptions.semanticHighlightingOptions.getScopes.asScala.toList.map(l => l.asScala.toList) else null
+      serverOptions.semanticHighlightingOptions.getScopes.asScala.toList.map(l => l.asScala.toList).toIndexedSeq else null
 
   private val project: Project = editor.getProject
   @volatile var needSave = false
@@ -212,7 +218,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                 val scalaSignatures = signatures.asScala
                 val activeSignatureIndex = signature.getActiveSignature
                 val activeParameterIndex = signature.getActiveParameter
-                val activeParameter = scalaSignatures(activeSignatureIndex).getParameters.get(activeParameterIndex).getLabel
+                val activeParameterLabel = scalaSignatures(activeSignatureIndex).getParameters.get(activeParameterIndex).getLabel
+                val activeParameter = if (activeParameterLabel.isLeft) activeParameterLabel.getLeft else
+                  scalaSignatures(activeSignatureIndex).getLabel.substring(activeParameterLabel.getRight.getFirst, activeParameterLabel.getRight.getSecond)
                 val builder = StringBuilder.newBuilder
                 builder.append("<html>")
                 scalaSignatures.take(activeSignatureIndex).foreach(sig => builder.append(sig.getLabel).append("<br>"))
@@ -294,20 +302,57 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             * @return The corresponding LookupElement
             */
           def createLookupItem(item: CompletionItem): LookupElement = {
+            def execCommand(command: Command): Unit = {
+              if (command != null) executeCommands(Iterable(command))
+            }
+
+            def prepareTemplate(insertText: String): Template = {
+              val startIndexes = 0.until(insertText.length).filter(insertText.startsWith("$", _))
+              val variables = startIndexes.map(i => {
+                val sub = insertText.drop(i + 1)
+                if (sub.head == '{') {
+                  val num = sub.tail.takeWhile(c => c != ':')
+                  val placeholder = sub.tail.dropWhile(c => c != ':').tail.takeWhile(c => c != '}')
+                  val len = num.length + placeholder.length + 4
+                  (i, i + len, num, placeholder)
+                } else {
+                  val num = sub.takeWhile(c => c.isDigit)
+                  val placeholder = "..."
+                  val len = num.length + 1
+                  (i, i + len, num, placeholder)
+                }
+              })
+              var newInsertText = insertText
+              variables.sortBy(t => -t._1).foreach(t => newInsertText = newInsertText.take(t._1) + "$" + t._3 + "$" + newInsertText.drop(t._2))
+
+              val template = TemplateManager.getInstance(project).createTemplate("anon" + (1 to 5).map(_ => Random.nextPrintableChar()).mkString(""), "lsp")
+
+              variables.foreach(t => {
+                template.addVariable(t._3, new TextExpression(t._4), new TextExpression(t._4), true, false)
+              })
+              template.setInline(true)
+              template.asInstanceOf[TemplateImpl].setString(newInsertText)
+              template
+            }
+
+
+            //TODO improve
             val addTextEdits = item.getAdditionalTextEdits
             val command = item.getCommand
+            val commitChars = item.getCommitCharacters
             val data = item.getData
+            val deprecated = item.getDeprecated
             val detail = item.getDetail
             val doc = item.getDocumentation
             val filterText = item.getFilterText
             val insertText = item.getInsertText
-            val insertFormat = item.getInsertTextFormat
+            val insertFormat = item.getInsertTextFormat //TODO snippet
             val kind = item.getKind
             val label = item.getLabel
             val textEdit = item.getTextEdit
             val sortText = item.getSortText
             val presentableText = if (label != null && label != "") label else if (insertText != null) insertText else ""
-            val tailText = if (detail != null) detail else ""
+            val tailText = if (detail != null) "\t" + detail else ""
             val iconProvider = GUIUtils.getIconProviderFor(wrapper.getServerDefinition)
             val icon = iconProvider.getCompletionIcon(kind)
             var lookupElementBuilder: LookupElementBuilder = null
@@ -318,49 +363,83 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                           }
                       }
                     })*/
+
+            def runSnippet(template: Template): Unit = {
+              invokeLater(() => {
+                writeAction(() => CommandProcessor.getInstance().executeCommand(project, () => editor.getDocument.insertString(editor.getCaretModel.getOffset, template.getTemplateText), "snippetInsert", "lsp", editor.getDocument))
+                TemplateManager.getInstance(project).startTemplate(editor, template)
+                if (addTextEdits != null) {
+                  applyEdit(edits = addTextEdits.asScala, name = "Additional Completions : " + label)
+                }
+                execCommand(command)
+              })
+            }
+
+            def applyEdits(edit: Seq[TextEdit], moveToCaret: Boolean): Unit = {
+              invokeLater(() => {
+                if (edit != null && edit.nonEmpty) {
+                  applyEdit(edits = edit, name = "Completion : " + label)
+                }
+                execCommand(command)
+                if (moveToCaret) {
+                  editor.getCaretModel.moveCaretRelatively(textEdit.getNewText.length, 0, false, false, true)
+                }
+              })
+            }
+
             if (textEdit != null) {
               if (addTextEdits != null) {
                 lookupElementBuilder = LookupElementBuilder.create(presentableText, "")
-                  .withInsertHandler((context: InsertionContext, item: LookupElement) => {
+                  .withInsertHandler((context: InsertionContext, _: LookupElement) => {
                     context.commitDocument()
-                    invokeLater(() => {
-                      applyEdit(edits = addTextEdits.asScala :+ textEdit, name = "Completion : " + label)
-                      if (command != null) executeCommands(Iterable(command))
-                    })
+                    if (insertFormat == InsertTextFormat.Snippet) {
+                      val template = prepareTemplate(textEdit.getNewText)
+                      runSnippet(template)
+                    } else {
+                      applyEdits(textEdit +: addTextEdits.asScala, moveToCaret = true)
+                    }
                   })
                   .withLookupString(presentableText)
               } else {
                 lookupElementBuilder = LookupElementBuilder.create(presentableText, "")
-                  .withInsertHandler((context: InsertionContext, item: LookupElement) => {
+                  .withInsertHandler((context: InsertionContext, _: LookupElement) => {
                     context.commitDocument()
-                    invokeLater(() => {
-                      applyEdit(edits = Seq(textEdit), name = "Completion : " + label)
-                      if (command != null) executeCommands(Iterable(command))
-                      editor.getCaretModel.moveCaretRelatively(textEdit.getNewText.length, 0, false, false, true)
-                    })
+                    if (insertFormat == InsertTextFormat.Snippet) {
+                      val template = prepareTemplate(textEdit.getNewText)
+                      runSnippet(template)
+                    } else {
+                      applyEdits(Seq(textEdit), moveToCaret = true)
+                    }
                   })
                   .withLookupString(presentableText)
               }
             } else if (addTextEdits != null) {
               lookupElementBuilder = LookupElementBuilder.create(presentableText, "")
-                .withInsertHandler((context: InsertionContext, item: LookupElement) => {
+                .withInsertHandler((context: InsertionContext, _: LookupElement) => {
                   context.commitDocument()
-                  invokeLater(() => {
-                    applyEdit(edits = addTextEdits.asScala, name = "Completion : " + label)
-                    if (command != null) executeCommands(Iterable(command))
-                  })
+                  if (insertFormat == InsertTextFormat.Snippet) {
+                    val template = prepareTemplate(if (insertText != null && insertText != "") insertText else label)
+                    runSnippet(template)
+                  } else {
+                    applyEdits(addTextEdits.asScala, moveToCaret = false)
+                  }
                 })
                 .withLookupString(presentableText)
             } else {
               lookupElementBuilder = LookupElementBuilder.create(if (insertText != null && insertText != "") insertText else label)
-              if (command != null) lookupElementBuilder = lookupElementBuilder.withInsertHandler((context: InsertionContext, item: LookupElement) => {
+              if (command != null) lookupElementBuilder = lookupElementBuilder.withInsertHandler((context: InsertionContext, _: LookupElement) => {
                 context.commitDocument()
-                invokeLater(() => {
-                  executeCommands(Iterable(command))
-                })
+                if (insertFormat == InsertTextFormat.Snippet) {
+                  val template = prepareTemplate(if (insertText != null && insertText != "") insertText else label)
+                  runSnippet(template)
+                }
+                applyEdits(Seq.empty, moveToCaret = false)
               })
             }
             if (kind == CompletionItemKind.Keyword) lookupElementBuilder = lookupElementBuilder.withBoldness(true)
+            if (deprecated) {
+              lookupElementBuilder = lookupElementBuilder.withStrikeoutness(true)
+            }
             lookupElementBuilder.withPresentableText(presentableText).withTailText(tailText, true).withIcon(icon).withAutoCompletionPolicy(AutoCompletionPolicy.SETTINGS_DEPENDENT)
           }
 
@@ -397,10 +476,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     pool(() => {
       if (!editor.isDisposed) {
         commands.map(c => {
-          val params = new ExecuteCommandParams()
-          params.setArguments(c.getArguments)
-          params.setCommand(c.getCommand)
-          requestManager.executeCommand(params)
+          requestManager.executeCommand(new ExecuteCommandParams(c.getCommand, c.getArguments))
         }).foreach(f => {
           if (f != null) {
             try {
@@ -409,6 +485,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               ret match {
                 case e: WorkspaceEdit => WorkspaceEditHandler.applyEdit(e, name = "Execute command")
                 case _ =>
+                  LOG.warn("ExecuteCommand returned " + ret)
               }
             } catch {
               case e: TimeoutException =>
@@ -430,6 +507,15 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param diagnostics The diagnostics to apply from the server
     */
   def diagnostics(diagnostics: Iterable[Diagnostic]): Unit = {
+    def rangeToOffsets(range: Range): (Int, Int) = {
+      val (start, end) = (DocumentUtils.LSPPosToOffset(editor, range.getStart), DocumentUtils.LSPPosToOffset(editor, range.getEnd))
+      if (start == end) {
+        DocumentUtils.expandOffsetToToken(editor, start) //TODO improve if possible
+      } else {
+        (start, end)
+      }
+    }
+
     invokeLater(() => {
       if (!editor.isDisposed) {
         diagnosticsHighlights.synchronized {
@@ -451,7 +537,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             case DiagnosticSeverity.Hint => (EffectType.BOLD_DOTTED_LINE, java.awt.Color.GRAY, HighlighterLayer.WARNING)
           }
 
-          val (start, end) = (DocumentUtils.LSPPosToOffset(editor, range.getStart), DocumentUtils.LSPPosToOffset(editor, range.getEnd))
+          val (start, end) = rangeToOffsets(range)
           diagnosticsHighlights.synchronized {
             diagnosticsHighlights
               .add(DiagnosticRangeHighlighter(markupModel.addRangeHighlighter(start, end, layer,
@@ -467,15 +553,14 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     DCEs.synchronized {
       if (!editor.isDisposed) {
         changesParams.synchronized {
+          val changeEvent = new TextDocumentContentChangeEvent()
           syncKind match {
             case TextDocumentSyncKind.None =>
             case TextDocumentSyncKind.Full =>
-              val changeEvent = new TextDocumentContentChangeEvent()
               changeEvent.setText(editor.getDocument.getText)
               changesParams.getContentChanges.add(changeEvent)
             case TextDocumentSyncKind.Incremental =>
               DCEs.filter(e => e.getDocument == editor.getDocument).map(event => {
-                val changeEvent = new TextDocumentContentChangeEvent()
                 val newText = event.getNewFragment
                 val offset = event.getOffset
                 val newTextLength = event.getNewLength
@@ -525,34 +610,32 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               version += 1
               version - 1
             })
+            val changeEvent = new TextDocumentContentChangeEvent()
             syncKind match {
               case TextDocumentSyncKind.None =>
               case TextDocumentSyncKind.Incremental =>
-                val changeEvent = new TextDocumentContentChangeEvent()
                 val newText = event.getNewFragment
                 val offset = event.getOffset
                 val newTextLength = event.getNewLength
                 val lspPosition: Position = DocumentUtils.offsetToLSPPos(editor, offset)
                 val startLine = lspPosition.getLine
                 val startColumn = lspPosition.getCharacter
-                val oldText = event.getOldFragment
-
+                val oldText = event.getOldFragment.toString
                 //if text was deleted/replaced, calculate the end position of inserted/deleted text
                 val (endLine, endColumn) = if (oldText.length() > 0) {
                   val line = startLine + StringUtil.countNewLines(oldText)
-                  val oldLines = oldText.toString.split('\n')
+                  val oldLines = oldText.split('\n')
                   val oldTextLength = if (oldLines.isEmpty) 0 else oldLines.last.length
-                  val column = if (oldLines.length == 1) startColumn + oldTextLength else oldTextLength
+                  val column = if (oldText.endsWith("\n")) 0 else if (oldLines.length == 1) startColumn + oldTextLength else oldTextLength
                   (line, column)
                 } else (startLine, startColumn) //if insert or no text change, the end position is the same
-              val range = new Range(new Position(startLine, startColumn), new Position(endLine, endColumn))
+                val range = new Range(new Position(startLine, startColumn), new Position(endLine, endColumn))
                 changeEvent.setRange(range)
                 changeEvent.setRangeLength(DocumentUtils.LSPPosToOffset(editor, range.getEnd) - DocumentUtils.LSPPosToOffset(editor, range.getStart))
                 changeEvent.setText(newText.toString)
                 changesParams.getContentChanges.add(changeEvent)
 
               case TextDocumentSyncKind.Full =>
-                val changeEvent = new TextDocumentContentChangeEvent()
                 changeEvent.setText(editor.getDocument.getText)
                 changesParams.getContentChanges.add(changeEvent)
             }
@@ -715,10 +798,12 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       if (!editor.isDisposed) {
         val params = new TextDocumentPositionParams(identifier, DocumentUtils.offsetToLSPPos(editor, offset))
         val future = requestManager.documentHighlight(params)
+        LOG.warn(params.toString)
         if (future != null) {
           try {
             val res = future.get(DOC_HIGHLIGHT_TIMEOUT, TimeUnit.MILLISECONDS)
             wrapper.notifySuccess(Timeouts.DOC_HIGHLIGHT)
+            //LOG.warn(res.toString)
             if (res != null && !editor.isDisposed)
               res.asScala.map(dh => new TextRange(DocumentUtils.LSPPosToOffset(editor, dh.getRange.getStart), DocumentUtils.LSPPosToOffset(editor, dh.getRange.getEnd)))
                 .find(range => range.getStartOffset <= offset && offset <= range.getEndOffset)
@@ -921,7 +1006,6 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param point     The point at which to show the window
     */
   private def showReferencesWindow(locations: Array[(String, Int, Int, String)], name: String, point: Point): Unit = {
-    LOG.info("Showing references for " + locations.mkString("\n"))
     if (locations.isEmpty) {
       invokeLater(() => if (!editor.isDisposed) currentHint = createAndShowEditorHint(editor, "No usages found", point))
     } else {
@@ -972,7 +1056,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
 
   private def createCtrlRange(serverPos: Position, range: Range): Unit = {
     val loc = requestDefinition(serverPos)
-    if (loc != null && loc.getRange != null && loc.getRange.getStart != null && loc.getRange.getEnd != null) {
+    if (loc != null && loc.getTargetRange != null && loc.getTargetRange.getStart != null && loc.getTargetRange.getEnd != null) {
       if (!editor.isDisposed) {
         val corRange = if (range == null) {
           val params = new TextDocumentPositionParams(identifier, serverPos)
@@ -1000,7 +1084,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         } else range
         val startOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getStart)
         val endOffset = DocumentUtils.LSPPosToOffset(editor, corRange.getEnd)
-        val isDefinition = DocumentUtils.LSPPosToOffset(editor, loc.getRange.getStart) == startOffset
+        val isDefinition = DocumentUtils.LSPPosToOffset(editor, loc.getTargetRange.getStart) == startOffset
         invokeLater(() => {
           if (!editor.isDisposed) {
             if (ctrlRange != null) ctrlRange.dispose()
@@ -1019,18 +1103,28 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     * @param position The position
     * @return The location of the definition
     */
-  private def requestDefinition(position: Position): Location = {
+  private def requestDefinition(position: Position): LocationLink = {
     val params = new TextDocumentPositionParams(identifier, position)
     val request = requestManager.definition(params)
     if (request != null) {
       try {
         val definition = request.get(DEFINITION_TIMEOUT, TimeUnit.MILLISECONDS)
         wrapper.notifySuccess(Timeouts.DEFINITION)
-        if (definition != null && !definition.isEmpty) {
-          definition.get(0)
-        } else {
-          null
-        }
+        if (definition != null) {
+          if (definition.isLeft) {
+            val left = definition.getLeft
+            if (left != null && !left.isEmpty) {
+              val loc = left.get(0)
+              if (loc != null) loc else null
+            } else null
+          } else {
+            val right = definition.getRight
+            if (right != null && !right.isEmpty) {
+              val locLink = right.get(0)
+              if (locLink != null) locLink else null
+            } else null
+          }
+        } else null
       } catch {
         case e: TimeoutException =>
           LOG.warn(e)
@@ -1133,10 +1227,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               invokeLater(() => if (!editor.isDisposed) currentHint = createAndShowEditorHint(editor, string, point))
             }
           } else {
-            LOG.warn("Hover string returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
+            LOG.info("Hover string returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
           }
         } else {
-          LOG.warn("Hover is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
+          LOG.info("Hover is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
         }
       } catch {
         case e: TimeoutException =>
@@ -1174,7 +1268,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             val start = l.getRange.getStart
             val end = l.getRange.getEnd
             val uri = FileUtils.sanitizeURI(l.getUri)
-            val file = FileUtils.virtualFileFromURI(uri)
+            val file = FileUtils.URIToVFS(uri)
             var curEditor = FileUtils.editorFromUri(uri, project)
             if (curEditor == null) {
               val descriptor = new OpenFileDescriptor(project, file)
@@ -1266,11 +1360,14 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       val document = editor.getDocument
       if (document.isWritable) {
         () => {
-          edits.foreach(edit => {
-            val text = edit.getNewText
-            val range = edit.getRange
-            val start = DocumentUtils.LSPPosToOffset(editor, range.getStart)
-            val end = DocumentUtils.LSPPosToOffset(editor, range.getEnd)
+          edits.map(te => {
+            (document.createRangeMarker(DocumentUtils.LSPPosToOffset(editor, te.getRange.getStart),
+              DocumentUtils.LSPPosToOffset(editor, te.getRange.getEnd)),
+              te.getNewText)
+          }).foreach(markerText => {
+            val start = markerText._1.getStartOffset
+            val end = markerText._1.getEndOffset
+            val text = markerText._2
             if (text == "" || text == null) {
               document.deleteString(start, end)
             } else if (end - start <= 0) {
@@ -1278,6 +1375,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             } else {
               document.replaceString(start, end, text)
             }
+            markerText._1.dispose()
           })
           saveDocument()
         }
@@ -1412,7 +1510,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         selectedSymbHighlights.clear()
         if (editor.getSelectionModel.hasSelection) {
           val ideRange = e.getNewRange
-          val LSPPos = DocumentUtils.offsetToLSPPos(editor, ideRange.getStartOffset)
+          val LSPPos = DocumentUtils.offsetToLSPPos(editor, (ideRange.getEndOffset + ideRange.getStartOffset) / 2)
           val request = requestManager.documentHighlight(new TextDocumentPositionParams(identifier, LSPPos))
           if (request != null) {
             pool(() => {
@@ -1468,12 +1566,25 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     val (removeHighlighting, addHighlighting) = lines.partition(s => s.getTokens == null || s.getTokens.nonEmpty)
     removeHighlighting.foreach(l => {
       val line = l.getLine
-      //Remove highlighting
+      if (semanticHighlights.contains(line)) {
+        semanticHighlights(line).foreach(editor.getMarkupModel.removeHighlighter)
+      }
+      semanticHighlights(line) = Seq.empty
     })
     addHighlighting.foreach(l => {
       val line = l.getLine
-      val tokens = l.getTokens
-      //Add highlighting
+      val tokens = JavaConverters.asScalaBuffer(SemanticHighlightingTokens.decode(l.getTokens))
+      val rhs = tokens.map(t => {
+        val offset = t.character
+        val length = t.length
+        val scopes = semanticHighlightingScopes(t.scope) //TODO not sure
+        val attributes = scopes.map(scope => SemanticHighlightingHandler.scopeToTextAttributes(scope, editor)).head //TODO multiple scopes
+        val rh = editor.getMarkupModel.addRangeHighlighter(DocumentUtils.LSPPosToOffset(editor, new Position(line, offset)),
+          DocumentUtils.LSPPosToOffset(editor, new Position(line, offset + length)), HighlighterLayer.SYNTAX,
+          attributes, HighlighterTargetArea.EXACT_RANGE)
+        rh
+      })
+      semanticHighlights(line) = rhs
     })
   }
 

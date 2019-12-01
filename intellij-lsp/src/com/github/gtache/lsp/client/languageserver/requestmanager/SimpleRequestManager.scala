@@ -7,6 +7,7 @@ import com.github.gtache.lsp.client.languageserver.ServerStatus
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.intellij.openapi.diagnostic.Logger
 import org.eclipse.lsp4j._
+import org.eclipse.lsp4j.jsonrpc.messages
 import org.eclipse.lsp4j.jsonrpc.messages.CancelParams
 import org.eclipse.lsp4j.services.{LanguageClient, LanguageServer, TextDocumentService, WorkspaceService}
 
@@ -157,7 +158,7 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
         null
     } else null
 
-  override def completionItemResolve(unresolved: CompletionItem): CompletableFuture[CompletionItem] =
+  override def resolveCompletionItem(unresolved: CompletionItem): CompletableFuture[CompletionItem] =
     if (checkStatus) try {
       if (serverCapabilities.getCompletionProvider != null && serverCapabilities.getCompletionProvider.getResolveProvider) textDocumentService.resolveCompletionItem(unresolved) else null
     } catch {
@@ -229,7 +230,7 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
         null
     } else null
 
-  override def definition(params: TextDocumentPositionParams): CompletableFuture[java.util.List[_ <: Location]] =
+  override def definition(params: TextDocumentPositionParams): CompletableFuture[jsonrpc.messages.Either[java.util.List[_ <: Location], java.util.List[_ <: LocationLink]]] =
     if (checkStatus) try {
       if (serverCapabilities.getDefinitionProvider) textDocumentService.definition(params) else null
     } catch {
@@ -297,9 +298,9 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
         null
     } else null
 
-  override def implementation(params: TextDocumentPositionParams): CompletableFuture[util.List[_ <: Location]] = throw new NotImplementedError()
+  override def implementation(params: TextDocumentPositionParams): CompletableFuture[messages.Either[java.util.List[_ <: Location], java.util.List[_ <: LocationLink]]] = throw new NotImplementedError()
 
-  override def typeDefinition(params: TextDocumentPositionParams): CompletableFuture[util.List[_ <: Location]] = throw new NotImplementedError()
+  override def typeDefinition(params: TextDocumentPositionParams): CompletableFuture[messages.Either[java.util.List[_ <: Location], java.util.List[_ <: LocationLink]]] = throw new NotImplementedError()
 
   override def documentColor(params: DocumentColorParams): CompletableFuture[util.List[ColorInformation]] = throw new NotImplementedError()
 

@@ -3,9 +3,10 @@ package com.github.gtache.lsp.utils
 import java.io.File
 import java.net.{URI, URL}
 
+import com.github.gtache.lsp.utils.ApplicationUtils.computableWriteAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.{Document, Editor}
-import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, TextEditor}
+import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, OpenFileDescriptor, TextEditor}
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.project.{Project, ProjectUtil}
 import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
@@ -19,9 +20,13 @@ object FileUtils {
   val os: OS.Value = if (System.getProperty("os.name").toLowerCase.contains("win")) OS.WINDOWS else OS.UNIX
   val COLON_ENCODED: String = "%3A"
   val SPACE_ENCODED: String = "%20"
-  val URI_FILE_BEGIN = "file:"
-  val URI_VALID_FILE_BEGIN: String = "file:///"
+  val URI_FILE_BEGIN: String = "file:"
+  val URI_VALID_FILE_BEGIN: String = URI_FILE_BEGIN + "///"
   val URI_PATH_SEP: Char = '/'
+
+  val LSP_ROOT_DIR: String = "lsp/"
+  val LSP_LOG_DIR: String = LSP_ROOT_DIR + "log/"
+  val LSP_CONFIG_DIR: String = LSP_ROOT_DIR + "conf/"
   private val LOG: Logger = Logger.getInstance(this.getClass)
 
   def extFromPsiFile(psiFile: PsiFile): String = {
@@ -33,15 +38,21 @@ object FileUtils {
   }
 
   def editorFromUri(uri: String, project: Project): Editor = {
-    editorFromVirtualFile(virtualFileFromURI(uri), project)
+    editorFromVirtualFile(URIToVFS(uri), project)
   }
 
   def editorFromVirtualFile(file: VirtualFile, project: Project): Editor = {
     FileEditorManager.getInstance(project).getAllEditors(file).collectFirst { case t: TextEditor => t.getEditor }.orNull
   }
 
-  def virtualFileFromURI(uri: String): VirtualFile = {
-    LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
+  def openClosedEditor(uri: String, project: Project): (VirtualFile, Editor) = {
+    val file = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(FileUtils.sanitizeURI(uri))))
+    val fileEditorManager = FileEditorManager.getInstance(project)
+    val descriptor = new OpenFileDescriptor(project, file)
+    val editor: Editor = computableWriteAction(() => {
+      fileEditorManager.openTextEditor(descriptor, false)
+    })
+    (file, editor)
   }
 
   /**
@@ -52,6 +63,10 @@ object FileUtils {
     */
   def fileTypeFromEditor(editor: Editor): FileType = {
     FileDocumentManager.getInstance().getFile(editor.getDocument).getFileType
+  }
+
+  def extFromEditor(editor: Editor): String = {
+    FileDocumentManager.getInstance().getFile(editor.getDocument).getExtension
   }
 
   /**
@@ -81,14 +96,16 @@ object FileUtils {
     * @return the URI
     */
   def VFSToURI(file: VirtualFile): String = {
-    try {
-      val uri = sanitizeURI(new URL(file.getUrl.replace(" ", SPACE_ENCODED)).toURI.toString)
-      uri
-    } catch {
-      case e: Exception =>
-        LOG.warn(e)
-        null
-    }
+    if (file != null && !file.getUrl.startsWith("mock") && !file.getUrl.startsWith("dbSrc")) {
+      try {
+        sanitizeURI(new URL(file.getUrl.replace(" ", SPACE_ENCODED)).toURI.toString)
+      } catch {
+        case e: Exception =>
+          LOG.warn(e)
+          LOG.warn("Caused by " + file.getUrl)
+          null
+      }
+    } else null
   }
 
   /**
@@ -135,8 +152,7 @@ object FileUtils {
     * @return The virtual file
     */
   def URIToVFS(uri: String): VirtualFile = {
-    val res = LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
-    res
+    LocalFileSystem.getInstance().findFileByIoFile(new File(new URI(sanitizeURI(uri))))
   }
 
   /**
@@ -150,7 +166,10 @@ object FileUtils {
   }
 
   def editorToProjectFolderPath(editor: Editor): String = {
-    VFSToPath(ProjectUtil.guessProjectDir(editor.getProject))
+    val project = editor.getProject
+    if (project != null && !project.isDefault) {
+      VFSToPath(ProjectUtil.guessProjectDir(project))
+    } else null
   }
 
   def VFSToPath(file: VirtualFile): String = {
@@ -167,12 +186,20 @@ object FileUtils {
     sanitizeURI(new File(path.replace(" ", SPACE_ENCODED)).toURI.toString)
   }
 
+  def uriToPath(uri: String): String = {
+    new File(new URI(uri)).getAbsolutePath
+  }
+
   def projectToUri(project: Project): String = {
     pathToUri(new File(project.getBasePath).getAbsolutePath)
   }
 
   def documentToUri(document: Document): String = {
     sanitizeURI(VFSToURI(FileDocumentManager.getInstance().getFile(document)))
+  }
+
+  def getAllOpenedEditors(project: Project): Seq[Editor] = {
+    ApplicationUtils.computableReadAction(() => FileEditorManager.getInstance(project).getAllEditors().filter(e => e.isInstanceOf[TextEditor]).map(e => e.asInstanceOf[TextEditor].getEditor).toSeq)
   }
 
   /**

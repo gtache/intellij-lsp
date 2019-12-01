@@ -3,10 +3,10 @@ package com.github.gtache.lsp.client.languageserver.wrapper
 
 import java.io._
 import java.net.URI
+import java.nio.file.{FileSystems, Files, Paths}
 import java.util.concurrent._
 import java.util.{Date, Scanner}
 
-import com.github.gtache.lsp.PluginMain
 import com.github.gtache.lsp.client.languageserver.requestmanager.{RequestManager, SimpleRequestManager}
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.client.languageserver.{LSPServerStatusWidget, ServerOptions, ServerStatus}
@@ -15,7 +15,9 @@ import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.{DocumentListenerImpl, EditorMouseListenerImpl, EditorMouseMotionListenerImpl, SelectionListenerImpl}
 import com.github.gtache.lsp.requests.{Timeout, Timeouts}
 import com.github.gtache.lsp.settings.LSPState
+import com.github.gtache.lsp.settings.server.LSPConfiguration
 import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils, LSPException}
+import com.google.gson.JsonObject
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.{FileEditorManager, TextEditor}
@@ -28,6 +30,7 @@ import org.eclipse.lsp4j.launch.LSPLauncher
 import org.eclipse.lsp4j.services.LanguageServer
 import org.jetbrains.annotations.Nullable
 
+import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
@@ -47,7 +50,7 @@ object LanguageServerWrapperImpl {
     * @return The wrapper for the given editor, or None
     */
   def forEditor(editor: Editor): Option[LanguageServerWrapper] = {
-    if (editor.getProject == null){
+    if (editor.getProject == null) {
       None
     } else {
       uriToLanguageServerWrapper.get((FileUtils.editorToURIString(editor), FileUtils.editorToProjectFolderUri(editor)))
@@ -85,6 +88,9 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   private var capabilitiesAlreadyRequested = false
   private var initializeStartTime = 0L
   private var errLogThread: Thread = _
+  private var configuration: LSPConfiguration = _
+  private var fileWatchers: Iterable[FileSystemWatcher] = Iterable.empty
+  private val id: String = serverDefinition.id
 
   override def getServerDefinition: LanguageServerDefinition = serverDefinition
 
@@ -98,6 +104,10 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     } else {
       capabilities.getRight.getWillSaveWaitUntil
     }
+  }
+
+  def getAllPotentialEditors: Seq[Editor] = {
+    FileUtils.getAllOpenedEditors(project).filter(e => serverDefinition.getMappedExtensions.contains(FileUtils.extFromEditor(e)))
   }
 
   /**
@@ -245,7 +255,13 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
 
   override def stop(): Unit = {
     if (this.initializeFuture != null) {
-      if (!this.initializeFuture.isCancelled) this.initializeFuture.cancel(true)
+      if (!this.initializeFuture.isCancelled) {
+        try {
+          this.initializeFuture.cancel(true)
+        } catch {
+          case e: CancellationException => LOG.warn(e)
+        }
+      }
       this.initializeFuture = null
     }
     this.initializeResult = null
@@ -284,16 +300,58 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     this.languageServer
   }
 
+  private def prepareWorkspaceClientCapabilities: WorkspaceClientCapabilities = {
+    val workspaceClientCapabilities = new WorkspaceClientCapabilities
+    workspaceClientCapabilities.setApplyEdit(true)
+    workspaceClientCapabilities.setDidChangeConfiguration(new DidChangeConfigurationCapabilities)
+    workspaceClientCapabilities.setDidChangeWatchedFiles(new DidChangeWatchedFilesCapabilities(true))
+    workspaceClientCapabilities.setExecuteCommand(new ExecuteCommandCapabilities)
+    val wec = new WorkspaceEditCapabilities
+    //TODO set failureHandling and resourceOperations
+    wec.setDocumentChanges(true)
+    workspaceClientCapabilities.setWorkspaceEdit(wec)
+    workspaceClientCapabilities.setSymbol(new SymbolCapabilities)
+    workspaceClientCapabilities.setWorkspaceFolders(false)
+    workspaceClientCapabilities.setConfiguration(true)
+    workspaceClientCapabilities
+  }
+
+  private def prepareTextDocumentClientCapabilities: TextDocumentClientCapabilities = {
+    val textDocumentClientCapabilities = new TextDocumentClientCapabilities
+    textDocumentClientCapabilities.setCodeAction(new CodeActionCapabilities)
+    //textDocumentClientCapabilities.setCodeLens(new CodeLensCapabilities)
+    //textDocumentClientCapabilities.setColorProvider(new ColorProviderCapabilities)
+    textDocumentClientCapabilities.setCompletion(new CompletionCapabilities(new CompletionItemCapabilities(true)))
+    textDocumentClientCapabilities.setDefinition(new DefinitionCapabilities)
+    textDocumentClientCapabilities.setDocumentHighlight(new DocumentHighlightCapabilities)
+    //textDocumentClientCapabilities.setDocumentLink(new DocumentLinkCapabilities)
+    //textDocumentClientCapabilities.setDocumentSymbol(new DocumentSymbolCapabilities)
+    //textDocumentClientCapabilities.setFoldingRange(new FoldingRangeCapabilities)
+    textDocumentClientCapabilities.setFormatting(new FormattingCapabilities)
+    textDocumentClientCapabilities.setHover(new HoverCapabilities)
+    //textDocumentClientCapabilities.setImplementation(new ImplementationCapabilities)
+    textDocumentClientCapabilities.setOnTypeFormatting(new OnTypeFormattingCapabilities)
+    textDocumentClientCapabilities.setRangeFormatting(new RangeFormattingCapabilities)
+    textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
+    textDocumentClientCapabilities.setRename(new RenameCapabilities)
+    textDocumentClientCapabilities.setSemanticHighlightingCapabilities(new SemanticHighlightingCapabilities(false))
+    textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
+    textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, true, true))
+    //textDocumentClientCapabilities.setTypeDefinition(new TypeDefinitionCapabilities)
+    textDocumentClientCapabilities
+  }
+
   /**
     * Starts the LanguageServer
     */
   @throws[IOException]
   override def start(): Unit = {
-    if (status == STOPPED && !alreadyShownCrash && !alreadyShownTimeout) {
+    if (status == STOPPED || status == FAILED) {
       setStatus(STARTING)
       try {
         val (inputStream, outputStream) = serverDefinition.start(rootPath)
         startLoggingServerErrors()
+        loadConfiguration()
         client = serverDefinition.createLanguageClient
         val initParams = new InitializeParams
         initParams.setRootUri(FileUtils.pathToUri(rootPath))
@@ -307,41 +365,11 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
         client.connect(languageServer, this)
         this.launcherFuture = launcher.startListening
         //TODO update capabilities when implemented
-        val workspaceClientCapabilities = new WorkspaceClientCapabilities
-        workspaceClientCapabilities.setApplyEdit(true)
-        //workspaceClientCapabilities.setDidChangeConfiguration(new DidChangeConfigurationCapabilities)
-        workspaceClientCapabilities.setDidChangeWatchedFiles(new DidChangeWatchedFilesCapabilities)
-        workspaceClientCapabilities.setExecuteCommand(new ExecuteCommandCapabilities)
-        val wec = new WorkspaceEditCapabilities
-        //TODO set failureHandling and resourceOperations
-        wec.setDocumentChanges(true)
-        workspaceClientCapabilities.setWorkspaceEdit(wec)
-        workspaceClientCapabilities.setSymbol(new SymbolCapabilities)
-        workspaceClientCapabilities.setWorkspaceFolders(false)
-        workspaceClientCapabilities.setConfiguration(false)
-        val textDocumentClientCapabilities = new TextDocumentClientCapabilities
-        textDocumentClientCapabilities.setCodeAction(new CodeActionCapabilities)
-        //textDocumentClientCapabilities.setCodeLens(new CodeLensCapabilities)
-        //textDocumentClientCapabilities.setColorProvider(new ColorProviderCapabilities)
-        textDocumentClientCapabilities.setCompletion(new CompletionCapabilities(new CompletionItemCapabilities(false)))
-        textDocumentClientCapabilities.setDefinition(new DefinitionCapabilities)
-        textDocumentClientCapabilities.setDocumentHighlight(new DocumentHighlightCapabilities)
-        //textDocumentClientCapabilities.setDocumentLink(new DocumentLinkCapabilities)
-        //textDocumentClientCapabilities.setDocumentSymbol(new DocumentSymbolCapabilities)
-        //textDocumentClientCapabilities.setFoldingRange(new FoldingRangeCapabilities)
-        textDocumentClientCapabilities.setFormatting(new FormattingCapabilities)
-        textDocumentClientCapabilities.setHover(new HoverCapabilities)
-        //textDocumentClientCapabilities.setImplementation(new ImplementationCapabilities)
-        textDocumentClientCapabilities.setOnTypeFormatting(new OnTypeFormattingCapabilities)
-        textDocumentClientCapabilities.setRangeFormatting(new RangeFormattingCapabilities)
-        textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
-        textDocumentClientCapabilities.setRename(new RenameCapabilities)
-        textDocumentClientCapabilities.setSemanticHighlightingCapabilities(new SemanticHighlightingCapabilities(false))
-        textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
-        textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, true, true))
-        //textDocumentClientCapabilities.setTypeDefinition(new TypeDefinitionCapabilities)
+        val workspaceClientCapabilities = prepareWorkspaceClientCapabilities
+        val textDocumentClientCapabilities = prepareTextDocumentClientCapabilities
         initParams.setCapabilities(new ClientCapabilities(workspaceClientCapabilities, textDocumentClientCapabilities, null))
         initParams.setInitializationOptions(this.serverDefinition.getInitializationOptions(URI.create(initParams.getRootUri)))
+
         initializeFuture = languageServer.initialize(initParams).thenApply((res: InitializeResult) => {
           initializeResult = res
           LOG.info("Got initializeResult for " + serverDefinition + " ; " + rootPath)
@@ -356,9 +384,17 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
           LOG.warn(e)
           ApplicationUtils.invokeLater(() => Messages.showErrorDialog("Can't start server, please check settings\n" + e.getMessage, "LSP Error"))
           stop()
-          removeServerWrapper()
+          setFailed()
       }
     }
+  }
+
+  override def restart(): Unit = {
+    if (status == ServerStatus.STARTED || status == ServerStatus.STARTING) {
+      LOG.info("Stopping " + serverDefinition + " for restart")
+      stop()
+    }
+    getAllPotentialEditors.foreach(e => connect(e))
   }
 
   /**
@@ -381,10 +417,31 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       import scala.collection.JavaConverters._
       params.getRegistrations.asScala.foreach(r => {
         val id = r.getId
-        val method = DynamicRegistrationMethods.forName(r.getMethod)
-        if(method.isPresent) {
+        val methodO = DynamicRegistrationMethods.forName(r.getMethod)
+        if (methodO.isPresent) {
+          val method = methodO.get
           val options = r.getRegisterOptions
-          registrations.put(id, method.get())
+          registrations.put(id, method)
+          method match {
+            case DynamicRegistrationMethods.DID_CHANGE_WATCHED_FILES =>
+              options match {
+                case o: DidChangeWatchedFilesRegistrationOptions =>
+                  fileWatchers = o.getWatchers.asScala
+                case json: JsonObject =>
+                  try {
+                    val watchers = json.getAsJsonArray("watchers")
+                    fileWatchers = (0 until watchers.size()).map(i => {
+                      val watcher = watchers.get(i).asInstanceOf[JsonObject]
+                      new FileSystemWatcher(watcher.getAsJsonPrimitive("globPattern").getAsString, watcher.getAsJsonPrimitive("kind").getAsInt)
+                    })
+                  } catch {
+                    case e: Exception => LOG.warn(e)
+                  }
+                case _ =>
+                  LOG.warn("Mismatched options type : expected DidChangeWatchedFilesRegistrationOptions, got " + options.getClass)
+              }
+            case _ =>
+          }
         }
       })
     })
@@ -395,17 +452,24 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
       import scala.collection.JavaConverters._
       params.getUnregisterations.asScala.foreach(r => {
         val id = r.getId
-        val method = DynamicRegistrationMethods.forName(r.getMethod)
-        if(method.isPresent) {
+        val methodO = DynamicRegistrationMethods.forName(r.getMethod)
+        if (methodO.isPresent) {
+          val method = methodO.get
           if (registrations.contains(id)) {
             registrations.remove(id)
           } else {
             val invert = registrations.map(mapping => (mapping._2, mapping._1))
-            if (invert.contains(method.get())) {
-              registrations.remove(invert(method.get()))
+            if (invert.contains(method)) {
+              registrations.remove(invert(method))
             }
           }
+          method match {
+            case DynamicRegistrationMethods.DID_CHANGE_WATCHED_FILES =>
+              fileWatchers = Iterable.empty
+            case _ =>
+          }
         }
+
       })
     })
   }
@@ -421,12 +485,12 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
 
   override def crashed(e: Exception): Unit = {
     crashCount += 1
-    if (crashCount < 2) {
+    if (crashCount < 4) {
       val editors = connectedEditors.clone().toMap.keys
       stop()
       editors.foreach(uri => connect(uri))
     } else {
-      removeServerWrapper()
+      setFailed()
       if (!alreadyShownCrash) ApplicationUtils.invokeLater(() => if (!alreadyShownCrash) {
         Messages.showErrorDialog("LanguageServer for definition " + serverDefinition + ", project " + project + " keeps crashing due to \n" + e.getMessage + "\nCheck settings.", "LSP Error")
         alreadyShownCrash = true
@@ -451,10 +515,9 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     disconnect(FileUtils.editorToURIString(editor))
   }
 
-  private def removeServerWrapper(): Unit = {
+  private def setFailed(): Unit = {
     stop()
-    removeWidget()
-    PluginMain.removeWrapper(this)
+    statusWidget.setStatus(ServerStatus.FAILED)
   }
 
   private def connect(uri: String): Unit = {
@@ -489,12 +552,26 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     errLogThread.start()
   }
 
+  private def loadConfiguration(): Unit = {
+    val file = new File(getConfPath)
+    if (!file.exists()) {
+      file.createNewFile()
+    }
+    configuration = LSPConfiguration.fromFile(file)
+  }
+
+  private def getConfPath: String = {
+    val dir = rootPath + "/" + FileUtils.LSP_CONFIG_DIR
+    new File(dir).mkdirs()
+    rootPath + "/" + FileUtils.LSP_CONFIG_DIR + serverDefinition.id.replace(";", "_") + ".json"
+  }
+
   private def getLogPath(suffix: String): String = {
-    val dir = new File(rootPath + "/lsp")
-    dir.mkdir()
+    val dir = rootPath + "/" + FileUtils.LSP_LOG_DIR
+    new File(dir).mkdirs()
     import java.text.SimpleDateFormat
     val date = new SimpleDateFormat("yyyyMMdd").format(new Date())
-    val basename = rootPath + "/lsp/" + serverDefinition.id.replace(";", "_")
+    val basename = dir + serverDefinition.id.replace(";", "_")
     basename + "_" + suffix + "_" + date + ".log"
   }
 
@@ -503,6 +580,47 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   }
 
   private def stopLoggingServerErrors(): Unit = {
-    errLogThread.interrupt()
+    if (errLogThread != null) errLogThread.interrupt()
+  }
+
+  override def getConfiguration: LSPConfiguration = configuration
+
+  override def setConfiguration(newConfiguration: LSPConfiguration): Unit = {
+    if (newConfiguration.isValid) {
+      configuration = newConfiguration
+      requestManager.didChangeConfiguration(new DidChangeConfigurationParams(configuration.getAttributesForSectionAndUri("", "global").asJava))
+    }
+  }
+
+  override def didChangeWatchedFiles(uri: String, typ: FileChangeType): Unit = {
+    import scala.collection.JavaConverters._
+    val params = new DidChangeWatchedFilesParams(Seq(new FileEvent(uri, typ)).asJava)
+    val uriFile = new File(new URI(uri))
+    val confFile = new File(getConfPath)
+    try {
+      if (uriFile.exists && confFile.exists && Files.isSameFile(uriFile.toPath, confFile.toPath)) {
+        setConfiguration(LSPConfiguration.fromFile(new File(getConfPath)))
+      }
+    } catch {
+      case e: Exception => LOG.warn(e)
+      case _: Throwable =>
+    }
+    if (registrations.values.toSet.contains(DynamicRegistrationMethods.DID_CHANGE_WATCHED_FILES)) {
+      if (fileWatchers.exists(fw => {
+        val pattern = fw.getGlobPattern
+        val event = fw.getKind
+        val typInt = typ match {
+          case FileChangeType.Created => 1
+          case FileChangeType.Changed => 2
+          case FileChangeType.Deleted => 4
+        }
+        (event & typInt) != 0 && FileSystems.getDefault.getPathMatcher("glob:" + pattern).matches(Paths.get(new URI(uri)))
+      })) {
+        requestManager.didChangeWatchedFiles(params)
+      }
+    } else {
+      //If the server didn't register for file events, send anyway
+      requestManager.didChangeWatchedFiles(params)
+    }
   }
 }

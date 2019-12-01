@@ -5,7 +5,7 @@ import java.util.concurrent.{CompletableFuture, FutureTask}
 
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.editor.EditorEventManager
-import com.github.gtache.lsp.requests.WorkspaceEditHandler
+import com.github.gtache.lsp.requests.{SemanticHighlightingHandler, WorkspaceEditHandler}
 import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils}
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
@@ -41,7 +41,15 @@ class LanguageClientImpl extends LanguageClient {
     })
   }
 
-  override def configuration(configurationParams: ConfigurationParams): CompletableFuture[util.List[AnyRef]] = super.configuration(configurationParams)
+  override def configuration(configurationParams: ConfigurationParams): CompletableFuture[util.List[AnyRef]] = {
+    val config = wrapper.getConfiguration
+    val settings = config.getJavaSettings
+    CompletableFuture.completedFuture(configurationParams.getItems.asScala.map(ci => {
+      val uri = ci.getScopeUri
+      val section = ci.getSection
+      config.getAttributesForSectionAndUri(section, uri).asJava.asInstanceOf[AnyRef]
+    }).asJava)
+  }
 
   override def workspaceFolders(): CompletableFuture[util.List[WorkspaceFolder]] = super.workspaceFolders()
 
@@ -108,5 +116,7 @@ class LanguageClientImpl extends LanguageClient {
     }
   }
 
-  override def semanticHighlighting(params: SemanticHighlightingParams): Unit = super.semanticHighlighting(params)
+  override def semanticHighlighting(params: SemanticHighlightingParams): Unit = {
+    SemanticHighlightingHandler.handlePush(params)
+  }
 }

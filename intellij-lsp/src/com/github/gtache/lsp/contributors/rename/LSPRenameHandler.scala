@@ -9,7 +9,6 @@ import com.intellij.openapi.actionSystem.{CommonDataKeys, DataContext}
 import com.intellij.openapi.command.impl.StartMarkAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.{Messages, NonEmptyInputValidator}
 import com.intellij.psi.impl.source.tree.injected.InjectedLanguageUtil
 import com.intellij.psi.{PsiElement, PsiFile, PsiNameIdentifierOwner, PsiNamedElement}
 import com.intellij.refactoring.rename.inplace.{InplaceRefactoring, MemberInplaceRenameHandler, MemberInplaceRenamer}
@@ -63,12 +62,7 @@ class LSPRenameHandler extends RenameHandler {
   }
 
   protected def performDialogRename(elementToRename: PsiElement, editor: Editor, dataContext: DataContext): Unit = {
-    EditorEventManager.forEditor(editor) match {
-      case Some(manager) =>
-        val renameTo = Messages.showInputDialog(editor.getProject, "Enter new name: ", "Rename", Messages.getQuestionIcon, "", new NonEmptyInputValidator())
-        if (renameTo != null && renameTo != "") manager.rename(renameTo)
-      case None =>
-    }
+    LSPRenameHelper.rename(editor)
   }
 
   def createMemberRenamer(element: PsiElement, elementToRename: PsiNameIdentifierOwner, editor: Editor): MemberInplaceRenamer = {

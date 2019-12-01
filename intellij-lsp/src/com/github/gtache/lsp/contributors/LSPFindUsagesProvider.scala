@@ -17,8 +17,8 @@ class LSPFindUsagesProvider extends FindUsagesProvider {
 
   override def canFindUsagesFor(psiElement: PsiElement): Boolean = {
     psiElement match {
-      case p: PsiFile => true
-      case l: LSPPsiElement => true
+      case _: PsiFile => true
+      case _: LSPPsiElement => true
       case _ => false
     }
   }

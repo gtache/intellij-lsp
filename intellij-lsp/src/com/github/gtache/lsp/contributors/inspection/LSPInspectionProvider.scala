@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.contributors.inspection
 
-import com.intellij.codeInspection.InspectionToolProvider
+import com.intellij.codeInspection.{InspectionToolProvider, LocalInspectionTool}
 
 /**
   * The provider for the LSP Inspection
@@ -8,7 +8,7 @@ import com.intellij.codeInspection.InspectionToolProvider
   */
 class LSPInspectionProvider extends InspectionToolProvider {
 
-  override def getInspectionClasses: Array[Class[_]] = {
+  override def getInspectionClasses: Array[Class[_ <: LocalInspectionTool]] = {
     Array(classOf[LSPInspection])
   }
 }

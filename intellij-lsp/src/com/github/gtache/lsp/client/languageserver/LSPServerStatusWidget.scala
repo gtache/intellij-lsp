@@ -6,6 +6,7 @@ import java.awt.event.MouseEvent
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.requests.Timeouts
 import com.github.gtache.lsp.utils.{ApplicationUtils, GUIUtils}
+import com.intellij.icons.AllIcons
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.{AnAction, AnActionEvent, DefaultActionGroup}
 import com.intellij.openapi.project.{DumbAware, Project}
@@ -82,8 +83,9 @@ class LSPServerStatusWidget(val wrapper: LanguageServerWrapper) extends StatusBa
       val mnemonics = JBPopupFactory.ActionSelectionAid.MNEMONICS
       val component = t.getComponent
       val actions = wrapper.getStatus match {
-        case ServerStatus.STARTED => Seq(ShowConnectedFiles, ShowTimeouts)
-        case _ => Seq(ShowTimeouts)
+        case ServerStatus.STARTED => Seq(Restart, ShowConnectedFiles, ShowTimeouts)
+        case ServerStatus.STARTING => Seq(ShowTimeouts)
+        case _ => Seq(Restart, ShowTimeouts)
       }
       val title = "Server actions"
       val context = DataManager.getInstance().getDataContext(component)
@@ -94,13 +96,19 @@ class LSPServerStatusWidget(val wrapper: LanguageServerWrapper) extends StatusBa
       popup.show(new RelativePoint(t.getComponent, at))
     }
 
-    private object ShowConnectedFiles extends AnAction("&Show connected files", "Show the files connected to the server", null) with DumbAware {
+    private object Restart extends AnAction("&Restart the server", "Try to restart the server after it failed", AllIcons.Actions.Restart) with DumbAware {
+      override def actionPerformed(e: AnActionEvent): Unit = {
+        ApplicationUtils.pool(() => wrapper.restart())
+      }
+    }
+
+    private object ShowConnectedFiles extends AnAction("&Show connected files", "Show the files connected to the server", AllIcons.FileTypes.Archive) with DumbAware {
       override def actionPerformed(e: AnActionEvent): Unit = {
         Messages.showInfoMessage("Connected files :\n" + wrapper.getConnectedFiles.mkString("\n"), "Connected files")
       }
     }
 
-    private object ShowTimeouts extends AnAction("&Show timeouts", "Show the timeouts proportions of the server", null) with DumbAware {
+    private object ShowTimeouts extends AnAction("&Show timeouts", "Show the timeouts proportions of the server", AllIcons.General.Information) with DumbAware {
       override def actionPerformed(e: AnActionEvent): Unit = {
         val message: mutable.StringBuilder = StringBuilder.newBuilder
         message.append("<html>")

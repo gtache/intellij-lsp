@@ -4,6 +4,7 @@ import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.requests.WorkspaceEditHandler
 import com.intellij.codeInspection.{LocalQuickFix, ProblemDescriptor}
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import org.eclipse.lsp4j.CodeAction
 
@@ -14,6 +15,7 @@ import org.eclipse.lsp4j.CodeAction
   * @param codeAction The action to execute
   */
 class LSPCodeActionFix(uri: String, codeAction: CodeAction) extends LocalQuickFix {
+
   override def applyFix(project: Project, descriptor: ProblemDescriptor): Unit = {
     descriptor.getPsiElement match {
       case _: LSPPsiElement =>
@@ -31,4 +33,8 @@ class LSPCodeActionFix(uri: String, codeAction: CodeAction) extends LocalQuickFi
     codeAction.getTitle
   }
 
+}
+
+object LSPCodeActionFix {
+  private val LOG: Logger = Logger.getInstance(LSPCodeActionFix.getClass)
 }

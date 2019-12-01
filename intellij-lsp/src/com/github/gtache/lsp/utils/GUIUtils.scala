@@ -51,7 +51,7 @@ object GUIUtils {
         val providers = LSPIconProvider.EP_NAME.getExtensions.filter(provider => provider.isSpecificFor(serverDefinition))
         if (providers.nonEmpty) providers.head else LSPDefaultIconProvider
       } catch {
-        case e: IllegalArgumentException => LSPDefaultIconProvider
+        case _: IllegalArgumentException => LSPDefaultIconProvider
       }
     } else LSPDefaultIconProvider
   }

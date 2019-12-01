@@ -8,11 +8,12 @@ import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.requests.Timeouts
+import com.github.gtache.lsp.settings.server.LSPConfiguration
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import org.eclipse.lsp4j.jsonrpc.messages.Message
 import org.eclipse.lsp4j.services.LanguageServer
-import org.eclipse.lsp4j.{RegistrationParams, ServerCapabilities, UnregistrationParams}
+import org.eclipse.lsp4j.{FileChangeType, RegistrationParams, ServerCapabilities, UnregistrationParams}
 import org.jetbrains.annotations.Nullable
 
 /**
@@ -147,5 +148,11 @@ trait LanguageServerWrapper {
 
   def removeWidget(): Unit
 
+  def restart(): Unit
 
+  def getConfiguration: LSPConfiguration
+
+  def setConfiguration(newConfig: LSPConfiguration): Unit
+
+  def didChangeWatchedFiles(uri: String, typ: FileChangeType): Unit
 }

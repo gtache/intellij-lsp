@@ -1,4 +1,4 @@
-ideaBuild in ThisBuild := "173.3727.127" // Released November 28, 2017
+ideaBuild in ThisBuild := "193.5233.102"
 
 // Download the IDEA SDK on startup
 onLoad in Global := ((s: State) => { "updateIdea" :: s}) compose (onLoad in Global).value
@@ -11,7 +11,7 @@ lazy val commonSettings = Seq(
   resourceDirectory in Compile  := baseDirectory.value / "resources",
   resourceDirectory in Test     := baseDirectory.value / "test-resources",
 
-  scalaVersion := "2.12.7",
+  scalaVersion := "2.12.10",
   scalacOptions ++= Seq(
     "-deprecation",
     "-feature",
@@ -42,17 +42,17 @@ lazy val `intellij-lsp` = (project in file("intellij-lsp")).
   settings(
     name := "intellij-lsp",
     description := "Language Server Protocol plugin for IntelliJ IDEA",
-    version := "1.5.0",
+    version := "1.6.0",
 
     ideaInternalPlugins := Seq(
       "IntelliLang",
     ),
 
     libraryDependencies ++= Seq(
-      "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.6.0",
+      "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.8.1",
       "io.get-coursier" %% "coursier" % "1.0.3",
       "io.get-coursier" %% "coursier-cache" % "1.0.3",
-      "com.vladsch.flexmark" % "flexmark" % "0.40.20"
+      "com.vladsch.flexmark" % "flexmark" % "0.42.12"
     ),
   )
 

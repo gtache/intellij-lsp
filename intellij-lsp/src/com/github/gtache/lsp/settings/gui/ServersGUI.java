@@ -93,8 +93,6 @@ public final class ServersGUI implements LSPGUI {
         if (!extensions.isEmpty()) {
             Messages.showWarningDialog(extensions.stream().reduce((f, s) -> "Duplicate : " + f + Utils.lineSeparator() + s).orElse("Error while getting extensions") + Utils.lineSeparator() + "Unexpected behavior may occur", "Duplicate Extensions");
         }
-        //TODO manage without restarting
-        //Messages.showInfoMessage("The changes will be applied after restarting the IDE.", "LSP Settings");
         serverDefinitions.clear();
         for (final ServersGUIRow row : rows) {
             final String[] arr = row.toStringArray();
