@@ -5,15 +5,18 @@ import java.awt.Point
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.contributors.icon.{LSPDefaultIconProvider, LSPIconProvider}
 import com.intellij.codeInsight.hint.{HintManager, HintManagerImpl}
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.ui.{Hint, LightweightHint}
-import javax.swing.{JComponent, JLabel}
+import javax.swing.{JComponent, JLabel, JTextArea}
 
 /**
   * Various utility methods related to the interface
   */
 object GUIUtils {
+  private val LOG: Logger = Logger.getInstance(GUIUtils.getClass)
 
   /**
     * Shows a hint in the editor
@@ -35,7 +38,6 @@ object GUIUtils {
 
   def createAndShowHint(component: JComponent, string: String, point: RelativePoint,
                         flags: Int = HintManager.HIDE_BY_ANY_KEY | HintManager.HIDE_BY_TEXT_CHANGE | HintManager.HIDE_BY_OTHER_HINT | HintManager.HIDE_BY_SCROLLING): Unit = {
-    val hint = new LightweightHint(new JLabel(string))
     HintManagerImpl.getInstanceImpl.showHint(component, point, flags, 0)
   }
 

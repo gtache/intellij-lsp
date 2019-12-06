@@ -56,7 +56,7 @@ object EditorEventManager {
   private val HOVER_TIME_THRES: Long = EditorSettingsExternalizable.getInstance().getQuickDocOnMouseOverElementDelayMillis * 1000000
   private val SCHEDULE_THRES = 10000000 //Time before the Timer is scheduled
   private val POPUP_THRES = HOVER_TIME_THRES / 1000000 + 20
-  private val CTRL_THRES = 500000000 //Time between requests when ctrl is pressed (500ms)
+  private val CTRL_THRES = 100000000 //Time between requests when ctrl is pressed (100ms)
 
   private val uriToManager: mutable.Map[String, EditorEventManager] = mutable.HashMap()
   private val editorToManager: mutable.Map[Editor, EditorEventManager] = mutable.HashMap()
@@ -229,7 +229,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                   .replace(activeParameter, "<font color=\"yellow\">" + activeParameter + "</font>")).append("</b>")
                 scalaSignatures.drop(activeSignatureIndex + 1).foreach(sig => builder.append("<br>").append(sig.getLabel))
                 builder.append("</html>")
-                invokeLater(() => currentHint = createAndShowEditorHint(editor, builder.toString(), point, HintManager.UNDER, HintManager.HIDE_BY_OTHER_HINT))
+                val flags = HintManager.HIDE_BY_ESCAPE | HintManager.HIDE_BY_OTHER_HINT | HintManager.HIDE_IF_OUT_OF_EDITOR
+                invokeLater(() => currentHint = createAndShowEditorHint(editor, builder.toString(), point, HintManager.UNDER, flags = flags))
               }
             }
           } catch {
@@ -1003,7 +1004,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
     */
   private def showReferencesWindow(locations: Array[(String, Int, Int, String)], name: String, point: Point): Unit = {
     if (locations.isEmpty) {
-      invokeLater(() => if (!editor.isDisposed) currentHint = createAndShowEditorHint(editor, "No usages found", point))
+      val flags = HintManager.HIDE_BY_ANY_KEY | HintManager.HIDE_BY_CARET_MOVE | HintManager.HIDE_BY_ESCAPE | HintManager.HIDE_BY_LOOKUP_ITEM_CHANGE |
+        HintManager.HIDE_BY_OTHER_HINT | HintManager.HIDE_BY_SCROLLING | HintManager.HIDE_BY_TEXT_CHANGE | HintManager.HIDE_IF_OUT_OF_EDITOR
+      invokeLater(() => if (!editor.isDisposed) currentHint = createAndShowEditorHint(editor, "No usages found", point, flags = flags))
     } else {
       val frame = new JFrame()
       frame.setTitle("Usages of " + name + " (" + locations.length + (if (locations.length > 1) " usages found)" else " usage found"))
@@ -1163,7 +1166,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                   ctrlRange = null
                   pool(() => requestAndShowDoc(curTime, lPos, e.getMouseEvent.getPoint))
                 } else if (ctrlRange.definitionContainsOffset(offset)) {
-                  createAndShowEditorHint(editor, "Click to show usages", editor.offsetToXY(offset))
+                  val flags = HintManager.HIDE_BY_ANY_KEY | HintManager.HIDE_BY_CARET_MOVE | HintManager.HIDE_BY_ESCAPE |
+                    HintManager.HIDE_BY_LOOKUP_ITEM_CHANGE | HintManager.HIDE_BY_OTHER_HINT | HintManager.HIDE_BY_SCROLLING |
+                    HintManager.HIDE_BY_TEXT_CHANGE | HintManager.HIDE_IF_OUT_OF_EDITOR
+                  createAndShowEditorHint(editor, "Click to show usages", editor.offsetToXY(offset), flags = flags)
                 } else {
                   editor.getContentComponent.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))
                 }
@@ -1216,11 +1222,11 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         if (hover != null) {
           val string = HoverHandler.getHoverString(hover)
           if (string != null && string != "") {
+            val flags = HintManager.HIDE_BY_ANY_KEY | HintManager.HIDE_BY_CARET_MOVE | HintManager.HIDE_BY_ESCAPE | HintManager.HIDE_BY_LOOKUP_ITEM_CHANGE |
+              HintManager.HIDE_BY_OTHER_HINT | HintManager.HIDE_BY_SCROLLING | HintManager.HIDE_BY_TEXT_CHANGE | HintManager.HIDE_IF_OUT_OF_EDITOR
+            invokeLater(() => if (!editor.isDisposed) currentHint = createAndShowEditorHint(editor, string, point, flags = flags))
             if (isCtrlDown) {
-              invokeLater(() => if (!editor.isDisposed) currentHint = createAndShowEditorHint(editor, string, point, flags = HintManager.HIDE_BY_OTHER_HINT))
               createCtrlRange(serverPos, hover.getRange)
-            } else {
-              invokeLater(() => if (!editor.isDisposed) currentHint = createAndShowEditorHint(editor, string, point))
             }
           } else {
             LOG.info("Hover string returned is null for file " + identifier.getUri + " and pos (" + serverPos.getLine + ";" + serverPos.getCharacter + ")")
