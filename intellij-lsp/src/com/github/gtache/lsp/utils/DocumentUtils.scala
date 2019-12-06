@@ -2,7 +2,7 @@ package com.github.gtache.lsp.utils
 
 import com.github.gtache.lsp.utils.ApplicationUtils.computableReadAction
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.editor.{Editor, LogicalPosition}
+import com.intellij.openapi.editor.{Document, Editor, LogicalPosition}
 import com.intellij.openapi.util.TextRange
 import com.intellij.util.DocumentUtil
 import org.eclipse.lsp4j.Position
@@ -28,7 +28,7 @@ object DocumentUtils {
       val lineIdx = doc.getLineNumber(startOffset)
       val lineStartOff = doc.getLineStartOffset(lineIdx)
       val lineEndOff = doc.getLineEndOffset(lineIdx)
-      val line = doc.getText(new TextRange(lineStartOff, lineEndOff))
+      val line = doc.getTextClamped(new TextRange(lineStartOff, lineEndOff))
       val startOffsetInLine = startOffset - lineStartOff
       val endOffsetInLine = endOffset - lineStartOff
       line.substring(0, startOffsetInLine) + "<b>" + line.substring(startOffsetInLine, endOffsetInLine) + "</b>" + line.substring(endOffsetInLine)
@@ -58,7 +58,7 @@ object DocumentUtils {
       val doc = editor.getDocument
       val line = doc.getLineNumber(offset)
       val lineStart = doc.getLineStartOffset(line)
-      val lineTextBeforeOffset = doc.getText(TextRange.create(lineStart, offset))
+      val lineTextBeforeOffset = doc.getTextClamped(TextRange.create(lineStart, offset))
       val column = lineTextBeforeOffset.length
       new Position(line, column)
     })
@@ -94,6 +94,17 @@ object DocumentUtils {
       val posOffset = offset + text.drop(offset).takeWhile(c => !c.isWhitespace).length
       (negOffset, posOffset)
     })
+  }
+
+  implicit class DocumentExt(doc: Document) {
+    def getTextClamped(start: Int, end: Int): String = {
+      val textRange = new TextRange(Math.max(0, start), Math.min(doc.getTextLength - 1, end))
+      doc.getText(textRange)
+    }
+
+    def getTextClamped(textRange: TextRange): String = {
+      getTextClamped(Math.max(0, textRange.getStartOffset), Math.min(doc.getTextLength - 1, textRange.getEndOffset))
+    }
   }
 
 }

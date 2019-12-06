@@ -10,6 +10,7 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiFile
 import javax.swing.JComponent
 import org.eclipse.lsp4j.DiagnosticSeverity
+import com.github.gtache.lsp.utils.DocumentUtils._
 
 /**
   * The inspection tool for LSP
@@ -34,7 +35,7 @@ class LSPInspection extends LocalInspectionTool {
           val start = rangeHighlighter.getStartOffset
           val end = rangeHighlighter.getEndOffset
           if (start < end) {
-            val name = m.editor.getDocument.getText(new TextRange(start, end))
+            val name = m.editor.getDocument.getTextClamped(start, end)
             val severity = diagnostic.getSeverity match {
               case DiagnosticSeverity.Error => ProblemHighlightType.ERROR
               case DiagnosticSeverity.Warning => ProblemHighlightType.GENERIC_ERROR_OR_WARNING

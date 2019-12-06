@@ -17,6 +17,7 @@ import com.github.gtache.lsp.contributors.rename.LSPRenameProcessor
 import com.github.gtache.lsp.requests.{HoverHandler, SemanticHighlightingHandler, Timeouts, WorkspaceEditHandler}
 import com.github.gtache.lsp.settings.LSPState
 import com.github.gtache.lsp.utils.ConversionUtils._
+import com.github.gtache.lsp.utils.DocumentUtils._
 import com.github.gtache.lsp.utils.{DocumentUtils, FileUtils, GUIUtils}
 import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.codeInsight.completion.InsertionContext
@@ -929,7 +930,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         val startOffset = DocumentUtils.LSPPosToOffset(newEditor, start)
         val endOffset = DocumentUtils.LSPPosToOffset(newEditor, end)
         val doc = newEditor.getDocument
-        val name = doc.getText(new TextRange(startOffset, endOffset))
+        val name = doc.getTextClamped(new TextRange(startOffset, endOffset))
         fileEditorManager.closeFile(file)
         (startOffset, endOffset, name, DocumentUtils.getLineText(newEditor, startOffset, endOffset))
       })
@@ -975,7 +976,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           try {
             startOffset = DocumentUtils.LSPPosToOffset(m.editor, start)
             endOffset = DocumentUtils.LSPPosToOffset(m.editor, end)
-            name = m.editor.getDocument.getText(new TextRange(startOffset, endOffset))
+            name = m.editor.getDocument.getTextClamped(new TextRange(startOffset, endOffset))
             sample = DocumentUtils.getLineText(m.editor, startOffset, endOffset)
           } catch {
             case e: RuntimeException =>
@@ -1272,7 +1273,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             }
             val logicalStart = DocumentUtils.LSPPosToOffset(curEditor, start)
             val logicalEnd = DocumentUtils.LSPPosToOffset(curEditor, end)
-            val name = curEditor.getDocument.getText(new TextRange(logicalStart, logicalEnd))
+            val name = curEditor.getDocument.getTextClamped(new TextRange(logicalStart, logicalEnd))
             LSPPsiElement(name, project, logicalStart, logicalEnd, PsiDocumentManager.getInstance(project).getPsiFile(curEditor.getDocument), curEditor)
               .asInstanceOf[PsiElement]
           })
