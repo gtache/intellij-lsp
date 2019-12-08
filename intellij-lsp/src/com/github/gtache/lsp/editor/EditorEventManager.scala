@@ -1183,10 +1183,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             val range = getRangeForOffset(offset)
             if (range != null) {
               createRange(range.getStartOffset, range.getEndOffset, getDefinition, visible)
-              if (docRange.definitionContainsOffset(offset)) {
-                invokeLater(() =>
-                  scheduleShowDoc("Show usages of " + editor.getDocument.getText(new TextRange(docRange.startOffset, docRange.endOffset)), point))
-              }
+              invokeLater(() =>
+                if (docRange.definitionContainsOffset(offset)) {
+                  scheduleShowDoc("Show usages of " + editor.getDocument.getText(new TextRange(docRange.startOffset, docRange.endOffset)), point)
+                })
             }
           }
         }
