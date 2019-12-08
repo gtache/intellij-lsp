@@ -604,6 +604,8 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       if (showDocTask != null) showDocTask.cancel()
       if (docRange != null) docRange.dispose()
       docRange = null
+    } catch {
+      case e : Exception => LOG.warn(e)
     }
   }
 
@@ -1195,6 +1197,32 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
         prepareDocThread = new Timer("PrepareDocThread", true)
         LOG.warn(e)
     }
+  }
+
+  def canRename(offset: Int = editor.getCaretModel.getCurrentCaret.getOffset): Boolean = {
+    if (serverOptions.renameOptions.getPrepareProvider) {
+      try {
+        val request = requestManager.prepareRename(new TextDocumentPositionParams(identifier, offsetToLSPPos(editor, offset)))
+        if (request != null) {
+          val result = request.get(PREPARE_RENAME_TIMEOUT, TimeUnit.MILLISECONDS)
+          if (result != null) {
+            if (result.isLeft) {
+              val range = result.getLeft
+              LOG.warn(range.toString)
+              range != null
+            } else {
+              val renameResult = result.getRight
+              LOG.warn(renameResult.toString)
+              renameResult != null && renameResult.getRange != null
+            }
+          } else true
+        } else true
+      } catch {
+        case e: Exception =>
+          LOG.warn(e)
+          true
+      }
+    } else true
   }
 
   private def getRangeForOffset(offset: Int): TextRange = {

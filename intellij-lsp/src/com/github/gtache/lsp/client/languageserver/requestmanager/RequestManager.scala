@@ -124,7 +124,6 @@ trait RequestManager extends LanguageServer with TextDocumentService with Worksp
 
   override def resolveTypeHierarchy(params: ResolveTypeHierarchyItemParams): CompletableFuture[TypeHierarchyItem]
 
-
   //Unused
   override def getTextDocumentService: TextDocumentService = throw new UnsupportedOperationException
 

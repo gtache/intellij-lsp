@@ -11,8 +11,10 @@ object LSPRenameHelper {
   def rename(editor: Editor): Unit = {
     EditorEventManager.forEditor(editor) match {
       case Some(manager) =>
-        val renameTo = Messages.showInputDialog(editor.getProject, "Enter new name: ", "Rename", Messages.getQuestionIcon, "", new NonEmptyInputValidator())
-        if (renameTo != null && renameTo != "") manager.rename(renameTo)
+        if (manager.canRename()) {
+          val renameTo = Messages.showInputDialog(editor.getProject, "Enter new name: ", "Rename", Messages.getQuestionIcon, "", new NonEmptyInputValidator())
+          if (renameTo != null && renameTo != "") manager.rename(renameTo)
+        }
       case None =>
     }
   }

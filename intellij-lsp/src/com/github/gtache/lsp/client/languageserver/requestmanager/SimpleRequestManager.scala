@@ -298,6 +298,15 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
         null
     } else null
 
+  override def prepareRename(params: TextDocumentPositionParams): CompletableFuture[messages.Either[Range, PrepareRenameResult]] = {
+    if (checkStatus) try {
+      if (checkProvider(serverCapabilities.getRenameProvider.asInstanceOf[jsonrpc.messages.Either[Boolean, StaticRegistrationOptions]])) textDocumentService.prepareRename(params) else null
+    } catch {
+      case e: Exception => crashed(e)
+        null
+    } else null
+  }
+
   override def implementation(params: TextDocumentPositionParams): CompletableFuture[messages.Either[java.util.List[_ <: Location], java.util.List[_ <: LocationLink]]] = throw new NotImplementedError()
 
   override def typeDefinition(params: TextDocumentPositionParams): CompletableFuture[messages.Either[java.util.List[_ <: Location], java.util.List[_ <: LocationLink]]] = throw new NotImplementedError()

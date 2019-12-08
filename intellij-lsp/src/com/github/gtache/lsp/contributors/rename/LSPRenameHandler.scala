@@ -17,8 +17,6 @@ import com.intellij.refactoring.rename.{PsiElementRenameHandler, RenameHandler, 
 
 class LSPRenameHandler extends RenameHandler {
 
-  import LSPRenameHandler._
-
   override def invoke(project: Project, elements: Array[PsiElement], dataContext: DataContext): Unit = {
     if (elements.length == 1) new MemberInplaceRenameHandler().doRename(elements(0), dataContext.getData(CommonDataKeys.EDITOR), dataContext)
     else invoke(project, dataContext.getData(CommonDataKeys.EDITOR), dataContext.getData(CommonDataKeys.PSI_FILE), dataContext)
@@ -95,8 +93,8 @@ class LSPRenameHandler extends RenameHandler {
 
   def isAvailable(psiElement: PsiElement, editor: Editor, psiFile: PsiFile): Boolean = {
     psiElement match {
-      case _: PsiFile => true
-      case _: LSPPsiElement => true
+      case _: PsiFile => EditorEventManager.forEditor(editor).forall(m => m.canRename())
+      case l: LSPPsiElement => EditorEventManager.forEditor(editor).forall(m => m.canRename(l.getTextOffset))
       //IntelliJ 2018 returns psiElement null for unsupported languages
       case _ => psiElement == null && PluginMain.isExtensionSupported(FileUtils.extFromPsiFile(psiFile))
     }

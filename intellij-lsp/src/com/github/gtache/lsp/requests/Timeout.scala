@@ -42,6 +42,8 @@ object Timeout {
 
   def INIT_TIMEOUT: Int = timeouts(INIT)
 
+  def PREPARE_RENAME_TIMEOUT: Int = timeouts(PREPARE_RENAME)
+
   def REFERENCES_TIMEOUT: Int = timeouts(REFERENCES)
 
   def SIGNATURE_TIMEOUT: Int = timeouts(SIGNATURE)
