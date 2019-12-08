@@ -26,6 +26,7 @@ import com.intellij.codeInsight.lookup._
 import com.intellij.codeInsight.template.impl.{TemplateImpl, TextExpression}
 import com.intellij.codeInsight.template.{Template, TemplateManager}
 import com.intellij.lang.LanguageDocumentation
+import com.intellij.lang.folding.FoldingDescriptor
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.diagnostic.Logger
@@ -605,7 +606,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       if (docRange != null) docRange.dispose()
       docRange = null
     } catch {
-      case e : Exception => LOG.warn(e)
+      case e: Exception => LOG.warn(e)
     }
   }
 
@@ -1183,10 +1184,10 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             val range = getRangeForOffset(offset)
             if (range != null) {
               createRange(range.getStartOffset, range.getEndOffset, getDefinition, visible)
-              if (docRange.definitionContainsOffset(offset)) {
-                invokeLater(() =>
-                  scheduleShowDoc("Show usages of " + editor.getDocument.getText(new TextRange(docRange.startOffset, docRange.endOffset)), point))
-              }
+              invokeLater(() =>
+                if (docRange.definitionContainsOffset(offset)) {
+                  scheduleShowDoc("Show usages of " + editor.getDocument.getText(new TextRange(docRange.startOffset, docRange.endOffset)), point)
+                })
             }
           }
         }
@@ -1348,7 +1349,7 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
             val logicalStart = DocumentUtils.LSPPosToOffset(curEditor, start)
             val logicalEnd = DocumentUtils.LSPPosToOffset(curEditor, end)
             val name = curEditor.getDocument.getTextClamped(new TextRange(logicalStart, logicalEnd))
-            LSPPsiElement(name, project, logicalStart, logicalEnd, PsiDocumentManager.getInstance(project).getPsiFile(curEditor.getDocument), curEditor)
+            LSPPsiElement(name, project, logicalStart, logicalEnd, FileUtils.psiFileFromEditor(curEditor), curEditor)
               .asInstanceOf[PsiElement]
           })
           if (close) {
@@ -1716,6 +1717,26 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
       } else {
         editorPos
       }
+    }
+  }
+
+  def getFoldingRanges: Array[FoldingDescriptor] = {
+    try {
+      val request = requestManager.foldingRange(new FoldingRangeRequestParams(identifier))
+      if (request != null) {
+        val result = request.get(FOLDING_RANGE_TIMEOUT, TimeUnit.MILLISECONDS)
+        if (result != null) {
+          result.asScala.map(fr => {
+            val startOffset = if (fr.getStartCharacter != null) LSPPosToOffset(editor, new Position(fr.getStartLine, fr.getStartCharacter)) else editor.getDocument.getLineEndOffset(fr.getStartLine)
+            val endOffset = if (fr.getEndCharacter != null) LSPPosToOffset(editor, new Position(fr.getEndLine, fr.getEndCharacter)) else editor.getDocument.getLineEndOffset(fr.getEndLine)
+            new FoldingDescriptor(LSPPsiElement("foldingRange", project, startOffset, endOffset, FileUtils.psiFileFromEditor(editor), editor), new TextRange(startOffset, endOffset))
+          }).toArray
+        } else Array()
+      } else Array()
+    } catch {
+      case e: Exception =>
+        LOG.warn(e)
+        Array()
     }
   }
 }

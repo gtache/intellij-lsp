@@ -36,6 +36,8 @@ object Timeout {
 
   def EXECUTE_COMMAND_TIMEOUT: Int = timeouts(EXECUTE_COMMAND)
 
+  def FOLDING_RANGE_TIMEOUT: Int = timeouts(FOLDING_RANGE)
+
   def FORMATTING_TIMEOUT: Int = timeouts(FORMATTING)
 
   def HOVER_TIMEOUT: Int = timeouts(HOVER)

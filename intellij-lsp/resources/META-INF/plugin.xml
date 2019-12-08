@@ -8,6 +8,9 @@
 
     <change-notes>
         <![CDATA[
+        -Adds foldingranges support<br>
+
+]]>
     </change-notes>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
@@ -56,6 +59,7 @@
                                    id="LSPRenameProcessor" order="first"/>
         <lang.documentationProvider implementationClass="com.github.gtache.lsp.contributors.LSPDocumentationProvider"
                                     id="LSPDocumentationProvider" language="TEXT" order="first"/>
+        <lang.foldingBuilder language="TEXT" implementationClass="com.github.gtache.lsp.contributors.LSPFoldingBuilder"/>
 
         <!--        <lang.findUsagesProvider implementationClass="com.github.gtache.lsp.contributors.LSPFindUsagesProvider" id="LSPFindUsagesProvider" language="TEXT" order="first" />
                 <findUsagesHandlerFactory implementation="com.github.gtache.lsp.contributors.LSPFindUsagesHandlerFactory" id="LSPFindUsagesHandlerFactory" />-->

@@ -315,5 +315,12 @@ class SimpleRequestManager(wrapper: LanguageServerWrapper, server: LanguageServe
 
   override def colorPresentation(params: ColorPresentationParams): CompletableFuture[util.List[ColorPresentation]] = throw new NotImplementedError()
 
-  override def foldingRange(params: FoldingRangeRequestParams): CompletableFuture[util.List[FoldingRange]] = throw new NotImplementedError()
+  override def foldingRange(params: FoldingRangeRequestParams): CompletableFuture[util.List[FoldingRange]] = {
+    if (checkStatus) try {
+      if (checkProvider(serverCapabilities.getFoldingRangeProvider.asInstanceOf[jsonrpc.messages.Either[Boolean, StaticRegistrationOptions]])) textDocumentService.foldingRange(params) else null
+    } catch{
+      case e: Exception => crashed(e)
+        null
+    } else null
+  }
 }

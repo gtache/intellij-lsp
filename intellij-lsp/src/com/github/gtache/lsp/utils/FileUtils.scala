@@ -10,7 +10,7 @@ import com.intellij.openapi.fileEditor.{FileDocumentManager, FileEditorManager, 
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.project.{Project, ProjectUtil}
 import com.intellij.openapi.vfs.{LocalFileSystem, VirtualFile}
-import com.intellij.psi.PsiFile
+import com.intellij.psi.{PsiDocumentManager, PsiFile}
 import org.eclipse.lsp4j.TextDocumentIdentifier
 
 /**
@@ -43,6 +43,14 @@ object FileUtils {
 
   def editorFromVirtualFile(file: VirtualFile, project: Project): Editor = {
     FileEditorManager.getInstance(project).getAllEditors(file).collectFirst { case t: TextEditor => t.getEditor }.orNull
+  }
+
+  def editorFromDocument(doc: Document, project: Project): Editor = {
+    editorFromUri(documentToUri(doc), project)
+  }
+
+  def psiFileFromEditor(editor: Editor): PsiFile = {
+    PsiDocumentManager.getInstance(editor.getProject).getPsiFile(editor.getDocument)
   }
 
   def openClosedEditor(uri: String, project: Project): (VirtualFile, Editor) = {

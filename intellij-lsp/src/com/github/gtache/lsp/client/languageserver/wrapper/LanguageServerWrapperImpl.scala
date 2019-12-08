@@ -332,7 +332,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     textDocumentClientCapabilities.setDocumentHighlight(new DocumentHighlightCapabilities)
     //textDocumentClientCapabilities.setDocumentLink(new DocumentLinkCapabilities)
     //textDocumentClientCapabilities.setDocumentSymbol(new DocumentSymbolCapabilities)
-    //textDocumentClientCapabilities.setFoldingRange(new FoldingRangeCapabilities)
+    textDocumentClientCapabilities.setFoldingRange(new FoldingRangeCapabilities)
     textDocumentClientCapabilities.setFormatting(new FormattingCapabilities)
     textDocumentClientCapabilities.setHover(new HoverCapabilities)
     //textDocumentClientCapabilities.setImplementation(new ImplementationCapabilities)
