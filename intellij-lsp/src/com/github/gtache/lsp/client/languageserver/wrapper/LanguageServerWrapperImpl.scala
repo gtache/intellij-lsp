@@ -199,9 +199,15 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
                     val mouseMotionListener = new EditorMouseMotionListenerImpl
                     val documentListener = new DocumentListenerImpl
                     val selectionListener = new SelectionListenerImpl
+                    val renameProvider = capabilities.getRenameProvider
+                    val renameOptions = if (renameProvider.isLeft) {
+                      if (renameProvider.getLeft) new RenameOptions() else null
+                    } else {
+                      renameProvider.getRight
+                    }
                     val serverOptions = ServerOptions(syncKind, capabilities.getCompletionProvider, capabilities.getSignatureHelpProvider,
                       capabilities.getCodeLensProvider, capabilities.getDocumentOnTypeFormattingProvider, capabilities.getDocumentLinkProvider,
-                      capabilities.getExecuteCommandProvider, capabilities.getSemanticHighlighting)
+                      capabilities.getExecuteCommandProvider, capabilities.getSemanticHighlighting, renameOptions)
                     val manager = new EditorEventManager(editor, mouseListener, mouseMotionListener, documentListener, selectionListener, requestManager, serverOptions, this)
                     mouseListener.setManager(manager)
                     mouseMotionListener.setManager(manager)
@@ -333,7 +339,7 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
     textDocumentClientCapabilities.setOnTypeFormatting(new OnTypeFormattingCapabilities)
     textDocumentClientCapabilities.setRangeFormatting(new RangeFormattingCapabilities)
     textDocumentClientCapabilities.setReferences(new ReferencesCapabilities)
-    textDocumentClientCapabilities.setRename(new RenameCapabilities)
+    textDocumentClientCapabilities.setRename(new RenameCapabilities(true, false))
     textDocumentClientCapabilities.setSemanticHighlightingCapabilities(new SemanticHighlightingCapabilities(false))
     textDocumentClientCapabilities.setSignatureHelp(new SignatureHelpCapabilities)
     textDocumentClientCapabilities.setSynchronization(new SynchronizationCapabilities(true, true, true))
