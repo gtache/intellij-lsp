@@ -7,10 +7,9 @@ import com.github.gtache.lsp.contributors.icon.{LSPDefaultIconProvider, LSPIconP
 import com.intellij.codeInsight.hint.{HintManager, HintManagerImpl}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.ui.{Hint, LightweightHint}
-import javax.swing.{JComponent, JLabel, JTextArea}
+import javax.swing.{JComponent, JLabel}
 
 /**
   * Various utility methods related to the interface
@@ -30,10 +29,15 @@ object GUIUtils {
     */
   def createAndShowEditorHint(editor: Editor, string: String, point: Point, constraint: Short = HintManager.ABOVE,
                               flags: Int = HintManager.HIDE_BY_ANY_KEY | HintManager.HIDE_BY_TEXT_CHANGE | HintManager.HIDE_BY_SCROLLING): Hint = {
-    val hint = new LightweightHint(new JLabel(string))
-    val p = HintManagerImpl.getHintPosition(hint, editor, editor.xyToLogicalPosition(point), constraint)
+    val (hint, p) = createHint(editor, string, point, constraint)
     HintManagerImpl.getInstanceImpl.showEditorHint(hint, editor, p, flags, 0, false, HintManagerImpl.createHintHint(editor, p, hint, constraint).setContentActive(false))
     hint
+  }
+
+  def createHint(editor: Editor, string: String, point: Point, constraint: Short): (LightweightHint, Point) = {
+    val hint = new LightweightHint(new JLabel(string))
+    val p = if (!editor.isDisposed) HintManagerImpl.getHintPosition(hint, editor, editor.xyToLogicalPosition(point), constraint) else null
+    (hint, p)
   }
 
   def createAndShowHint(component: JComponent, string: String, point: RelativePoint,

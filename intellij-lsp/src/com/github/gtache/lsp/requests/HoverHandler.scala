@@ -60,14 +60,14 @@ object HoverHandler {
     } else ""
   }
 
-  def parseMarkup(markup: String): String = {
+  private def parseMarkup(markup: String): String = {
     val options = new MutableDataSet()
     val parser = Parser.builder(options).build()
     val renderer = HtmlRenderer.builder(options).build()
     if (markup.nonEmpty) renderer.render(parser.parse(markup)) else ""
   }
 
-  def parsePlain(text: String): String = {
+  private def parsePlain(text: String): String = {
     val arr = text.split("\n")
     arr.flatMap(s => {
       val sentences = s.split("(?<=[^.]{2})\\.(?=[^.])").map(s => if (s.nonEmpty) s + "." else s)
@@ -78,6 +78,7 @@ object HoverHandler {
         val sentence = sentences(idx)
         curBlock ++= sentence
         count += sentence.length
+        //TODO something smarter
         if (count > 100) {
           result.append(curBlock.toString)
           curBlock.clear()

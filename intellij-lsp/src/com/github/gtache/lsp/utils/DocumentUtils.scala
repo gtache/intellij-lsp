@@ -73,9 +73,6 @@ object DocumentUtils {
     */
   def LSPPosToOffset(editor: Editor, pos: Position): Int = {
     computableReadAction(() => {
-      //TODO abort if basically wrong line?
-      //TODO manage surrogates ?
-      //TODO manage different sized-tabs
       val doc = editor.getDocument
       val line = math.max(0, math.min(pos.getLine, doc.getLineCount - 1))
       val docLength = doc.getTextLength
@@ -87,12 +84,16 @@ object DocumentUtils {
     })
   }
 
-  def expandOffsetToToken(editor: Editor, offset: Int): (Int, Int) = {
+  def LSPRangeToTextRange(editor: Editor, range: org.eclipse.lsp4j.Range): TextRange = {
+    if (range != null) new TextRange(LSPPosToOffset(editor, range.getStart), LSPPosToOffset(editor, range.getEnd)) else null
+  }
+
+  def expandOffsetToToken(editor: Editor, offset: Int): TextRange = {
     computableReadAction(() => {
       val text = editor.getDocument.getText
-      val negOffset = offset - text.take(offset).reverse.takeWhile(c => !c.isWhitespace).length
-      val posOffset = offset + text.drop(offset).takeWhile(c => !c.isWhitespace).length
-      (negOffset, posOffset)
+      val negOffset = offset - text.take(offset).reverse.takeWhile(c => c.isLetterOrDigit || c=='_').length
+      val posOffset = offset + text.drop(offset).takeWhile(c => c.isLetterOrDigit || c=='_').length
+      new TextRange(negOffset, posOffset)
     })
   }
 

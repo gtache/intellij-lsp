@@ -10,7 +10,8 @@
         <![CDATA[
         -Fixes versioning problem which caused LSP rename (Ctrl+Shift+F6) to fail<br>
         -Fixes inplace renaming (Shift+F6)<br>
-        -Fixes LSPIconProvider extension point name
+        -Fixes LSPIconProvider extension point name<br>
+        -Greatly improves hover and ctrl+click behavior
 ]]>
     </change-notes>
 
