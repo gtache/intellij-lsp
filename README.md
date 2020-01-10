@@ -27,8 +27,8 @@ Client :
 The plugin should integrate seamlessly with another plugin supporting a same language (e.g. Scala language server and Scala plugin). The plugin will simply delegate to the Scala plugin any features it already supports (for example, if the Scala plugin supports formatting, the LSP plugin won't ask the language server to format.) The reason is that the current specific plugins are much more powerful than the current language servers at the moment.    
 You have the possibility to force sending the requests by checking the "Always send requests" checkbox in the settings.
 
-Concretely, what you can do with IntelliJ at the moment :     
-- Hover to get documentation (you can also use (by default) Ctrl+Q)    
+Concretely, what you can do with IntelliJ at the moment :
+- Hover to get documentation (you can also use (by default) Ctrl+Q). Go to Settings > General > segment Other > Check: Show quick documentation on mouse move:
 ![Hover](https://github.com/gtache/intellij-lsp/blob/master/doc/images/hover.gif "HoverGif")
 - Use Goto file/class/symbol (Ctrl(+Shift+Alt)+N by default)    
 ![Goto](https://github.com/gtache/intellij-lsp/blob/master/doc/images/goto.gif "GotoGif")
