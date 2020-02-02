@@ -24,7 +24,7 @@ object FileUtils {
   val URI_VALID_FILE_BEGIN: String = URI_FILE_BEGIN + "///"
   val URI_PATH_SEP: Char = '/'
 
-  val LSP_ROOT_DIR: String = "lsp/"
+  val LSP_ROOT_DIR: String = ".idea/lsp/"
   val LSP_LOG_DIR: String = LSP_ROOT_DIR + "log/"
   val LSP_CONFIG_DIR: String = LSP_ROOT_DIR + "conf/"
   private val LOG: Logger = Logger.getInstance(this.getClass)
