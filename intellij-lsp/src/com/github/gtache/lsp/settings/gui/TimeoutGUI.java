@@ -13,10 +13,7 @@ import javax.swing.*;
 import javax.swing.text.NumberFormatter;
 import java.awt.*;
 import java.text.NumberFormat;
-import java.util.AbstractMap;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -67,7 +64,7 @@ public final class TimeoutGUI implements LSPGUI {
         final JPanel panel = new JPanel();
         panel.setLayout(new GridLayoutManager(rows.size(), 6, JBUI.emptyInsets(), -1, -1));
         int idx = 0;
-        final Iterator<Map.Entry<Timeouts, JTextField>> iterator = rows.entrySet().iterator();
+        final Iterator<Map.Entry<Timeouts, JTextField>> iterator = rows.entrySet().stream().sorted(Comparator.comparing(entry -> entry.getKey().name())).iterator();
         while (iterator.hasNext()) {
             Map.Entry<Timeouts, JTextField> entry = iterator.next();
             Timeouts timeout = entry.getKey();
