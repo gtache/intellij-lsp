@@ -1208,11 +1208,9 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
           if (result != null) {
             if (result.isLeft) {
               val range = result.getLeft
-              LOG.warn(range.toString)
               range != null
             } else {
               val renameResult = result.getRight
-              LOG.warn(renameResult.toString)
               renameResult != null && renameResult.getRange != null
             }
           } else true

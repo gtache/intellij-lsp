@@ -26,11 +26,11 @@ object LSPServerStatusWidget {
   private val widgetIDs: mutable.Map[Project, ListBuffer[String]] = mutable.Map()
 
   /**
-    * Creates a widget given a LanguageServerWrapper and adds it to the status bar
-    *
-    * @param wrapper The wrapper
-    * @return The widget
-    */
+   * Creates a widget given a LanguageServerWrapper and adds it to the status bar
+   *
+   * @param wrapper The wrapper
+   * @return The widget
+   */
   def createWidgetFor(wrapper: LanguageServerWrapper): LSPServerStatusWidget = {
     val widget = new LSPServerStatusWidget(wrapper)
     val project = wrapper.getProject
@@ -53,10 +53,10 @@ object LSPServerStatusWidget {
 }
 
 /**
-  * A status bar widget for a server status
-  *
-  * @param wrapper The wrapper corresponding to the server
-  */
+ * A status bar widget for a server status
+ *
+ * @param wrapper The wrapper corresponding to the server
+ */
 class LSPServerStatusWidget(val wrapper: LanguageServerWrapper) extends StatusBarWidget {
 
   private val timeouts: mutable.Map[Timeouts, (Int, Int)] = mutable.HashMap()
@@ -73,7 +73,7 @@ class LSPServerStatusWidget(val wrapper: LanguageServerWrapper) extends StatusBa
     timeouts.update(timeout, if (success) (oldValue._1 + 1, oldValue._2) else (oldValue._1, oldValue._2 + 1))
   }
 
-  override def getPresentation(`type`: StatusBarWidget.PlatformType): StatusBarWidget.IconPresentation = new IconPresentation {
+  override def getPresentation: StatusBarWidget.IconPresentation = new IconPresentation {
 
     override def getIcon: Icon = {
       icons.get(status).orNull
@@ -87,7 +87,7 @@ class LSPServerStatusWidget(val wrapper: LanguageServerWrapper) extends StatusBa
         case ServerStatus.STARTING => Seq(ShowTimeouts)
         case _ => Seq(Restart, ShowTimeouts)
       }
-      val title = "Server actions"
+      val title = "Server actions for " + ext + " - " + projectName
       val context = DataManager.getInstance().getDataContext(component)
       val group = new DefaultActionGroup(actions: _*)
       val popup = JBPopupFactory.getInstance().createActionGroupPopup(title, group, context, mnemonics, true)
@@ -134,10 +134,10 @@ class LSPServerStatusWidget(val wrapper: LanguageServerWrapper) extends StatusBa
   override def install(statusBar: StatusBar): Unit = {}
 
   /**
-    * Sets the status of the server
-    *
-    * @param status The new status
-    */
+   * Sets the status of the server
+   *
+   * @param status The new status
+   */
   def setStatus(status: ServerStatus): Unit = {
     this.status = status
     updateWidget()

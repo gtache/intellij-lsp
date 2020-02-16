@@ -1,11 +1,12 @@
 package com.github.gtache.lsp.contributors.rename
 
 import java.util
+import java.util.{Timer, TimerTask}
 
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.requests.WorkspaceEditHandler
-import com.github.gtache.lsp.utils.FileUtils
+import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils}
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.{FileEditorManager, TextEditor}
@@ -67,15 +68,7 @@ class LSPRenameProcessor extends RenamePsiElementProcessor {
     super.createRenameDialog(project, curElem, nameSuggestionContext, editor)
   }
 
-  override def findReferences(element: PsiElement): util.Collection[PsiReference] = {
-    findReferences(element, searchInCommentsAndStrings = false)
-  }
-
   override def findReferences(element: PsiElement, searchScope: SearchScope, searchInCommentsAndStrings: Boolean): util.Collection[PsiReference] = {
-    findReferences(element, searchInCommentsAndStrings)
-  }
-
-  override def findReferences(element: PsiElement, searchInCommentsAndStrings: Boolean): util.Collection[PsiReference] = {
     import scala.collection.JavaConverters._
     element match {
       case lsp: LSPPsiElement => if (elements.contains(lsp)) elements.map(e => e.getReference).asJava else {
@@ -98,11 +91,11 @@ class LSPRenameProcessor extends RenamePsiElementProcessor {
   //TODO may rename invalid elements
   override def renameElement(element: PsiElement, newName: String, usages: Array[UsageInfo], listener: RefactoringElementListener): Unit = {
     element match {
-      case lsp : LSPPsiElement =>
+      case lsp: LSPPsiElement =>
         EditorEventManager.forEditor(lsp.editor).foreach(m => {
-          m.rename(newName)
+          m.rename(newName, m.editor.getCaretModel.getCurrentCaret.getOffset - 1)
         })
-      case _ =>  WorkspaceEditHandler.applyEdit(element, newName, usages, listener, openedEditors.clone())
+      case _ => WorkspaceEditHandler.applyEdit(element, newName, usages, listener, openedEditors.clone())
     }
     openedEditors.clear()
     elements.clear()
