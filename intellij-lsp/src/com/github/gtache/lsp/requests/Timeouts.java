@@ -13,6 +13,7 @@ public enum Timeouts {
     FORMATTING(2000),
     HOVER(2000),
     INIT(10000),
+    PREPARE_RENAME(2000),
     REFERENCES(2000),
     SIGNATURE(1000),
     SHUTDOWN(5000),

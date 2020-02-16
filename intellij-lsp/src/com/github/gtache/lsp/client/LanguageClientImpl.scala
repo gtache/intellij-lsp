@@ -18,18 +18,18 @@ import scala.collection.JavaConverters._
 
 
 /**
-  * Implementation of the LanguageClient
-  */
+ * Implementation of the LanguageClient
+ */
 class LanguageClientImpl extends LanguageClient {
   private val LOG: Logger = Logger.getInstance(classOf[LanguageClientImpl])
   private var server: LanguageServer = _
   private var wrapper: LanguageServerWrapper = _
 
   /**
-    * Connects the LanguageClient to the server
-    *
-    * @param server The LanguageServer
-    */
+   * Connects the LanguageClient to the server
+   *
+   * @param server The LanguageServer
+   */
   def connect(server: LanguageServer, wrapper: LanguageServerWrapper): Unit = {
     this.server = server
     this.wrapper = wrapper
@@ -104,7 +104,7 @@ class LanguageClientImpl extends LanguageClient {
     val message = messageParams.getMessage
     messageParams.getType match {
       case MessageType.Error =>
-        LOG.error(message)
+        LOG.warn("ERROR\n" + message) //LOG.error will throw an error notification in IntelliJ, which is not desired
       case MessageType.Warning =>
         LOG.warn(message)
       case MessageType.Info =>

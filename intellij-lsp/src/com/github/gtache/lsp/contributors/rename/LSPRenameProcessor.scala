@@ -1,11 +1,13 @@
 package com.github.gtache.lsp.contributors.rename
 
 import java.util
+import java.util.{Timer, TimerTask}
 
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.requests.WorkspaceEditHandler
-import com.github.gtache.lsp.utils.FileUtils
+import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils}
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.{FileEditorManager, TextEditor}
 import com.intellij.openapi.project.Project
@@ -20,7 +22,7 @@ import scala.collection.mutable
 
 class LSPRenameProcessor extends RenamePsiElementProcessor {
 
-  import LSPRenameProcessor.openedEditors
+  import LSPRenameProcessor._
 
   private var curElem: PsiElement = _
   private var elements: mutable.Set[PsiElement] = mutable.Set()
@@ -62,18 +64,11 @@ class LSPRenameProcessor extends RenamePsiElementProcessor {
       elements.foreach(elem => allRenames.put(elem, newName))
     }*/
 
-  override def createRenameDialog(project: Project, element: PsiElement, nameSuggestionContext: PsiElement, editor: Editor): RenameDialog =
+  override def createRenameDialog(project: Project, element: PsiElement, nameSuggestionContext: PsiElement, editor: Editor): RenameDialog = {
     super.createRenameDialog(project, curElem, nameSuggestionContext, editor)
-
-  override def findReferences(element: PsiElement): util.Collection[PsiReference] = {
-    findReferences(element, searchInCommentsAndStrings = false)
   }
 
   override def findReferences(element: PsiElement, searchScope: SearchScope, searchInCommentsAndStrings: Boolean): util.Collection[PsiReference] = {
-    findReferences(element, searchInCommentsAndStrings)
-  }
-
-  override def findReferences(element: PsiElement, searchInCommentsAndStrings: Boolean): util.Collection[PsiReference] = {
     import scala.collection.JavaConverters._
     element match {
       case lsp: LSPPsiElement => if (elements.contains(lsp)) elements.map(e => e.getReference).asJava else {
@@ -89,11 +84,19 @@ class LSPRenameProcessor extends RenamePsiElementProcessor {
     }
   }
 
-  override def isInplaceRenameSupported: Boolean = true
+  override def isInplaceRenameSupported: Boolean = {
+    true
+  }
 
   //TODO may rename invalid elements
   override def renameElement(element: PsiElement, newName: String, usages: Array[UsageInfo], listener: RefactoringElementListener): Unit = {
-    WorkspaceEditHandler.applyEdit(element, newName, usages, listener, openedEditors.clone())
+    element match {
+      case lsp: LSPPsiElement =>
+        EditorEventManager.forEditor(lsp.editor).foreach(m => {
+          m.rename(newName, m.editor.getCaretModel.getCurrentCaret.getOffset - 1)
+        })
+      case _ => WorkspaceEditHandler.applyEdit(element, newName, usages, listener, openedEditors.clone())
+    }
     openedEditors.clear()
     elements.clear()
     curElem = null
@@ -101,6 +104,7 @@ class LSPRenameProcessor extends RenamePsiElementProcessor {
 }
 
 object LSPRenameProcessor { //TODO something better ?
+  private val LOG: Logger = Logger.getInstance(LSPRenameProcessor.getClass)
   private var openedEditors: mutable.Set[VirtualFile] = mutable.Set()
 
   def clearEditors(): Unit = {

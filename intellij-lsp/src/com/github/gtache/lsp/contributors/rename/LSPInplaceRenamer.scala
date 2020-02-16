@@ -3,6 +3,7 @@ package com.github.gtache.lsp.contributors.rename
 import java.util
 
 import com.github.gtache.lsp.editor.EditorEventManager
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.psi.search.SearchScope
 import com.intellij.psi.{PsiElement, PsiNamedElement, PsiReference}
@@ -20,4 +21,8 @@ class LSPInplaceRenamer(elementToRename: PsiNamedElement, substituted: PsiElemen
       case None => List().asJava
     }
   }
+}
+
+object LSPInplaceRenamer {
+  private val LOG: Logger = Logger.getInstance(LSPInplaceRenamer.getClass)
 }

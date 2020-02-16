@@ -3,6 +3,7 @@ package com.github.gtache.lsp.contributors.psi
 import com.github.gtache.lsp.utils.{ApplicationUtils, FileUtils}
 import com.intellij.lang.{ASTNode, Language}
 import com.intellij.navigation.ItemPresentation
+import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.{FileEditorManager, OpenFileDescriptor}
 import com.intellij.openapi.fileTypes.PlainTextLanguage
 import com.intellij.openapi.project.Project
@@ -24,7 +25,7 @@ import org.jetbrains.annotations.Nullable
   * @param start   The offset in the editor where the element starts
   * @param end     The offset where it ends
   */
-case class LSPPsiElement(var name: String, project: Project, start: Int, end: Int, file: PsiFile) extends PsiNameIdentifierOwner with NavigatablePsiElement {
+case class LSPPsiElement(var name: String, project: Project, start: Int, end: Int, file: PsiFile, editor : Editor) extends PsiNameIdentifierOwner with NavigatablePsiElement {
 
   private val COPYABLE_USER_MAP_KEY: Key[KeyFMap] = Key.create("COPYABLE_USER_MAP_KEY")
   private val updater = AtomicFieldUpdater.forFieldOfType(classOf[LSPPsiElement], classOf[KeyFMap])

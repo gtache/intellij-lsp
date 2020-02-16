@@ -1,27 +1,19 @@
 <idea-plugin>
     <id>com.github.gtache.lsp</id>
     <name>LSP Support</name>
-    <version>1.6.0</version>
+    <version>1.6.1</version>
     <vendor email="guillaume.tache@hotmail.com" url="https://github.com/gtache">gtache</vendor>
 
     <description>Adds LSP (Language Server Protocol) support for IntelliJ</description>
 
     <change-notes>
         <![CDATA[
-        -Update to lsp4j 0.8.1<br>
-        -Update to flexmark 0.42.12<br>
-        -Adds restart server option when clicking on the status icon<br>
-        -Adds (wonky) snippet completion support<br>
-        -Adds initialized support<br>
-        -Adds configuration and didChangeConfiguration support<br>
-        -Adds dynamic DidChangeWatchedFiles registration to filter file events<br>
-        -Adds standard LanguageID<br>
-        -Diagnostics are now shown when reported range length is 0<br>
-        -Fixes modifying server definitions for existing extensions<br>
-        -Fixes incremental synchronization on didChange<br>
-        -Fixes document highlights<br>
-        -Fixes offsets with tabs having different sizes<br>
-        -Fixes offsets while doing multiple edits
+        -Fixes versioning problem which caused LSP rename (Shift+Alt+F6) to fail<br>
+        -Fixes inplace renaming (Shift+F6)<br>
+        -Fixes LSPIconProvider extension point name<br>
+        -Greatly improves hover and ctrl+click behavior<br>
+        -Adds prepareRename support<br>
+        -Sorts the rows in the timeouts settings
 ]]>
     </change-notes>
 
