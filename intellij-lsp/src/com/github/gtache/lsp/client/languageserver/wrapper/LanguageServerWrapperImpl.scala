@@ -38,17 +38,17 @@ object LanguageServerWrapperImpl {
   private val uriToLanguageServerWrapper: mutable.Map[(String, String), LanguageServerWrapper] = TrieMap()
 
   /**
-    * @param uri A file uri
-    * @return The wrapper for the given uri, or None
-    */
+   * @param uri A file uri
+   * @return The wrapper for the given uri, or None
+   */
   def forUri(uri: String, project: Project): Option[LanguageServerWrapper] = {
     uriToLanguageServerWrapper.get(uri, FileUtils.projectToUri(project))
   }
 
   /**
-    * @param editor An editor
-    * @return The wrapper for the given editor, or None
-    */
+   * @param editor An editor
+   * @return The wrapper for the given editor, or None
+   */
   def forEditor(editor: Editor): Option[LanguageServerWrapper] = {
     if (editor.getProject == null) {
       None
@@ -59,11 +59,11 @@ object LanguageServerWrapperImpl {
 }
 
 /**
-  * The implementation of a LanguageServerWrapper (specific to a serverDefinition and a project)
-  *
-  * @param serverDefinition The serverDefinition
-  * @param project          The project
-  */
+ * The implementation of a LanguageServerWrapper (specific to a serverDefinition and a project)
+ *
+ * @param serverDefinition The serverDefinition
+ * @param project          The project
+ */
 class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, val project: Project) extends LanguageServerWrapper {
 
   import LanguageServerWrapperImpl._
@@ -95,8 +95,8 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   override def getServerDefinition: LanguageServerDefinition = serverDefinition
 
   /**
-    * @return if the server supports willSaveWaitUntil
-    */
+   * @return if the server supports willSaveWaitUntil
+   */
   def isWillSaveWaitUntil: Boolean = {
     val capabilities = getServerCapabilities.getTextDocumentSync
     if (capabilities.isLeft) {
@@ -111,10 +111,10 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   }
 
   /**
-    * Warning: this is a long running operation
-    *
-    * @return the languageServer capabilities, or null if initialization job didn't complete
-    */
+   * Warning: this is a long running operation
+   *
+   * @return the languageServer capabilities, or null if initialization job didn't complete
+   */
   @Nullable override def getServerCapabilities: ServerCapabilities = {
     if (this.initializeResult != null) this.initializeResult.getCapabilities else {
       try {
@@ -147,32 +147,32 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   }
 
   /**
-    * Returns the EditorEventManager for a given uri
-    *
-    * @param uri the URI as a string
-    * @return the EditorEventManager (or null)
-    */
+   * Returns the EditorEventManager for a given uri
+   *
+   * @param uri the URI as a string
+   * @return the EditorEventManager (or null)
+   */
   override def getEditorManagerFor(uri: String): EditorEventManager = {
     connectedEditors.get(uri).orNull
   }
 
   /**
-    * @return The request manager for this wrapper
-    */
+   * @return The request manager for this wrapper
+   */
   override def getRequestManager: RequestManager = {
     requestManager
   }
 
   /**
-    * @return whether the underlying connection to language languageServer is still active
-    */
+   * @return whether the underlying connection to language languageServer is still active
+   */
   override def isActive: Boolean = this.launcherFuture != null && !this.launcherFuture.isDone && !this.launcherFuture.isCancelled && !alreadyShownTimeout && !alreadyShownCrash
 
   /**
-    * Connects an editor to the languageServer
-    *
-    * @param editor the editor
-    */
+   * Connects an editor to the languageServer
+   *
+   * @param editor the editor
+   */
   @throws[IOException]
   override def connect(editor: Editor): Unit = {
     if (editor == null) {
@@ -200,11 +200,13 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
                     val documentListener = new DocumentListenerImpl
                     val selectionListener = new SelectionListenerImpl
                     val renameProvider = capabilities.getRenameProvider
-                    val renameOptions = if (renameProvider.isLeft) {
-                      if (renameProvider.getLeft) new RenameOptions() else null
-                    } else {
-                      renameProvider.getRight
-                    }
+                    val renameOptions = if (renameProvider != null) {
+                      if (renameProvider.isLeft) {
+                        if (renameProvider.getLeft) new RenameOptions() else null
+                      } else {
+                        renameProvider.getRight
+                      }
+                    } else null
                     val serverOptions = ServerOptions(syncKind, capabilities.getCompletionProvider, capabilities.getSignatureHelpProvider,
                       capabilities.getCodeLensProvider, capabilities.getDocumentOnTypeFormattingProvider, capabilities.getDocumentLinkProvider,
                       capabilities.getExecuteCommandProvider, capabilities.getSemanticHighlighting, renameOptions)
@@ -241,10 +243,10 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   }
 
   /**
-    * Disconnects an editor from the LanguageServer
-    *
-    * @param uri The uri of the editor
-    */
+   * Disconnects an editor from the LanguageServer
+   *
+   * @param uri The uri of the editor
+   */
   override def disconnect(uri: String): Unit = {
     this.connectedEditors.synchronized {
       uriToLanguageServerWrapper.synchronized {
@@ -293,13 +295,13 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   }
 
   /**
-    * Checks if the wrapper is already connected to the document at the given path
-    */
+   * Checks if the wrapper is already connected to the document at the given path
+   */
   override def isConnectedTo(location: String): Boolean = connectedEditors.contains(location)
 
   /**
-    * @return the LanguageServer
-    */
+   * @return the LanguageServer
+   */
   @Nullable override def getServer: LanguageServer = {
     start()
     if (initializeFuture != null && !this.initializeFuture.isDone) this.initializeFuture.join
@@ -348,8 +350,8 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   }
 
   /**
-    * Starts the LanguageServer
-    */
+   * Starts the LanguageServer
+   */
   @throws[IOException]
   override def start(): Unit = {
     if (status == STOPPED || status == FAILED) {
@@ -404,8 +406,8 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   }
 
   /**
-    * @return The language ID that this wrapper is dealing with if defined in the content type mapping for the language languageServer
-    */
+   * @return The language ID that this wrapper is dealing with if defined in the content type mapping for the language languageServer
+   */
   @Nullable override def getLanguageId(contentTypes: Array[String]): String = {
     if (contentTypes.exists(serverDefinition.getMappedExtensions.contains(_))) serverDefinition.id else null
   }
@@ -513,10 +515,10 @@ class LanguageServerWrapperImpl(val serverDefinition: LanguageServerDefinition, 
   }
 
   /**
-    * Disconnects an editor from the LanguageServer
-    *
-    * @param editor The editor
-    */
+   * Disconnects an editor from the LanguageServer
+   *
+   * @param editor The editor
+   */
   override def disconnect(editor: Editor): Unit = {
     disconnect(FileUtils.editorToURIString(editor))
   }
