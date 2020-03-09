@@ -1,24 +1,19 @@
 <idea-plugin>
     <id>com.github.gtache.lsp</id>
     <name>LSP Support</name>
-    <version>1.6.1</version>
+    <version>1.6.2</version>
     <vendor email="guillaume.tache@hotmail.com" url="https://github.com/gtache">gtache</vendor>
 
     <description>Adds LSP (Language Server Protocol) support for IntelliJ</description>
 
     <change-notes>
         <![CDATA[
-        -Fixes versioning problem which caused LSP rename (Shift+Alt+F6) to fail<br>
-        -Fixes inplace renaming (Shift+F6)<br>
-        -Fixes LSPIconProvider extension point name<br>
-        -Greatly improves hover and ctrl+click behavior<br>
-        -Adds prepareRename support<br>
-        -Sorts the rows in the timeouts settings
+        -Fixes fatal AbstractMethodError due to conflicting Intellij API versions
 ]]>
     </change-notes>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
-    <idea-version since-build="182.0"/>
+    <idea-version since-build="193.0"/>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
          on how to target different products -->
