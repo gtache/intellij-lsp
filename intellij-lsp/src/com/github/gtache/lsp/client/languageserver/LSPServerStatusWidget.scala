@@ -73,7 +73,7 @@ class LSPServerStatusWidget(val wrapper: LanguageServerWrapper) extends StatusBa
     timeouts.update(timeout, if (success) (oldValue._1 + 1, oldValue._2) else (oldValue._1, oldValue._2 + 1))
   }
 
-  override def getPresentation: StatusBarWidget.IconPresentation = new IconPresentation {
+  override def getPresentation(`type`: StatusBarWidget.PlatformType): StatusBarWidget.WidgetPresentation = new IconPresentation {
 
     override def getIcon: Icon = {
       icons.get(status).orNull
