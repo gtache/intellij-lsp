@@ -379,14 +379,14 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
               })
             }
 
-            def applyEdits(edit: Seq[TextEdit], moveToCaret: Boolean): Unit = {
+            def applyEdits(edit: Seq[TextEdit], moveToCaret: Boolean, textToBeReplaced : String = ""): Unit = {
               invokeLater(() => {
                 if (edit != null && edit.nonEmpty) {
                   applyEdit(edits = edit, name = "Completion : " + label)
                 }
                 execCommand(command)
                 if (moveToCaret) {
-                  editor.getCaretModel.moveCaretRelatively(textEdit.getNewText.length, 0, false, false, true)
+                  editor.getCaretModel.moveCaretRelatively(textEdit.getNewText.length - textToBeReplaced.length, 0, false, false, true)
                 }
               })
             }
@@ -405,14 +405,21 @@ class EditorEventManager(val editor: Editor, val mouseListener: EditorMouseListe
                   })
                   .withLookupString(presentableText)
               } else {
-                lookupElementBuilder = LookupElementBuilder.create(presentableText, "")
+                // Get current range as offset
+                val offsetStart = editor.getDocument.getLineStartOffset(pos.getLine) + textEdit.getRange.getStart.getCharacter;
+                val offsetEnd = editor.getDocument.getLineStartOffset(pos.getLine) + textEdit.getRange.getEnd.getCharacter;
+
+                // Get text to be replaced
+                val textToBeReplaced = editor.getDocument.getText(new TextRange(offsetStart, offsetEnd))
+
+                lookupElementBuilder = LookupElementBuilder.create(presentableText, textToBeReplaced)
                   .withInsertHandler((context: InsertionContext, _: LookupElement) => {
                     context.commitDocument()
                     if (insertFormat == InsertTextFormat.Snippet) {
                       val template = prepareTemplate(textEdit.getNewText)
                       runSnippet(template)
                     } else {
-                      applyEdits(Seq(textEdit), moveToCaret = true)
+                      applyEdits(Seq(textEdit), moveToCaret = true, textToBeReplaced)
                     }
                   })
                   .withLookupString(presentableText)
