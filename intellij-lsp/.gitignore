@@ -1,9 +1,3 @@
-out/
-.gradle/
-.idea/
-*.iml
-*.zip
-*.ps1
-target/
-todo.txt
-lib/
+.gradle
+.idea
+build
