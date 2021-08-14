@@ -2,6 +2,7 @@ package com.github.gtache.lsp.settings.server.parser
 
 import com.github.gtache.lsp.settings.server.LSPConfiguration
 import com.google.gson.*
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.io.FileUtilRt
 import java.io.File
 import java.io.FileReader
@@ -24,7 +25,7 @@ interface ConfigurationParser {
         }
 
 
-        fun forType(typ: ConfigType?): ConfigurationParser? {
+        private fun forType(typ: ConfigType?): ConfigurationParser? {
             return when (typ) {
                 ConfigType.FLAT -> FlatParser()
                 ConfigType.JSON -> JsonParser()
@@ -33,7 +34,7 @@ interface ConfigurationParser {
             }
         }
 
-        fun forFile(file: File): ConfigurationParser? {
+        private fun forFile(file: File): ConfigurationParser? {
             val name = file.name
             val idx = name.lastIndexOf('.')
             return if (idx + 1 < name.length) {
@@ -41,7 +42,7 @@ interface ConfigurationParser {
             } else null
         }
 
-        fun forExt(ext: String): ConfigurationParser? {
+        private fun forExt(ext: String): ConfigurationParser? {
             return forType(ConfigType.fromExt(ext))
         }
 
@@ -60,90 +61,96 @@ interface ConfigurationParser {
             return concatMap.map { pair -> pair.key to pair.value.toMap() }.toMap()
         }
     }
-}
 
-class JsonParser : ConfigurationParser {
-    override fun parse(file: File): LSPConfiguration {
-        val reader = FileReader(file)
-        if (file.length() == 0L) {
-            return LSPConfiguration.emptyConfiguration
-        } else {
-            try {
-                val json = com.google.gson.JsonParser.parseReader(reader)
-                if (json != null && json.isJsonObject) {
-                    val jsonObject = json.asJsonObject
-                    val configMap = mapOf("global" to HashMap<String, Any>())
+    class JsonParser : ConfigurationParser {
 
-                    fun flatten(scope: String?, key: String?, elem: JsonElement, map: Map<String, Map<String, Any?>>): Map<String, Map<String, Any?>> {
-                        val trueScope: String
-                        val trueKey: String
-                        if (scope == null) {
-                            if (key == null) {
-                                trueScope = "global"
-                                trueKey = ""
-                            } else if (key.startsWith("<") && key.endsWith(">")) {
-                                if (!elem.isJsonObject) {
-                                    throw IllegalArgumentException("Check JSON file ${file.absolutePath}")
-                                }
-                                trueScope = key
-                                trueKey = ""
-                            } else {
-                                trueScope = "global"
-                                trueKey = key
-                            }
-                        } else {
-                            trueScope = scope
-                            trueKey = key ?: ""
-                        }
-                        val updatedMap = (if (!map.contains(trueScope)) {
-                            map + (trueScope to HashMap())
-                        } else map).toMutableMap()
-                        val subMap = updatedMap[trueScope]!!
-                        when (elem) {
-                            is JsonObject ->
-                                return elem.keySet().map { k ->
-                                    flatten(trueScope, if (trueKey.isNotEmpty()) "$trueKey.$k" else k, elem.get(k), updatedMap)
-                                }.fold(updatedMap) { map1, map2 -> ConfigurationParser.combineConfigurations(map1, map2).toMutableMap() }
-                            is JsonArray -> {
-                                return updatedMap + (trueScope to subMap + (trueKey to elem))
-                            }
-                            is JsonNull -> return updatedMap + (trueScope to subMap + (trueKey to null))
-                            is JsonPrimitive ->
-                                return if (elem.isBoolean) {
-                                    updatedMap + (trueScope to subMap + (trueKey to elem.asBoolean))
-                                } else if (elem.isNumber) {
-                                    updatedMap + (trueScope to subMap + (trueKey to elem.asNumber))
-                                } else if (elem.isString) {
-                                    updatedMap + (trueScope to subMap + (trueKey to elem.asString))
+        companion object {
+            private val logger: Logger = Logger.getInstance(JsonParser::class.java)
+        }
+
+        override fun parse(file: File): LSPConfiguration {
+            val reader = FileReader(file)
+            if (file.length() == 0L) {
+                return LSPConfiguration.emptyConfiguration
+            } else {
+                try {
+                    val json = com.google.gson.JsonParser.parseReader(reader)
+                    if (json != null && json.isJsonObject) {
+                        val jsonObject = json.asJsonObject
+                        val configMap = mapOf("global" to HashMap<String, Any>())
+
+                        fun flatten(scope: String?, key: String?, elem: JsonElement, map: Map<String, Map<String, Any?>>): Map<String, Map<String, Any?>> {
+                            val trueScope: String
+                            val trueKey: String
+                            if (scope == null) {
+                                if (key == null) {
+                                    trueScope = "global"
+                                    trueKey = ""
+                                } else if (key.startsWith("<") && key.endsWith(">")) {
+                                    if (!elem.isJsonObject) {
+                                        throw IllegalArgumentException("Check JSON file ${file.absolutePath}")
+                                    }
+                                    trueScope = key
+                                    trueKey = ""
                                 } else {
-                                    updatedMap + (trueScope to subMap + (trueKey to null))
+                                    trueScope = "global"
+                                    trueKey = key
                                 }
-                            else -> return updatedMap + (trueScope to subMap + (trueKey to null))
+                            } else {
+                                trueScope = scope
+                                trueKey = key ?: ""
+                            }
+                            val updatedMap = (if (!map.contains(trueScope)) {
+                                map + (trueScope to HashMap())
+                            } else map).toMutableMap()
+                            val subMap = updatedMap[trueScope]!!
+                            when (elem) {
+                                is JsonObject ->
+                                    return elem.keySet().map { k ->
+                                        flatten(trueScope, if (trueKey.isNotEmpty()) "$trueKey.$k" else k, elem.get(k), updatedMap)
+                                    }.fold(updatedMap) { map1, map2 -> combineConfigurations(map1, map2).toMutableMap() }
+                                is JsonArray -> {
+                                    return updatedMap + (trueScope to subMap + (trueKey to elem))
+                                }
+                                is JsonNull -> return updatedMap + (trueScope to subMap + (trueKey to null))
+                                is JsonPrimitive ->
+                                    return if (elem.isBoolean) {
+                                        updatedMap + (trueScope to subMap + (trueKey to elem.asBoolean))
+                                    } else if (elem.isNumber) {
+                                        updatedMap + (trueScope to subMap + (trueKey to elem.asNumber))
+                                    } else if (elem.isString) {
+                                        updatedMap + (trueScope to subMap + (trueKey to elem.asString))
+                                    } else {
+                                        updatedMap + (trueScope to subMap + (trueKey to null))
+                                    }
+                                else -> return updatedMap + (trueScope to subMap + (trueKey to null))
+                            }
                         }
+                        return LSPConfiguration(flatten("global", null, jsonObject, configMap))
+                    } else {
+                        return LSPConfiguration.invalidConfiguration
                     }
-                    return LSPConfiguration(flatten("global", null, jsonObject, configMap))
-                } else {
+                } catch (t: Throwable) {
+                    logger.warn("Error parsing JSON", t)
                     return LSPConfiguration.invalidConfiguration
                 }
-            } catch (t: Throwable) {
-                return LSPConfiguration.invalidConfiguration
             }
         }
     }
-}
 
-class XmlParser : ConfigurationParser {
-    override fun parse(file: File): LSPConfiguration {
-        val factory = DocumentBuilderFactory.newInstance()
-        val builder = factory.newDocumentBuilder()
-        val doc = builder.parse(file)
-        val root = doc.documentElement
-        throw UnsupportedOperationException()
+    class XmlParser : ConfigurationParser {
+        override fun parse(file: File): LSPConfiguration {
+            val factory = DocumentBuilderFactory.newInstance()
+            val builder = factory.newDocumentBuilder()
+            val doc = builder.parse(file)
+            val root = doc.documentElement
+            throw UnsupportedOperationException()
+        }
     }
-}
 
-class FlatParser : ConfigurationParser {
-    override fun parse(file: File): LSPConfiguration {
-        throw UnsupportedOperationException()
+    class FlatParser : ConfigurationParser {
+        override fun parse(file: File): LSPConfiguration {
+            throw UnsupportedOperationException()
+        }
     }
 }

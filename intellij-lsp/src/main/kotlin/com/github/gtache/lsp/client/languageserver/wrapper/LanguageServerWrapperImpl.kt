@@ -29,6 +29,7 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.wm.impl.status.widget.StatusBarWidgetsManager
 import org.eclipse.lsp4j.*
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException
 import org.eclipse.lsp4j.jsonrpc.messages.Either
@@ -90,9 +91,15 @@ class LanguageServerWrapperImpl(
     private val toConnect: MutableSet<Editor> = HashSet()
     private val rootPath = project.basePath
     private val connectedEditors: MutableMap<String, EditorEventManager> = HashMap()
-    private val statusWidget: LSPServerStatusWidget = LSPServerStatusWidget.createWidgetFor(this)
+    private val statusWidget: LSPServerStatusWidget? = LSPServerStatusWidget.widgets[project]
     private val registrations: MutableMap<String, DynamicRegistrationMethods> = HashMap()
     private var crashCount = 0
+
+    private val factory = (project.getService(StatusBarWidgetsManager::class.java).widgetFactories.filterIsInstance(LSPServerStatusWidgetFactory::class.java).head as LSPServerStatusWidgetFactory)
+
+    init {
+        factory.addWrapper(this)
+    }
 
     @Volatile
     private var alreadyShownTimeout = false
@@ -104,23 +111,17 @@ class LanguageServerWrapperImpl(
     override var status: ServerStatus = ServerStatus.STOPPED
         set(newStatus) {
             field = newStatus
-            statusWidget.setStatus(newStatus)
+            statusWidget?.statusUpdated(this)
         }
 
     override var languageServer: LanguageServer? = null
-        get() {
-            start()
-            if (initializeFuture != null && !initializeFuture!!.isDone) initializeFuture!!.join()
-            return field
-        }
-
     override var requestManager: RequestManager? = null
     override var configuration: LSPConfiguration? = null
         set(newConfiguration) {
             if (newConfiguration != null) {
                 if (newConfiguration.isValid()) {
                     field = newConfiguration
-                    requestManager!!.didChangeConfiguration(
+                    requestManager?.didChangeConfiguration(
                         DidChangeConfigurationParams(
                             newConfiguration.getAttributesForSectionAndUri(
                                 "",
@@ -198,8 +199,14 @@ class LanguageServerWrapperImpl(
         }
     }
 
+    override fun getServer(): LanguageServer? {
+        start()
+        if (initializeFuture != null && !initializeFuture!!.isDone) initializeFuture!!.join()
+        return languageServer
+    }
+
     override fun notifyResult(timeouts: Timeouts, success: Boolean): Unit {
-        statusWidget.notifyResult(timeouts, success)
+        statusWidget?.notifyResult(timeouts, success)
     }
 
     /**
@@ -227,8 +234,12 @@ class LanguageServerWrapperImpl(
         val uri = FileUtils.editorToURIString(editor)
         if (uri != null) {
             synchronized(uriToLanguageServerWrapper) {
-                FileUtils.editorToProjectFolderUri(editor)
-                    ?.let { uriToLanguageServerWrapper.put(Pair(uri, it), this) } ?: logger.warn("Null projectFolder for $editor")
+                val projectUri = FileUtils.editorToProjectFolderUri(editor)
+                if (projectUri != null) {
+                    uriToLanguageServerWrapper[Pair(uri, projectUri)] = this
+                } else {
+                    logger.warn("Null projectFolder for $editor")
+                }
             }
             if (!this.connectedEditors.contains(uri)) {
                 start()
@@ -238,11 +249,11 @@ class LanguageServerWrapperImpl(
                         initializeFuture!!.thenRun {
                             if (!this.connectedEditors.contains(uri)) {
                                 try {
-                                    val syncOptions: Either<TextDocumentSyncKind, TextDocumentSyncOptions>? = if (capabilities == null) null else capabilities.textDocumentSync
-                                    var syncKind: TextDocumentSyncKind = DummyServerOptions.SYNC_KIND
+                                    val syncOptions: Either<TextDocumentSyncKind, TextDocumentSyncOptions>? = capabilities.textDocumentSync
                                     if (syncOptions != null) {
-                                        if (syncOptions.isRight) syncKind = syncOptions.right.change
-                                        else if (syncOptions.isLeft) syncKind = syncOptions.left
+                                        val syncKind = if (syncOptions.isRight) syncOptions.right.change
+                                        else if (syncOptions.isLeft) syncOptions.left
+                                        else DummyServerOptions.SYNC_KIND
                                         val mouseListener = EditorMouseListenerImpl()
                                         val mouseMotionListener = EditorMouseMotionListenerImpl()
                                         val documentListener = DocumentListenerImpl()
@@ -257,13 +268,13 @@ class LanguageServerWrapperImpl(
                                         } else DummyServerOptions.RENAME
                                         val serverOptions = ServerOptions(
                                             syncKind,
-                                            capabilities.completionProvider,
-                                            capabilities.signatureHelpProvider,
-                                            capabilities.codeLensProvider,
-                                            capabilities.documentOnTypeFormattingProvider,
-                                            capabilities.documentLinkProvider,
-                                            capabilities.executeCommandProvider,
-                                            capabilities.semanticHighlighting,
+                                            capabilities.completionProvider ?: DummyServerOptions.COMPLETION,
+                                            capabilities.signatureHelpProvider ?: DummyServerOptions.SIGNATURE_HELP,
+                                            capabilities.codeLensProvider ?: DummyServerOptions.CODELENS,
+                                            capabilities.documentOnTypeFormattingProvider ?: DummyServerOptions.DOCUMENT_ON_TYPE_FORMATTING,
+                                            capabilities.documentLinkProvider ?: DummyServerOptions.DOCUMENT_LINK,
+                                            capabilities.executeCommandProvider ?: DummyServerOptions.EXECUTE_COMMAND,
+                                            capabilities.semanticHighlighting ?: DummyServerOptions.SEMANTIC_HIGHLIGHTING,
                                             renameOptions
                                         )
                                         val manager = EditorEventManager(
@@ -412,15 +423,15 @@ class LanguageServerWrapperImpl(
     override fun start(): Unit {
         if (status == ServerStatus.STOPPED || status == ServerStatus.FAILED) {
             status = ServerStatus.STARTING
-            rootPath?.let { rp ->
+            if (rootPath != null) {
                 try {
-                    val (inputStream, outputStream) = serverDefinition.start(rp)
+                    val (inputStream, outputStream) = serverDefinition.start(rootPath)
                     startLoggingServerErrors()
                     loadConfiguration()
                     client = serverDefinition.createLanguageClient()
                     client?.let { c ->
                         val initParams = InitializeParams()
-                        initParams.rootUri = FileUtils.pathToUri(rp)
+                        initParams.rootUri = FileUtils.pathToUri(rootPath)
                         val outWriter = getOutWriter()
 
                         val launcher =
@@ -449,10 +460,13 @@ class LanguageServerWrapperImpl(
 
                             initializeFuture = ls.initialize(initParams).thenApply { res ->
                                 initializeResult = res
-                                logger.info("Got initializeResult for $serverDefinition ; $rp")
+                                logger.info("Got initializeResult for $serverDefinition ; $rootPath")
                                 status = ServerStatus.STARTED
                                 requestManager = SimpleRequestManager(this, ls, c, res.capabilities)
                                 requestManager?.initialized(InitializedParams())
+                                configuration?.let {
+                                    requestManager?.didChangeConfiguration(DidChangeConfigurationParams(it.getAttributesForSectionAndUri("", "global")))
+                                }
                                 res
                             }
                             initializeStartTime = System.currentTimeMillis()
@@ -462,11 +476,11 @@ class LanguageServerWrapperImpl(
                     e.multicatch(LSPException::class, IOException::class) {
                         logger.warn(e)
                         ApplicationUtils.invokeLater { Messages.showErrorDialog("Can't start server, please check settings\n" + e.message, "LSP Error") }
-                        stop()
                         setFailed()
+                        stop()
                     }
                 }
-            } ?: logger.warn("RootPath is null")
+            } else logger.warn("RootPath is null")
         }
     }
 
@@ -553,11 +567,12 @@ class LanguageServerWrapperImpl(
     override fun crashed(e: Exception): Unit {
         crashCount += 1
         if (crashCount < 4) {
-            val editors = HashMap(connectedEditors).keys
             stop()
+            val editors = HashMap(connectedEditors).keys
             editors.forEach { uri -> connect(uri) }
         } else {
             setFailed()
+            stop()
             if (!alreadyShownCrash) ApplicationUtils.invokeLater {
                 if (!alreadyShownCrash)
                     Messages.showErrorDialog(
@@ -574,7 +589,8 @@ class LanguageServerWrapperImpl(
     }
 
     override fun removeWidget(): Unit {
-        statusWidget.dispose()
+        factory.removeWrapper(this)
+        statusWidget?.dispose()
     }
 
     /**
@@ -583,22 +599,29 @@ class LanguageServerWrapperImpl(
      * @param editor The editor
      */
     override fun disconnect(editor: Editor): Unit {
-        FileUtils.editorToURIString(editor)?.let { disconnect(it) } ?: logger.warn("Null uri for $editor")
+        val uri = FileUtils.editorToURIString(editor)
+        if (uri != null) {
+            disconnect(uri)
+        } else {
+            logger.warn("Null uri for $editor")
+        }
     }
 
     private fun setFailed(): Unit {
-        stop()
-        statusWidget.setStatus(ServerStatus.FAILED)
+        status = ServerStatus.FAILED
     }
 
     private fun connect(uri: String): Unit {
-        FileUtils.URIToVFS(uri)?.let {
-            val editors = FileEditorManager.getInstance(project).getAllEditors(it)
+        val vfs = FileUtils.URIToVFS(uri)
+        if (vfs != null) {
+            val editors = FileEditorManager.getInstance(project).getAllEditors(vfs)
                 .mapNotNull { t -> (t as TextEditor).editor }
             if (editors.isNotEmpty()) {
                 connect(editors.head)
             }
-        } ?: logger.warn("No VFS for $uri")
+        } else {
+            logger.warn("No VFS for $uri")
+        }
     }
 
     private fun startLoggingServerErrors(): Unit {
@@ -625,7 +648,7 @@ class LanguageServerWrapperImpl(
                 val errRunnable = ReaderPrinterRunnable(it, getLogPath("err"))
                 errLogThread = Thread(errRunnable)
                 errLogThread?.start()
-            } ?: logger.warn("Null error stream for $rootPath")
+            } ?: run { logger.warn("Null error stream for $rootPath") }
         } else logger.warn("Null rootpath")
     }
 

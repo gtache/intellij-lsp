@@ -5,9 +5,6 @@ import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServ
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapperImpl
 import com.github.gtache.lsp.contributors.LSPNavigationItem
-import com.github.gtache.lsp.editor.listeners.EditorListener
-import com.github.gtache.lsp.editor.listeners.FileDocumentManagerListenerImpl
-import com.github.gtache.lsp.editor.listeners.VFSListener
 import com.github.gtache.lsp.requests.Timeout
 import com.github.gtache.lsp.requests.Timeouts
 import com.github.gtache.lsp.settings.LSPState
@@ -15,13 +12,10 @@ import com.github.gtache.lsp.utils.ApplicationUtils
 import com.github.gtache.lsp.utils.ApplicationUtils.pool
 import com.github.gtache.lsp.utils.FileUtils
 import com.github.gtache.lsp.utils.GUIUtils
-import com.intellij.AppTopics
 import com.intellij.navigation.NavigationItem
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.ApplicationComponent
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.TextEditor
@@ -29,9 +23,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.ui.Messages
-import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.vfs.VirtualFileManager
 import org.eclipse.lsp4j.SymbolKind
 import org.eclipse.lsp4j.WorkspaceSymbolParams
 import java.util.concurrent.TimeUnit
@@ -250,9 +242,12 @@ class PluginMain : ApplicationComponent {
                                             forcedAssociationsInstances[t.key] = wrapper!!
                                         }
                                     }
-                                    FileUtils.editorToURIString(editor)?.let {
-                                        forcedAssociationsInstances.put(Pair(it, rootUri), wrapper!!)
-                                    } ?: logger.warn("Null uri for $editor")
+                                    val uri = FileUtils.editorToURIString(editor)
+                                    if (uri != null) {
+                                        forcedAssociationsInstances[Pair(uri, rootUri)] = wrapper!!
+                                    } else {
+                                        logger.warn("Null uri for $editor")
+                                    }
                                 }
                                 return wrapper
                             } else return wrapper

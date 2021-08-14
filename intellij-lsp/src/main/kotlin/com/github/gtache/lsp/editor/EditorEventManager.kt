@@ -230,7 +230,12 @@ class EditorEventManager(
     private val DCEs: MutableList<DocumentEvent> = ArrayList()
 
     init {
-        FileUtils.editorToURIString(editor)?.let { uriToManager[it] = this } ?: logger.warn("Null URI for $editor")
+        val uri = FileUtils.editorToURIString(editor)
+        if (uri != null) {
+            uriToManager[uri] = this
+        } else {
+            logger.warn("Null URI for $editor")
+        }
         editorToManager[editor] = this
         changesParams.textDocument.uri = identifier.uri
     }
@@ -409,7 +414,7 @@ class EditorEventManager(
                         val command = item.command
                         val commitChars = item.commitCharacters
                         val data = item.data
-                        val deprecated = item.deprecated
+                        val deprecated = item.deprecated ?: false
                         val detail = item.detail
                         val doc = item.documentation
                         val filterText = item.filterText
@@ -419,11 +424,11 @@ class EditorEventManager(
                         val label = item.label
                         val textEdit = item.textEdit
                         val sortText = item.sortText
-                        val presentableText = if (label != null && label != "") label else if (insertText != null) insertText else ""
+                        val presentableText = if (label != null && label != "") label else insertText ?: ""
                         val tailText = if (detail != null) "\t" + detail else ""
                         val iconProvider = GUIUtils.getIconProviderFor(wrapper.serverDefinition)
                         val icon = iconProvider.getCompletionIcon(kind)
-                        var lookupElementBuilder: LookupElementBuilder? = null
+                        var lookupElementBuilder: LookupElementBuilder?
                         /*            .,Renderer((element: LookupElement, presentation: LookupElementPresentation) -> { //TODO later
                                   presentation when {
                                     realPresentation: RealLookupElementPresentation ->
@@ -447,7 +452,9 @@ class EditorEventManager(
                                 if (addTextEdits != null) {
                                     applyEdit(edits = addTextEdits, name = "Additional Completions : $label")
                                 }
-                                execCommand(command)
+                                if (command != null) {
+                                    execCommand(command)
+                                }
                             }
                         }
 
@@ -456,7 +463,9 @@ class EditorEventManager(
                                 if (edit.isNotEmpty()) {
                                     applyEdit(edits = edit, name = "Completion : $label")
                                 }
-                                execCommand(command)
+                                if (command != null) {
+                                    execCommand(command)
+                                }
                                 if (moveToCaret) {
                                     editor.caretModel.moveCaretRelatively(textEdit.newText.length, 0, false, false, true)
                                 }
@@ -1161,19 +1170,19 @@ class EditorEventManager(
                 val listener = object : MouseAdapter() {
                     override fun mouseClicked(e: MouseEvent): Unit {
                         val file = LocalFileSystem.getInstance().findFileByIoFile(File(URI(FileUtils.sanitizeURI(l.uri))))
-                        file?.let {
+                        if (file != null) {
                             val descriptor = OpenFileDescriptor(project, file, l.startOffset)
                             writeAction {
                                 val newEditor = FileEditorManager.getInstance(project).openTextEditor(descriptor, true)
-                                newEditor?.let {
+                                if (newEditor != null) {
                                     if (l.startOffset != -1 && l.endOffset != -1) newEditor.selectionModel.setSelection(l.startOffset, l.endOffset)
-                                } ?: run {
+                                } else {
                                     logger.warn("newEditor is null for $descriptor")
                                 }
                             }
                             frame.isVisible = false
                             frame.dispose()
-                        } ?: run {
+                        } else {
                             logger.warn("file is null for ${l.uri}")
                         }
                     }
@@ -1562,19 +1571,19 @@ class EditorEventManager(
                             curEditor = computableWriteAction(Computable { FileEditorManager.getInstance(project).openTextEditor(descriptor, false) })
                             openedEditors += file
                         }
-                        curEditor?.let {
-                            val logicalStart = LSPPosToOffset(it, start)
-                            val logicalEnd = LSPPosToOffset(it, end)
-                            val name = it.document.getTextClamped(TextRange(logicalStart, logicalEnd))
+                        if (curEditor != null) {
+                            val logicalStart = LSPPosToOffset(curEditor, start)
+                            val logicalEnd = LSPPosToOffset(curEditor, end)
+                            val name = curEditor.document.getTextClamped(TextRange(logicalStart, logicalEnd))
                             LSPPsiElement(
                                 name,
                                 project,
                                 logicalStart,
                                 logicalEnd,
-                                PsiDocumentManager.getInstance(project).getPsiFile(it.document)!!,
-                                it
+                                PsiDocumentManager.getInstance(project).getPsiFile(curEditor.document)!!,
+                                curEditor
                             )
-                        } ?: run {
+                        } else {
                             logger.warn("Null editor in references")
                             null
                         }

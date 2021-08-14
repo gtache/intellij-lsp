@@ -125,10 +125,11 @@ object WorkspaceEditHandler {
                         val doc = textEdit.textDocument
                         val version = doc.version
                         val uri = FileUtils.sanitizeURI(doc.uri)
-                        val runnable = EditorEventManager.forUri(uri)?.let {
-                            curProject = it.editor.project
-                            it.getEditsRunnable(version, textEdit.edits, name)
-                        } ?: manageUnopenedEditor(textEdit.edits, uri, version)
+                        val manager = EditorEventManager.forUri(uri)
+                        val runnable = if (manager != null) {
+                            curProject = manager.editor.project
+                            manager.getEditsRunnable(version, textEdit.edits, name)
+                        } else manageUnopenedEditor(textEdit.edits, uri, version)
                         toApply += runnable
                     } else if (edit.isRight) {
                         val resourceOp = edit.right
@@ -141,10 +142,11 @@ object WorkspaceEditHandler {
             } else (if (edit.changes != null) edit.changes else null)?.forEach { edit ->
                 val uri = FileUtils.sanitizeURI(edit.key)
                 val changes = edit.value
-                val runnable = EditorEventManager.forUri(uri)?.let {
-                    curProject = it.editor.project
-                    it.getEditsRunnable(edits = changes, name = name)
-                } ?: manageUnopenedEditor(changes, uri)
+                val manager = EditorEventManager.forUri(uri)
+                val runnable = if (manager != null) {
+                    curProject = manager.editor.project
+                    manager.getEditsRunnable(edits = changes, name = name)
+                } else manageUnopenedEditor(changes, uri)
                 toApply += runnable
             }
             if (toApply.contains(null)) {

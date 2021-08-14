@@ -5,6 +5,7 @@ import com.github.gtache.lsp.client.languageserver.serverdefinition.UserConfigur
 import com.github.gtache.lsp.requests.Timeout
 import com.github.gtache.lsp.requests.Timeouts
 import com.github.gtache.lsp.utils.ApplicationUtils
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.components.State
@@ -13,6 +14,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.ui.Messages
 import com.intellij.util.xmlb.XmlSerializerUtil
 import java.util.*
+import kotlin.collections.HashMap
 
 @State(name = "LSPState", storages = [Storage(value = "LSPState.xml")])
 /**
@@ -27,10 +29,10 @@ class LSPState : PersistentStateComponent<LSPState> {
         set(value) {
             field = value.mapValues { it.value.copyOf() }.toMap()
         }
-    var timeouts: Map<Timeouts, Long> = EnumMap(Timeouts::class.java)
+    var timeouts: Map<Timeouts, Long> = HashMap(Timeouts.values().size)
         get() = field.toMap()
         set(value) {
-            field = EnumMap(value)
+            field = value.toMap()
         }
     var coursierResolvers: List<String> = ArrayList(5)
         get() = field.toList()
@@ -83,7 +85,7 @@ class LSPState : PersistentStateComponent<LSPState> {
         private val logger = Logger.getInstance(LSPState::class.java)
         @JvmStatic
         val instance: LSPState? = try {
-            ServiceManager.getService(LSPState::class.java)
+            ApplicationManager.getApplication().getService(LSPState::class.java)
         } catch (e: Exception) {
             logger.warn("Couldn't load LSPState : $e")
             ApplicationUtils.invokeLater {

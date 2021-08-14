@@ -6,14 +6,23 @@ import com.google.inject.name.Names
 import org.apache.maven.model.building.DefaultModelBuilderFactory
 import org.apache.maven.model.building.ModelBuilder
 import org.apache.maven.repository.internal.*
+import org.eclipse.aether.RepositoryListener
+import org.eclipse.aether.RepositorySystem
 import org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory
-import org.eclipse.aether.impl.ArtifactDescriptorReader
-import org.eclipse.aether.impl.MetadataGeneratorFactory
-import org.eclipse.aether.impl.VersionRangeResolver
-import org.eclipse.aether.impl.VersionResolver
+import org.eclipse.aether.impl.*
 import org.eclipse.aether.impl.guice.AetherModule
+import org.eclipse.aether.internal.impl.*
+import org.eclipse.aether.internal.impl.collect.DefaultDependencyCollector
 import org.eclipse.aether.spi.connector.RepositoryConnectorFactory
+import org.eclipse.aether.spi.connector.checksum.ChecksumPolicyProvider
+import org.eclipse.aether.spi.connector.layout.RepositoryLayoutFactory
+import org.eclipse.aether.spi.connector.layout.RepositoryLayoutProvider
 import org.eclipse.aether.spi.connector.transport.TransporterFactory
+import org.eclipse.aether.spi.connector.transport.TransporterProvider
+import org.eclipse.aether.spi.io.FileProcessor
+import org.eclipse.aether.spi.localrepo.LocalRepositoryManagerFactory
+import org.eclipse.aether.spi.log.Logger
+import org.eclipse.aether.spi.log.LoggerFactory
 import org.eclipse.aether.transport.file.FileTransporterFactory
 import org.eclipse.aether.transport.http.HttpTransporterFactory
 import java.util.*
@@ -22,9 +31,6 @@ import javax.inject.Singleton
 
 internal class LSPAetherModule : AbstractModule() {
     override fun configure() {
-        // NOTE: see org.eclipse.aether.impl.guice.AetherModule Javadoc:
-        // AetherModule alone is "ready-made" but incomplete. To have a complete resolver, we
-        // actually need to bind the missing components making module complete.
         install(AetherModule())
 
         // make module "complete" by binding things not bound by AetherModule

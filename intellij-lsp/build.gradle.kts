@@ -1,6 +1,5 @@
 import io.gitlab.arturbosch.detekt.Detekt
 import org.jetbrains.changelog.markdownToHTML
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 fun properties(key: String) = project.findProperty(key).toString()
 
@@ -10,11 +9,11 @@ plugins {
     // Kotlin support
     id("org.jetbrains.kotlin.jvm") version "1.5.10"
     // gradle-intellij-plugin - read more: https://github.com/JetBrains/gradle-intellij-plugin
-    id("org.jetbrains.intellij") version "1.0"
+    id("org.jetbrains.intellij") version "1.1.4"
     // gradle-changelog-plugin - read more: https://github.com/JetBrains/gradle-changelog-plugin
-    id("org.jetbrains.changelog") version "1.1.2"
+    id("org.jetbrains.changelog") version "1.2.1"
     // detekt linter - read more: https://detekt.github.io/detekt/gradle.html
-    id("io.gitlab.arturbosch.detekt") version "1.17.1"
+    id("io.gitlab.arturbosch.detekt") version "1.18.0"
     // ktlint linter - read more: https://github.com/JLLeitschuh/ktlint-gradle
     id("org.jlleitschuh.gradle.ktlint") version "10.0.0"
 }
@@ -27,15 +26,16 @@ repositories {
     mavenCentral()
 }
 dependencies {
-    detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.17.1")
+    detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.18.0")
     implementation("org.eclipse.lsp4j:org.eclipse.lsp4j:0.8.1")
     implementation("com.vladsch.flexmark:flexmark:0.42.12")
-    implementation("org.apache.maven.resolver:maven-resolver:1.7.1")
-    implementation("org.apache.maven.resolver:maven-resolver-transport-file:1.7.1")
-    implementation("org.apache.maven.resolver:maven-resolver-transport-http:1.7.1")
-    implementation("org.apache.maven.resolver:maven-resolver-connector-basic:1.7.1")
-    implementation("org.apache.maven:maven-resolver-provider:3.8.1")
+    implementation("org.apache.maven.resolver:maven-resolver:1.7.1") { exclude("org.slf4j") }
+    implementation("org.apache.maven.resolver:maven-resolver-transport-file:1.7.1") { exclude("org.slf4j") }
+    implementation("org.apache.maven.resolver:maven-resolver-transport-http:1.7.1") { exclude("org.slf4j") }
+    implementation("org.apache.maven.resolver:maven-resolver-connector-basic:1.7.1") { exclude("org.slf4j") }
+    implementation("org.apache.maven:maven-resolver-provider:3.8.1") { exclude("org.slf4j") }
     implementation("com.google.inject:guice:5.0.1")
+    implementation("com.google.code.gson:gson:2.8.7")
 }
 
 // Configure gradle-intellij-plugin plugin.
@@ -47,6 +47,7 @@ intellij {
     downloadSources.set(properties("platformDownloadSources").toBoolean())
     updateSinceUntilBuild.set(true)
 
+
     // Plugin Dependencies. Uses `platformPlugins` property from the gradle.properties file.
     plugins.set(properties("platformPlugins").split(',').map(String::trim).filter(String::isNotEmpty))
 }
@@ -54,8 +55,8 @@ intellij {
 // Configure gradle-changelog-plugin plugin.
 // Read more: https://github.com/JetBrains/gradle-changelog-plugin
 changelog {
-    version = properties("pluginVersion")
-    groups = emptyList()
+    version.set(properties("pluginVersion"))
+    groups.set(emptyList())
 }
 
 // Configure detekt plugin.
@@ -107,6 +108,11 @@ tasks {
 
     runPluginVerifier {
         ideVersions.set(properties("pluginVerifierIdeVersions").split(',').map(String::trim).filter(String::isNotEmpty))
+        downloadDir.set("D:\\caches\\pluginVerifier\\download")
+    }
+
+    runIde {
+        jvmArgs = listOf("-XX:+HeapDumpOnOutOfMemoryError", "-XX:HeapDumpPath=D:\\heapDump", "--add-exports", "java.base/jdk.internal.vm=ALL_UNNAMED")
     }
 
     publishPlugin {

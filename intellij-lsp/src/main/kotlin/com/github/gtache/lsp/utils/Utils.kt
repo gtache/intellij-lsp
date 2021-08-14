@@ -10,6 +10,7 @@ object Utils {
 
     @JvmStatic
     val bundle: ResourceBundle = ResourceBundle.getBundle("com.github.gtache.lsp.LSPBundle")
+
     @JvmStatic
     val lineSeparator: String = System.getProperty("line.separator")
 
@@ -22,7 +23,7 @@ object Utils {
         var wasEscaped = false
         val curStr = StringBuilder()
         strArr.forEach { str ->
-            for (i in 0..str.length) {
+            for (i in str.indices) {
                 when (str[i]) {
                     '\'' -> {
                         if (!wasEscaped) {

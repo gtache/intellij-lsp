@@ -35,7 +35,7 @@ open class ProcessStreamConnectionProvider(private var commands: Array<String>, 
             throw IOException("Unable to start language server: $this")
         }
         val builder = createProcessBuilder()
-        logger.info("Starting server process , commands $commands and workingDir $workingDir")
+        logger.info("Starting server process , commands ${commands.joinToString(" ")} and workingDir $workingDir")
         this.process = builder.start()
         if (!process!!.isAlive) throw IOException("Unable to start language server: $this") else logger.info("Server process started $process")
     }

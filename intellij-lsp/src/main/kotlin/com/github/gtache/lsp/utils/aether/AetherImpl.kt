@@ -40,7 +40,6 @@ object AetherImpl {
         for (resolver in resolvers) {
             try {
                 result = resolver.resolve(dep.first, dep.second, dep.third)
-                resolver.install(result.root.artifact, SubArtifact(result.root.artifact, null, "pom"))
             } catch (e: DependencyResolutionException) {
 
             }

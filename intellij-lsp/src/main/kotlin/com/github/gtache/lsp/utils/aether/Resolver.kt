@@ -1,6 +1,5 @@
 package com.github.gtache.lsp.utils.aether
 
-import com.github.gtache.lsp.head
 import com.google.inject.Guice
 import com.intellij.openapi.diagnostic.Logger
 import org.apache.maven.repository.internal.MavenRepositorySystemUtils

@@ -21,9 +21,8 @@
     <resource-bundle>com.github.gtache.lsp.LSPBundle</resource-bundle>
 
     <applicationListeners>
-        <listener class="com.github.gtache.lsp.editor.listeners.EditorListener" topic="com.intellij.openapi.editor.event.EditorFactoryListener"/>
-        <listener class="com.github.gtache.lsp.editor.listeners.VFSListener" topic="com.intellij.openapi.vfs.VirtualFileListener"/>
-        <listener class="com.github.gtache.lsp.editor.listeners.FileDocumentManagerListenerImpl" topic="com.intellij.openapi.fileEditor.FileDocumentManagerListener"/>
+        <listener class="com.github.gtache.lsp.editor.listeners.VFSListener"
+                  topic="com.intellij.openapi.vfs.VirtualFileListener"/>
     </applicationListeners>
 
     <extensionPoints>
@@ -32,6 +31,8 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Add your extensions here -->
+        <fileDocumentManagerListener implementation="com.github.gtache.lsp.editor.listeners.FileDocumentManagerListenerImpl" />
+        <editorFactoryListener implementation="com.github.gtache.lsp.editor.listeners.EditorListener" />
         <applicationConfigurable instance="com.github.gtache.lsp.settings.MiscSettings" id="MiscSettings"
                                  groupId="language" displayName="Language Server Protocol"/>
         <applicationConfigurable parentId="MiscSettings" id="ServerSettings" displayName="Server Definitions"
@@ -64,6 +65,8 @@
                                    id="LSPRenameProcessor" order="first"/>
         <lang.documentationProvider implementationClass="com.github.gtache.lsp.contributors.LSPDocumentationProvider"
                                     id="LSPDocumentationProvider" language="TEXT" order="first"/>
+        <statusBarWidgetFactory
+                implementation="com.github.gtache.lsp.client.languageserver.LSPServerStatusWidgetFactory"/>
 
         <!--        <lang.findUsagesProvider implementationClass="com.github.gtache.lsp.contributors.LSPFindUsagesProvider" id="LSPFindUsagesProvider" language="TEXT" order="first" />
                 <findUsagesHandlerFactory implementation="com.github.gtache.lsp.contributors.LSPFindUsagesHandlerFactory" id="LSPFindUsagesHandlerFactory" />-->

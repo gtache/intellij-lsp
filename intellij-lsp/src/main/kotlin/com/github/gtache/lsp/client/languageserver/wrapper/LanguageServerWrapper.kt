@@ -157,4 +157,5 @@ interface LanguageServerWrapper {
      * @return The server capabilities
      */
     fun getServerCapabilities(): ServerCapabilities?
+    fun getServer(): LanguageServer?
 }
