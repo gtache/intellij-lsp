@@ -1,6 +1,7 @@
 package com.github.gtache.lsp.contributors.rename
 
-import com.github.gtache.lsp.editor.EditorEventManager
+import com.github.gtache.lsp.editor.EditorApplicationService
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.psi.PsiElement
@@ -22,7 +23,7 @@ class LSPInplaceRenamer(
     }
 
     override fun collectRefs(referencesSearchScope: SearchScope): Collection<PsiReference> {
-        val manager = EditorEventManager.forEditor(editor)
+        val manager = service<EditorApplicationService>().forEditor(editor)
         return if (manager != null) {
             val (references, toClose) = manager.references(editor.caretModel.currentCaret.offset, getOriginalElement = true)
             LSPRenameProcessor.addEditors(toClose)

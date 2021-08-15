@@ -50,7 +50,7 @@ fun String.runCommand(workingDir: File): String? {
             .start()
         proc.waitFor(1, TimeUnit.MINUTES)
         proc.inputStream.bufferedReader().readText()
-    } catch(e: IOException) {
+    } catch (e: IOException) {
         e.printStackTrace()
         null
     }

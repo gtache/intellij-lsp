@@ -5,8 +5,9 @@ import com.github.gtache.lsp.client.connection.StreamConnectionProvider
 import com.github.gtache.lsp.head
 import com.github.gtache.lsp.tail
 import com.github.gtache.lsp.utils.Utils
-import com.github.gtache.lsp.utils.aether.AetherImpl
+import com.github.gtache.lsp.utils.aether.Aether
 import com.github.gtache.lsp.utils.coursier.AetherException
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import java.util.*
 
@@ -55,7 +56,7 @@ data class ArtifactLanguageServerDefinition(
     }
 
     override fun createConnectionProvider(workingDir: String): StreamConnectionProvider {
-        val classpath = AetherImpl.resolveClasspath(packge)
+        val classpath = service<Aether>().resolveClasspath(packge)
         if (classpath != null) {
             val argList = mutableListOf("java", "-cp", classpath, mainClass)
             argList.addAll(args)

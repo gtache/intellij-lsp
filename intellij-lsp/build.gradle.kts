@@ -112,7 +112,7 @@ tasks {
     }
 
     runIde {
-        jvmArgs = listOf("-XX:+HeapDumpOnOutOfMemoryError", "-XX:HeapDumpPath=D:\\heapDump", "--add-exports", "java.base/jdk.internal.vm=ALL_UNNAMED")
+        jvmArgs = listOf("-XX:+HeapDumpOnOutOfMemoryError", "-XX:HeapDumpPath=D:\\heapDump", "--add-exports", "java.base/jdk.internal.vm=ALL-UNNAMED")
     }
 
     publishPlugin {

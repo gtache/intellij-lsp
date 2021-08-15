@@ -1,10 +1,11 @@
 package com.github.gtache.lsp.contributors.fixes
 
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
-import com.github.gtache.lsp.editor.EditorEventManager
+import com.github.gtache.lsp.editor.EditorApplicationService
 import com.github.gtache.lsp.requests.WorkspaceEditHandler
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import org.eclipse.lsp4j.CodeAction
@@ -20,8 +21,8 @@ class LSPCodeActionFix(private val uri: String, private val codeAction: CodeActi
     override fun applyFix(project: Project, descriptor: ProblemDescriptor): Unit {
         val psiElement = descriptor.psiElement
         if (psiElement is LSPPsiElement) {
-            if (codeAction.edit != null) WorkspaceEditHandler.applyEdit(codeAction.edit, codeAction.title)
-            EditorEventManager.forUri(uri)?.executeCommands(listOf(codeAction.command))
+            if (codeAction.edit != null) WorkspaceEditHandler.applyEdit(codeAction.edit, project, codeAction.title)
+            service<EditorApplicationService>().forEditor(psiElement.editor)?.executeCommands(listOf(codeAction.command))
         }
     }
 

@@ -1,13 +1,15 @@
 package com.github.gtache.lsp.requests
 
-import com.github.gtache.lsp.editor.EditorEventManager
+import com.github.gtache.lsp.editor.EditorProjectService
 import com.github.gtache.lsp.utils.FileUtils
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.HighlighterColors
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.editor.markup.TextAttributes
+import com.intellij.openapi.project.Project
 import org.eclipse.lsp4j.SemanticHighlightingParams
 import java.awt.Color
 import java.awt.Font
@@ -98,11 +100,11 @@ object SemanticHighlightingHandler {
         )
     }
 
-    fun handlePush(params: SemanticHighlightingParams): Unit {
+    fun handlePush(params: SemanticHighlightingParams, project: Project): Unit {
         val doc = params.textDocument
         val lines = params.lines
         if (doc != null && doc.uri != null && lines != null && lines.isNotEmpty()) {
-            EditorEventManager.forUri(FileUtils.sanitizeURI(doc.uri))?.semanticHighlighting(lines)
+            project.service<EditorProjectService>().forUri(FileUtils.sanitizeURI(doc.uri))?.semanticHighlighting(lines)
         } else logger.warn("Null semanticHighlighting identifier or lines : $doc ; $lines")
     }
 

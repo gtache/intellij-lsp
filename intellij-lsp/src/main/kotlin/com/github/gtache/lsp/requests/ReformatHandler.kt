@@ -1,9 +1,11 @@
 package com.github.gtache.lsp.requests
 
-import com.github.gtache.lsp.PluginMain
-import com.github.gtache.lsp.editor.EditorEventManager
+import com.github.gtache.lsp.LSPProjectService
+import com.github.gtache.lsp.editor.EditorApplicationService
+import com.github.gtache.lsp.editor.EditorProjectService
 import com.github.gtache.lsp.utils.ApplicationUtils
 import com.github.gtache.lsp.utils.FileUtils
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
@@ -29,7 +31,7 @@ object ReformatHandler {
             if (fileOrDir.isDirectory) {
                 true
             } else {
-                if (PluginMain.isExtensionSupported(fileOrDir.extension)) {
+                if (project.service<LSPProjectService>().isExtensionSupported(fileOrDir.extension)) {
                     reformatFile(fileOrDir, project)
                     true
                 } else {
@@ -48,10 +50,10 @@ object ReformatHandler {
      * @param project The project
      */
     fun reformatFile(file: VirtualFile, project: Project): Unit {
-        if (PluginMain.isExtensionSupported(file.extension)) {
+        if (project.service<LSPProjectService>().isExtensionSupported(file.extension)) {
             val uri = FileUtils.VFSToURI(file)
             if (uri != null) {
-                val manager = EditorEventManager.forUri(uri)
+                val manager = project.service<EditorProjectService>().forUri(uri)
                 if (manager != null) {
                     manager.reformat()
                 } else {
@@ -62,7 +64,7 @@ object ReformatHandler {
                             fileEditorManager.openTextEditor(descriptor, false)
                         }
                         if (editor != null) {
-                            EditorEventManager.forEditor(editor)?.reformat(closeAfter = true)
+                            service<EditorApplicationService>().forEditor(editor)?.reformat(closeAfter = true)
                         }
                     }
                 }
@@ -76,7 +78,7 @@ object ReformatHandler {
      * @param editor The editor
      */
     fun reformatFile(editor: Editor): Unit {
-        EditorEventManager.forEditor(editor)?.reformat()
+        service<EditorApplicationService>().forEditor(editor)?.reformat()
     }
 
 
@@ -86,7 +88,7 @@ object ReformatHandler {
      * @param editor The editor
      */
     fun reformatSelection(editor: Editor): Unit {
-        EditorEventManager.forEditor(editor)?.reformatSelection()
+        service<EditorApplicationService>().forEditor(editor)?.reformatSelection()
     }
 
 }

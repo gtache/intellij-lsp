@@ -1,7 +1,8 @@
 package com.github.gtache.lsp.contributors.gotoo
 
-import com.github.gtache.lsp.PluginMain
+import com.github.gtache.lsp.LSPProjectService
 import com.intellij.navigation.ChooseByNameContributor
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 
@@ -14,6 +15,6 @@ interface LSPGotoContributor : ChooseByNameContributor {
     }
 
     override fun getNames(project: Project, includeNonProjectItems: Boolean): Array<String> {
-        return PluginMain.workspaceSymbols("", "", project, includeNonProjectItems).mapNotNull { f -> f.name }.toTypedArray()
+        return project.service<LSPProjectService>().workspaceSymbols("", "", includeNonProjectItems).mapNotNull { f -> f.name }.toTypedArray()
     }
 }

@@ -1,5 +1,6 @@
 package com.github.gtache.lsp.actions
 
+import com.github.gtache.lsp.editor.EditorApplicationService
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.head
 import com.intellij.codeInsight.hint.HintManager
@@ -9,6 +10,7 @@ import com.intellij.find.findUsages.FindUsagesOptions
 import com.intellij.find.findUsages.PsiElement2UsageTargetAdapter
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.LogicalPosition
 import com.intellij.openapi.project.DumbAwareAction
@@ -31,7 +33,7 @@ class LSPReferencesAction : DumbAwareAction() {
     override fun actionPerformed(e: AnActionEvent): Unit {
         val editor = e.getData(CommonDataKeys.EDITOR)
         if (editor != null) {
-            val targets = (EditorEventManager.forEditor(editor)
+            val targets = (service<EditorApplicationService>().forEditor(editor)
                 ?.references(editor.caretModel.currentCaret.offset, getOriginalElement = true, close = true)?.first
                 ?: emptyList())
                 .map { r -> PsiElement2UsageTargetAdapter(r, true) }
@@ -84,7 +86,7 @@ class LSPReferencesAction : DumbAwareAction() {
         val title = FindBundle.message("find.usages.of.element.in.scope.panel.title", usagesString, UsageViewUtil.getLongName(psiElement), scopeString)
         presentation.tabText = title
         presentation.tabName = FindBundle.message("find.usages.of.element.tab.name", usagesString, UsageViewUtil.getShortName(psiElement))
-        presentation.setTargetsNodeText(StringUtil.capitalize(UsageViewUtil.getType(psiElement)))
+        presentation.targetsNodeText = StringUtil.capitalize(UsageViewUtil.getType(psiElement))
         presentation.isOpenInNewTab = toOpenInNewTab
         return presentation
     }

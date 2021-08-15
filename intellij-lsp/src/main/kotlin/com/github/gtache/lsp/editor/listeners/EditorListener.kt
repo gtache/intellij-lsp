@@ -1,6 +1,8 @@
 package com.github.gtache.lsp.editor.listeners
 
-import com.github.gtache.lsp.PluginMain
+import com.github.gtache.lsp.LSPProjectService
+import com.github.gtache.lsp.editor.EditorApplicationService
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.event.EditorFactoryEvent
 import com.intellij.openapi.editor.event.EditorFactoryListener
@@ -15,10 +17,12 @@ class EditorListener : EditorFactoryListener {
     }
 
     override fun editorReleased(editorFactoryEvent: EditorFactoryEvent): Unit {
-        PluginMain.editorClosed(editorFactoryEvent.editor)
+        service<EditorApplicationService>().editorClosed(editorFactoryEvent.editor)
+        editorFactoryEvent.editor.project?.service<LSPProjectService>()?.editorClosed(editorFactoryEvent.editor)
     }
 
     override fun editorCreated(editorFactoryEvent: EditorFactoryEvent): Unit {
-        PluginMain.editorOpened(editorFactoryEvent.editor)
+        service<EditorApplicationService>().editorOpened(editorFactoryEvent.editor)
+        editorFactoryEvent.editor.project?.service<LSPProjectService>()?.editorOpened(editorFactoryEvent.editor)
     }
 }

@@ -1,7 +1,8 @@
 package com.github.gtache.lsp.settings.gui;
 
-import com.github.gtache.lsp.PluginMain;
-import com.github.gtache.lsp.settings.LSPState;
+import com.github.gtache.lsp.LSPProjectService;
+import com.github.gtache.lsp.settings.LSPProjectState;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
@@ -12,16 +13,19 @@ import javax.swing.*;
 import java.awt.*;
 
 public final class MiscGUI implements LSPGUI {
-    private final LSPState state = state();
     private JPanel rootPanel;
     private JCheckBox alwaysSendRequestsCheckBox;
     private JButton resetCustomAssociationsButton;
     private JCheckBox logServersCommunicationsCheckBox;
+    private final LSPProjectState state;
+    private final LSPProjectService service;
 
-    public MiscGUI() {
+    public MiscGUI(final Project project) {
+        state = project.getService(LSPProjectState.class);
+        service = project.getService(LSPProjectService.class);
         resetCustomAssociationsButton.addActionListener((e) -> {
             if (Messages.showYesNoCancelDialog(rootPanel, "This will remove all manually added associations. Proceed?", "Remove all associations", Messages.getWarningIcon()) == Messages.YES) {
-                PluginMain.resetAssociations();
+                service.resetAssociations();
             }
         });
     }
@@ -48,13 +52,8 @@ public final class MiscGUI implements LSPGUI {
     public void apply() {
         if (state != null) {
             state.setAlwaysSendRequests(alwaysSendRequestsCheckBox.isSelected());
-            state.setLogServersOutput(logServersCommunicationsCheckBox.isSelected());
+            state.setLoggingServersOutput(logServersCommunicationsCheckBox.isSelected());
         }
-    }
-
-    @Override
-    public LSPState state() {
-        return LSPGUI.Companion.getLspState();
     }
 
     {

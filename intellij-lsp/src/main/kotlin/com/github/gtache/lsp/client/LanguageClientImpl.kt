@@ -1,12 +1,13 @@
 package com.github.gtache.lsp.client
 
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
-import com.github.gtache.lsp.editor.EditorEventManager
+import com.github.gtache.lsp.editor.EditorProjectService
 import com.github.gtache.lsp.requests.SemanticHighlightingHandler
 import com.github.gtache.lsp.requests.WorkspaceEditHandler
 import com.github.gtache.lsp.utils.ApplicationUtils
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.ui.Messages
 import com.intellij.util.ui.UIUtil
@@ -40,8 +41,14 @@ class LanguageClientImpl : LanguageClient {
     }
 
     override fun applyEdit(params: ApplyWorkspaceEditParams): CompletableFuture<ApplyWorkspaceEditResponse> {
-        return CompletableFuture.supplyAsync {
-            ApplyWorkspaceEditResponse(WorkspaceEditHandler.applyEdit(params.edit))
+        val project = wrapper?.project
+        return if (project != null) {
+            CompletableFuture.supplyAsync {
+                ApplyWorkspaceEditResponse(WorkspaceEditHandler.applyEdit(params.edit, project))
+            }
+        } else {
+            logger.warn("Null project for $this")
+            CompletableFuture.completedFuture(ApplyWorkspaceEditResponse(false))
         }
     }
 
@@ -65,7 +72,7 @@ class LanguageClientImpl : LanguageClient {
     override fun publishDiagnostics(publishDiagnosticsParams: PublishDiagnosticsParams): Unit {
         val uri = FileUtils.sanitizeURI(publishDiagnosticsParams.uri)
         val diagnostics = publishDiagnosticsParams.diagnostics
-        EditorEventManager.forUri(uri)?.diagnostics(diagnostics)
+        wrapper?.project?.service<EditorProjectService>()?.forUri(uri)?.diagnostics(diagnostics)
     }
 
     override fun showMessage(messageParams: MessageParams): Unit {
@@ -121,6 +128,9 @@ class LanguageClientImpl : LanguageClient {
     }
 
     override fun semanticHighlighting(params: SemanticHighlightingParams): Unit {
-        SemanticHighlightingHandler.handlePush(params)
+        val project = wrapper?.project
+        if (project != null) {
+            SemanticHighlightingHandler.handlePush(params, project)
+        }
     }
 }

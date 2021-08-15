@@ -12,7 +12,7 @@ import org.eclipse.lsp4j.jsonrpc.validation.NonNull
  */
 object HoverHandler {
 
-    const val MARKUP_PLAIN: String = "plaintext";
+    const val MARKUP_PLAIN: String = "plaintext"
     const val MARKUP_MARKUP: String = "markup"
 
     private val logger: Logger = Logger.getInstance(HoverHandler::class.java)

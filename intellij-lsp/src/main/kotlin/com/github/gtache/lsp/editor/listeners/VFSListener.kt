@@ -13,7 +13,7 @@ object VFSListener : VirtualFileListener {
      *
      * @param event the event object containing information about the change.
      */
-    override fun propertyChanged(event: VirtualFilePropertyEvent): Unit {
+    override fun propertyChanged(event: VirtualFilePropertyEvent) {
         if (event.propertyName == VirtualFile.PROP_NAME) FileEventManager.fileRenamed(event.oldValue as String, event.newValue as String)
     }
 

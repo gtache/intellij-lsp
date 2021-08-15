@@ -8,8 +8,12 @@
 
     <change-notes>
         <![CDATA[
-        -Rewrite for new IntelliJ plugin development best practices
+        -Changes Coursier to Aether
+        -Converts all code to Kotlin
+        -Refactoring for new IntelliJ plugin development best practices
+        -Adds per-project settings
         -Updates to IntelliJ 2021.2
+        -Updates some dependencies
 ]]>
     </change-notes>
 
@@ -31,20 +35,38 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Add your extensions here -->
-        <fileDocumentManagerListener implementation="com.github.gtache.lsp.editor.listeners.FileDocumentManagerListenerImpl" />
-        <editorFactoryListener implementation="com.github.gtache.lsp.editor.listeners.EditorListener" />
-        <applicationConfigurable instance="com.github.gtache.lsp.settings.MiscSettings" id="MiscSettings"
-                                 groupId="language" displayName="Language Server Protocol"/>
-        <applicationConfigurable parentId="MiscSettings" id="ServerSettings" displayName="Server Definitions"
-                                 instance="com.github.gtache.lsp.settings.ServersSettings"/>
+        <fileDocumentManagerListener
+                implementation="com.github.gtache.lsp.editor.listeners.FileDocumentManagerListenerImpl"/>
+        <editorFactoryListener implementation="com.github.gtache.lsp.editor.listeners.EditorListener"/>
+        <projectConfigurable instance="com.github.gtache.lsp.settings.MiscSettings" id="MiscSettings"
+                             groupId="language" displayName="Language Server Protocol"/>
+        <projectConfigurable parentId="MiscSettings" id="ServerSettings" displayName="Server Definitions"
+                             instance="com.github.gtache.lsp.settings.ServersSettings"/>
         <applicationConfigurable parentId="MiscSettings" id="TimeoutSettings" displayName="Timeouts"
                                  instance="com.github.gtache.lsp.settings.TimeoutSettings"/>
-        <applicationConfigurable parentId="MiscSettings" id="CoursierSettings" displayName="Coursier"
+        <applicationConfigurable parentId="MiscSettings" id="ArtifactSettings" displayName="Artifacts"
                                  instance="com.github.gtache.lsp.settings.ArtifactSettings"/>
 
-        <applicationService id="LSPState"
-                            serviceInterface="com.github.gtache.lsp.settings.LSPState"
-                            serviceImplementation="com.github.gtache.lsp.settings.LSPState"/>
+        <projectService id="LSPProjectService"
+                        serviceInterface="com.github.gtache.lsp.LSPProjectService"
+                        serviceImplementation="com.github.gtache.lsp.LSPProjectServiceImpl"/>
+        <applicationService id="LSPApplicationService"
+                            serviceInterface="com.github.gtache.lsp.LSPApplicationService"
+                            serviceImplementation="com.github.gtache.lsp.LSPApplicationServiceImpl"/>
+        <projectService id="EditorProjectService"
+                        serviceInterface="com.github.gtache.lsp.editor.EditorProjectService"
+                        serviceImplementation="com.github.gtache.lsp.editor.EditorProjectServiceImpl"/>
+        <applicationService id="EditorApplicationService"
+                            serviceInterface="com.github.gtache.lsp.editor.EditorApplicationService"
+                            serviceImplementation="com.github.gtache.lsp.editor.EditorApplicationServiceImpl"/>
+        <projectService id="LSPProjectState"
+                        serviceInterface="com.github.gtache.lsp.settings.LSPProjectState"
+                        serviceImplementation="com.github.gtache.lsp.settings.LSPProjectStateImpl"/>
+        <applicationService id="LSPApplicationState"
+                            serviceInterface="com.github.gtache.lsp.settings.LSPApplicationState"
+                            serviceImplementation="com.github.gtache.lsp.settings.LSPApplicationStateImpl"/>
+        <applicationService id="Aether" serviceInterface="com.github.gtache.lsp.utils.aether.Aether"
+                            serviceImplementation="com.github.gtache.lsp.utils.aether.AetherImpl"/>
 
         <gotoSymbolContributor implementation="com.github.gtache.lsp.contributors.gotoo.LSPGotoSymbolContributor"
                                id="LSPGotoSymbolContributor"/>
@@ -94,12 +116,4 @@
             <keyboard-shortcut first-keystroke="shift alt F8" keymap="$default"/>
         </action>
     </actions>
-
-    <application-components>
-        <component>
-            <implementation-class>com.github.gtache.lsp.PluginMain</implementation-class>
-        </component>
-    </application-components>
-    <project-components>
-    </project-components>
 </idea-plugin>

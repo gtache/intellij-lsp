@@ -17,12 +17,13 @@ import com.github.gtache.lsp.multicatch
 import com.github.gtache.lsp.requests.Timeout
 import com.github.gtache.lsp.requests.Timeouts
 import com.github.gtache.lsp.reversed
-import com.github.gtache.lsp.settings.LSPState
+import com.github.gtache.lsp.settings.LSPProjectState
 import com.github.gtache.lsp.settings.server.LSPConfiguration
 import com.github.gtache.lsp.utils.ApplicationUtils
 import com.github.gtache.lsp.utils.FileUtils
 import com.github.gtache.lsp.utils.LSPException
 import com.google.gson.JsonObject
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -95,7 +96,7 @@ class LanguageServerWrapperImpl(
     private val registrations: MutableMap<String, DynamicRegistrationMethods> = HashMap()
     private var crashCount = 0
 
-    private val factory = (project.getService(StatusBarWidgetsManager::class.java).widgetFactories.filterIsInstance(LSPServerStatusWidgetFactory::class.java).head as LSPServerStatusWidgetFactory)
+    private val factory = project.service<StatusBarWidgetsManager>().widgetFactories.filterIsInstance(LSPServerStatusWidgetFactory::class.java).head
 
     init {
         factory.addWrapper(this)
@@ -364,7 +365,7 @@ class LanguageServerWrapperImpl(
             if (!it.isCancelled) it.cancel(true)
             this.launcherFuture = null
         }
-        if (serverDefinition != null && rootPath != null) serverDefinition.stop(rootPath)
+        if (rootPath != null) serverDefinition.stop(rootPath)
         connectedEditors.forEach { e -> disconnect(e.key) }
         languageServer = null
         status = ServerStatus.STOPPED
@@ -435,7 +436,7 @@ class LanguageServerWrapperImpl(
                         val outWriter = getOutWriter()
 
                         val launcher =
-                            if (LSPState.instance?.isLoggingServersOutput == true) LSPLauncher.createClientLauncher(
+                            if (project.service<LSPProjectState>().isLoggingServersOutput) LSPLauncher.createClientLauncher(
                                 c,
                                 inputStream,
                                 outputStream,

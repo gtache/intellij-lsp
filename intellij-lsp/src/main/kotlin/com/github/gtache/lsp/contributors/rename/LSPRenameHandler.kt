@@ -1,13 +1,14 @@
 package com.github.gtache.lsp.contributors.rename
 
-import com.github.gtache.lsp.PluginMain
+import com.github.gtache.lsp.LSPProjectService
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
-import com.github.gtache.lsp.editor.EditorEventManager
+import com.github.gtache.lsp.editor.EditorApplicationService
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.codeInsight.template.impl.TemplateManagerImpl
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.command.impl.StartMarkAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
@@ -40,7 +41,7 @@ class LSPRenameHandler : RenameHandler {
     }
 
     override fun invoke(project: Project, editor: Editor, file: PsiFile, dataContext: DataContext): Unit {
-        val manager = EditorEventManager.forEditor(editor)
+        val manager = service<EditorApplicationService>().forEditor(editor)
         if (manager != null) {
             if (editor.contentComponent.hasFocus()) {
                 val psiElement = manager.getElementAtOffset(editor.caretModel.currentCaret.offset)
@@ -108,13 +109,17 @@ class LSPRenameHandler : RenameHandler {
     private fun isAvailable(psiElement: PsiElement?, editor: Editor, psiFile: PsiFile): Boolean {
         return when (psiElement) {
             is PsiFile -> {
-                EditorEventManager.forEditor(editor)?.canRename() ?: false
+                service<EditorApplicationService>().forEditor(editor)?.canRename() ?: false
             }
             is LSPPsiElement -> {
-                EditorEventManager.forEditor(editor)?.canRename(psiElement.textOffset) ?: false
+                service<EditorApplicationService>().forEditor(editor)?.canRename(psiElement.textOffset) ?: false
                 //IntelliJ 2018 returns psiElement null for unsupported languages
             }
-            else -> psiElement == null && FileUtils.extFromPsiFile(psiFile)?.let { PluginMain.isExtensionSupported(it) } ?: false
+            else -> {
+                val project = editor.project ?: psiFile.project
+
+                psiElement == null && FileUtils.extFromPsiFile(psiFile)?.let { project.service<LSPProjectService>().isExtensionSupported(it) } ?: false
+            }
         }
     }
 

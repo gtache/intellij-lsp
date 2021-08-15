@@ -1,12 +1,13 @@
 package com.github.gtache.lsp.settings.gui
 
-import com.github.gtache.lsp.PluginMain
+import com.github.gtache.lsp.LSPProjectService
 import com.github.gtache.lsp.client.languageserver.serverdefinition.*
-import com.github.gtache.lsp.settings.LSPState
-import com.github.gtache.lsp.settings.LSPState.Companion.instance
+import com.github.gtache.lsp.settings.LSPProjectState
 import com.github.gtache.lsp.utils.Utils
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.TextBrowseFolderListener
@@ -29,8 +30,7 @@ import javax.swing.*
  */
 //TODO improve
 //TODO add checkbox "LOG messages to/from this server"
-class ServersGUI : LSPGUI {
-    private val state = instance
+class ServersGUI(private val project: Project) : LSPGUI {
     private val rootPanel: JPanel = JPanel()
     private val rows: MutableList<ServersGUIRow> = ArrayList(5)
     private val serverDefinitions: MutableMap<String, UserConfigurableServerDefinition> = LinkedHashMap(5)
@@ -89,8 +89,8 @@ class ServersGUI : LSPGUI {
                 serverDefinitions[ext] = serverDefinition
             }
         }
-        LSPState.instance?.extToServ = serverDefinitions.mapValues { it.value.toArray() }
-        PluginMain.setExtToServerDefinition(serverDefinitions)
+        project.service<LSPProjectState>().extToServ = serverDefinitions.mapValues { it.value.toArray() }
+        project.service<LSPProjectService>().extToServerDefinition = serverDefinitions
     }
 
     override fun isModified(): Boolean {
@@ -112,14 +112,13 @@ class ServersGUI : LSPGUI {
 
     override fun reset() {
         this.clear()
-        if (state != null) {
-            if (state.extToServ.isNotEmpty()) {
-                for (serverDefinition in state.extToServ.values) {
-                    addServerDefinition(UserConfigurableServerDefinition.fromArray(serverDefinition))
-                }
-            } else {
-                rootPanel.add(createArtifactRow("", "", "", ""))
+        val state = project.service<LSPProjectState>()
+        if (state.extToServ.isNotEmpty()) {
+            for (serverDefinition in state.extToServ.values) {
+                addServerDefinition(UserConfigurableServerDefinition.fromArray(serverDefinition))
             }
+        } else {
+            rootPanel.add(createArtifactRow("", "", "", ""))
         }
     }
 
@@ -395,7 +394,7 @@ class ServersGUI : LSPGUI {
         val pathLabel: JLabel = JBLabel(FILE_PATH_LABEL)
         val pathField = TextFieldWithBrowseButton()
         pathField.toolTipText = "e.g. C:\\rustLS\\rls.exe"
-        pathField.setText(path)
+        pathField.text = path
         pathField.addBrowseFolderListener(TextBrowseFolderListener(FileChooserDescriptor(true, false, true, true, true, false).withShowHiddenFiles(true)))
         val argsLabel: JLabel = JBLabel("Args")
         val argsField = JTextArea()

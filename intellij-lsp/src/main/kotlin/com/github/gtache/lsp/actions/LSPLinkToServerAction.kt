@@ -1,12 +1,13 @@
 package com.github.gtache.lsp.actions
 
-import com.github.gtache.lsp.PluginMain
+import com.github.gtache.lsp.LSPProjectService
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapperImpl
 import com.github.gtache.lsp.settings.gui.ComboCheckboxDialog
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -53,45 +54,54 @@ class LSPLinkToServerAction : DumbAwareAction() {
             val allEditors = editors.filterNotNull().partition { e -> LanguageServerWrapperImpl.forEditor(e) == null }
             val tmpEditors = allEditors.first.toMutableList()
             tmpEditors.addAll(allEditors.second)
-            editors = tmpEditors
-            val alreadyConnected = allEditors.second
-            if (alreadyConnected.isNotEmpty()) {
+            if (!tmpEditors.all { e -> e.project == project }) {
                 Messages.showWarningDialog(
                     project,
-                    "Editor(s) " + alreadyConnected.joinToString("\n") { e ->
-                        FileDocumentManager.getInstance().getFile(e.document)?.name ?: "null"
-                    } + " already connected to servers , ext " + alreadyConnected.joinToString(",") { e ->
-                        LanguageServerWrapperImpl.forEditor(e)?.serverDefinition?.ext ?: "null"
-                    } + ", will be overwritten",
-                    "Trying to connect an already connected editor"
+                    "You're trying to connect editors that are not part of the current project. This is not possible.",
+                    "Trying to force connect editors outside project"
                 )
-            }
-            if (editors.isNotEmpty()) {
-                val allDefinitions = PluginMain.getExtToServerDefinition().values.distinct()
-                val allDefinitionNames = allDefinitions.map { d -> d.ext }
-                val allWrappers = PluginMain.getAllServerWrappers().distinct()
-                val allWrapperNames = allWrappers.map { w -> w.serverDefinition.ext + " : " + w.project.name }
-                val dialog = ComboCheckboxDialog(
-                    project,
-                    "Link a file to a language server",
-                    allDefinitionNames,
-                    allWrapperNames
-                )
-                dialog.show()
-                val exitCode = dialog.exitCode
-                if (exitCode >= 0) {
-                    editors.forEach { editor ->
-                        val fileType = FileUtils.fileTypeFromEditor(editor)
-                        if (PluginMain.isExtensionSupported(fileType?.defaultExtension)) {
-                            val ret = Messages.showOkCancelDialog(
-                                editor.project,
-                                "This file extension" + fileType?.defaultExtension + " is already supported by a Language Server, continue?",
-                                "Known extension", "Ok", "Cancel", Messages.getWarningIcon()
-                            )
-                            if (ret == Messages.OK) {
-                                PluginMain.forceEditorOpened(editor, allDefinitions[exitCode], project)
-                            }
-                        } else PluginMain.forceEditorOpened(editor, allDefinitions[exitCode], project)
+            } else {
+                editors = tmpEditors
+                val alreadyConnected = allEditors.second
+                if (alreadyConnected.isNotEmpty()) {
+                    Messages.showWarningDialog(
+                        project,
+                        "Editor(s) " + alreadyConnected.joinToString("\n") { e ->
+                            FileDocumentManager.getInstance().getFile(e.document)?.name ?: "null"
+                        } + " already connected to servers , ext " + alreadyConnected.joinToString(",") { e ->
+                            LanguageServerWrapperImpl.forEditor(e)?.serverDefinition?.ext ?: "null"
+                        } + ", will be overwritten",
+                        "Trying to connect an already connected editor"
+                    )
+                }
+                if (editors.isNotEmpty()) {
+                    val projectService = project.service<LSPProjectService>()
+                    val allDefinitions = projectService.extToServerDefinition.values.distinct()
+                    val allDefinitionNames = allDefinitions.map { d -> d.ext }
+                    val allWrappers = projectService.getAllWrappers()
+                    val allWrapperNames = allWrappers.map { w -> w.serverDefinition.ext + " : " + w.project.name }
+                    val dialog = ComboCheckboxDialog(
+                        project,
+                        "Link a file to a language server",
+                        allDefinitionNames,
+                        allWrapperNames
+                    )
+                    dialog.show()
+                    val exitCode = dialog.exitCode
+                    if (exitCode >= 0) {
+                        editors.forEach { editor ->
+                            val fileType = FileUtils.fileTypeFromEditor(editor)
+                            if (projectService.isExtensionSupported(fileType?.defaultExtension)) {
+                                val ret = Messages.showOkCancelDialog(
+                                    editor.project,
+                                    "This file extension" + fileType?.defaultExtension + " is already supported by a Language Server, continue?",
+                                    "Known extension", "Ok", "Cancel", Messages.getWarningIcon()
+                                )
+                                if (ret == Messages.OK) {
+                                    projectService.forceEditorOpened(editor, allDefinitions[exitCode], project)
+                                }
+                            } else projectService.forceEditorOpened(editor, allDefinitions[exitCode], project)
+                        }
                     }
                 }
             }

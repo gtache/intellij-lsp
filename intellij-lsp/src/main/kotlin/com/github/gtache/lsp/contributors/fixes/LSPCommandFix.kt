@@ -1,9 +1,10 @@
 package com.github.gtache.lsp.contributors.fixes
 
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
-import com.github.gtache.lsp.editor.EditorEventManager
+import com.github.gtache.lsp.editor.EditorApplicationService
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import org.eclipse.lsp4j.Command
@@ -19,7 +20,7 @@ class LSPCommandFix(private val uri: String, private val command: Command) : Loc
     override fun applyFix(project: Project, descriptor: ProblemDescriptor): Unit {
         val psiElement = descriptor.psiElement
         if (psiElement is LSPPsiElement) {
-            EditorEventManager.forUri(uri)?.executeCommands(listOf(command))
+            service<EditorApplicationService>().forEditor(psiElement.editor)?.executeCommands(listOf(command))
         }
     }
 

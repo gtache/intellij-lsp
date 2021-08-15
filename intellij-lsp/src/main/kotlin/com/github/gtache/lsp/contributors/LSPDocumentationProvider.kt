@@ -1,9 +1,10 @@
 package com.github.gtache.lsp.contributors
 
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
-import com.github.gtache.lsp.editor.EditorEventManager
+import com.github.gtache.lsp.editor.EditorApplicationService
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.lang.documentation.DocumentationProvider
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -36,15 +37,13 @@ class LSPDocumentationProvider : DocumentationProvider {
     override fun getQuickNavigateInfo(element: PsiElement?, originalElement: PsiElement?): String {
         return when (element) {
             is LSPPsiElement ->
-                FileUtils.VFSToURI(element.containingFile.virtualFile)?.let {
-                    EditorEventManager.forUri(it)?.let { m ->
-                        m.requestDoc(m.editor, element.getTextOffset())
-                    }
+                service<EditorApplicationService>().forEditor(element.editor)?.let { m ->
+                    m.requestDoc(m.editor, element.getTextOffset())
                 } ?: ""
             is PsiFile -> {
                 val editor = FileUtils.editorFromPsiFile(element)
                 editor?.let {
-                    EditorEventManager.forEditor(it)?.requestDoc(it, it.caretModel.currentCaret.offset)
+                    service<EditorApplicationService>().forEditor(it)?.requestDoc(it, it.caretModel.currentCaret.offset)
                 } ?: ""
             }
             else -> ""

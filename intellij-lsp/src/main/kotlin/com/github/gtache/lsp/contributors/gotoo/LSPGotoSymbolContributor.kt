@@ -1,7 +1,8 @@
 package com.github.gtache.lsp.contributors.gotoo
 
-import com.github.gtache.lsp.PluginMain
+import com.github.gtache.lsp.LSPProjectService
 import com.intellij.navigation.NavigationItem
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 
 /**
@@ -10,6 +11,6 @@ import com.intellij.openapi.project.Project
 class LSPGotoSymbolContributor : LSPGotoContributor {
 
     override fun getItemsByName(name: String, pattern: String, project: Project, includeNonProjectItems: Boolean): Array<NavigationItem> {
-        return PluginMain.workspaceSymbols(name, pattern, project, includeNonProjectItems)
+        return project.service<LSPProjectService>().workspaceSymbols(name, pattern, includeNonProjectItems)
     }
 }

@@ -1,9 +1,10 @@
 package com.github.gtache.lsp.contributors.rename
 
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
-import com.github.gtache.lsp.editor.EditorEventManager
+import com.github.gtache.lsp.editor.EditorApplicationService
 import com.github.gtache.lsp.requests.WorkspaceEditHandler
 import com.github.gtache.lsp.utils.FileUtils
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -47,7 +48,7 @@ class LSPRenameProcessor : RenamePsiElementProcessor() {
                 val editor = FileEditorManager.getInstance(element.project).getAllEditors(element.virtualFile).filterIsInstance<TextEditor>()
                     .map { t -> t.editor }.firstOrNull()
                 if (editor != null) {
-                    val manager = EditorEventManager.forEditor(editor)
+                    val manager = service<EditorApplicationService>().forEditor(editor)
                     if (manager != null) {
                         return if (editor.contentComponent.hasFocus()) {
                             val offset = editor.caretModel.currentCaret.offset
@@ -89,7 +90,7 @@ class LSPRenameProcessor : RenamePsiElementProcessor() {
             is LSPPsiElement -> if (elements.contains(element)) {
                 elements.mapNotNull { e -> e.reference }
             } else {
-                val manager = FileUtils.editorFromPsiFile(element.containingFile)?.let { EditorEventManager.forEditor(it) }
+                val manager = FileUtils.editorFromPsiFile(element.containingFile)?.let { service<EditorApplicationService>().forEditor(it) }
                 if (manager != null) {
                     val refs = manager.references(element.textOffset, getOriginalElement = true)
                     openedEditors += refs.second
@@ -107,7 +108,7 @@ class LSPRenameProcessor : RenamePsiElementProcessor() {
     //TODO may rename invalid elements
     override fun renameElement(element: PsiElement, newName: String, usages: Array<UsageInfo>, listener: RefactoringElementListener?) {
         when (element) {
-            is LSPPsiElement -> EditorEventManager.forEditor(element.editor)?.let { m ->
+            is LSPPsiElement -> service<EditorApplicationService>().forEditor(element.editor)?.let { m ->
                 m.rename(newName, m.editor.caretModel.currentCaret.offset - 1)
             }
             else -> WorkspaceEditHandler.applyEdit(element, newName, usages, listener, openedEditors.toList())

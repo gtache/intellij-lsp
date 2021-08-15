@@ -3,10 +3,11 @@ package com.github.gtache.lsp.settings
 import com.github.gtache.lsp.settings.gui.MiscGUI
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.options.Configurable
+import com.intellij.openapi.project.Project
 import org.jetbrains.annotations.Nls
 import javax.swing.JComponent
 
-class MiscSettings private constructor() : Configurable {
+class MiscSettings(private val project: Project) : Configurable {
     override fun getDisplayName(): @Nls String {
         return "Language Server Protocol"
     }
@@ -16,7 +17,7 @@ class MiscSettings private constructor() : Configurable {
     }
 
     override fun createComponent(): JComponent {
-        miscGUI = MiscGUI()
+        miscGUI = MiscGUI(project)
         return miscGUI!!.getRootPanel()
     }
 
@@ -41,13 +42,5 @@ class MiscSettings private constructor() : Configurable {
             MiscSettings::class.java
         )
         private var miscGUI: MiscGUI? = null
-        var instance: MiscSettings? = null
-            get() {
-                if (field == null) {
-                    field = MiscSettings()
-                }
-                return field
-            }
-            private set
     }
 }

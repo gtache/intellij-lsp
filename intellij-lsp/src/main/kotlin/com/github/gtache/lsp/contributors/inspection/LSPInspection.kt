@@ -1,16 +1,18 @@
 package com.github.gtache.lsp.contributors.inspection
 
-import com.github.gtache.lsp.PluginMain
+import com.github.gtache.lsp.LSPProjectService
 import com.github.gtache.lsp.contributors.fixes.LSPCodeActionFix
 import com.github.gtache.lsp.contributors.fixes.LSPCommandFix
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.editor.EditorEventManager
+import com.github.gtache.lsp.editor.EditorProjectService
 import com.github.gtache.lsp.utils.DocumentUtils.getTextClamped
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
+import com.intellij.openapi.components.service
 import com.intellij.psi.PsiFile
 import org.eclipse.lsp4j.DiagnosticSeverity
 import javax.swing.JComponent
@@ -22,7 +24,8 @@ class LSPInspection : LocalInspectionTool() {
 
     override fun checkFile(file: PsiFile, manager: InspectionManager, isOnTheFly: Boolean): Array<ProblemDescriptor>? {
         val virtualFile = file.virtualFile
-        return if (virtualFile.extension != null && PluginMain.isExtensionSupported(virtualFile.extension!!)) {
+        val ext = virtualFile.extension
+        return if (ext != null && file.project.service<LSPProjectService>().isExtensionSupported(ext)) {
             val uri = FileUtils.VFSToURI(virtualFile)
 
             /**
@@ -67,9 +70,9 @@ class LSPInspection : LocalInspectionTool() {
             }
 
             uri?.let {
-                val eem = EditorEventManager.forUri(it)
-                if (eem != null) {
-                    descriptorsForManager(eem)
+                val m = file.project.service<EditorProjectService>().forUri(it)
+                if (m != null) {
+                    descriptorsForManager(m)
                 } else {
                     if (isOnTheFly) {
                         super.checkFile(file, manager, isOnTheFly)

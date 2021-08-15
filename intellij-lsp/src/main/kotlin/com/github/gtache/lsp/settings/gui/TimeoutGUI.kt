@@ -2,7 +2,8 @@ package com.github.gtache.lsp.settings.gui
 
 import com.github.gtache.lsp.requests.Timeout.timeouts
 import com.github.gtache.lsp.requests.Timeouts
-import com.github.gtache.lsp.settings.LSPState.Companion.instance
+import com.github.gtache.lsp.settings.LSPApplicationState
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.uiDesigner.core.GridConstraints
 import com.intellij.uiDesigner.core.GridLayoutManager
@@ -22,7 +23,6 @@ import javax.swing.text.NumberFormatter
  */
 class TimeoutGUI : LSPGUI {
     private val rows: Map<Timeouts, JTextField>
-    private val state = instance
     private val rootPanel: JPanel
 
     override fun getRootPanel(): JPanel {
@@ -57,7 +57,7 @@ class TimeoutGUI : LSPGUI {
 
     override fun apply() {
         val newTimeouts = rows.map { e -> Pair(e.key, e.value.text.toLong()) }.toMap()
-        state?.timeouts = newTimeouts
+        service<LSPApplicationState>().timeouts = newTimeouts
         timeouts = newTimeouts
     }
 

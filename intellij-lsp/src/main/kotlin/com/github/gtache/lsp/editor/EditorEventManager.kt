@@ -24,7 +24,7 @@ import com.github.gtache.lsp.requests.Timeout.SIGNATURE_TIMEOUT
 import com.github.gtache.lsp.requests.Timeout.WILLSAVE_TIMEOUT
 import com.github.gtache.lsp.requests.Timeouts
 import com.github.gtache.lsp.requests.WorkspaceEditHandler
-import com.github.gtache.lsp.settings.LSPState
+import com.github.gtache.lsp.settings.LSPProjectState
 import com.github.gtache.lsp.tail
 import com.github.gtache.lsp.utils.ApplicationUtils.computableReadAction
 import com.github.gtache.lsp.utils.ApplicationUtils.computableWriteAction
@@ -52,6 +52,7 @@ import com.intellij.codeInsight.template.impl.TextExpression
 import com.intellij.lang.LanguageDocumentation
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.command.CommandProcessor
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.LogicalPosition
@@ -66,6 +67,7 @@ import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.fileTypes.PlainTextLanguage
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
@@ -121,9 +123,6 @@ class EditorEventManager(
         private const val PREPARE_DOC_THRES = 10 //Time between requests when ctrl is pressed (10ms)
         private val SHOW_DOC_THRES: Long = EditorSettingsExternalizable.getInstance().tooltipsDelay - PREPARE_DOC_THRES.toLong()
 
-        private val uriToManager: MutableMap<String, EditorEventManager> = HashMap()
-        private val editorToManager: MutableMap<Editor, EditorEventManager> = HashMap()
-
         @Volatile
         private var isKeyPressed = false
 
@@ -145,7 +144,8 @@ class EditorEventManager(
                             isKeyPressed = false
                             if (e.keyCode == KeyEvent.VK_CONTROL) {
                                 isCtrlDown = false
-                                editorToManager.keys.forEach { e -> e.contentComponent.cursor = Cursor.getPredefinedCursor(Cursor.TEXT_CURSOR) }
+                                ProjectManager.getInstance().openProjects.flatMap { p -> p.service<EditorProjectService>().getEditors() }
+                                    .forEach { e -> e.contentComponent.cursor = Cursor.getPredefinedCursor(Cursor.TEXT_CURSOR) }
                                 docRange?.dispose()
                                 docRange = null
                             }
@@ -158,34 +158,10 @@ class EditorEventManager(
         }
 
         /**
-         * @param uri A file uri
-         * @return The manager for the given uri, or None
-         */
-        fun forUri(uri: String): EditorEventManager? {
-            prune()
-            return uriToManager[uri]
-        }
-
-        private fun prune(): Unit {
-            editorToManager.filter { e -> !e.value.wrapper.isActive() }.keys.forEach { editorToManager.remove(it) }
-            uriToManager.filter { e -> !e.value.wrapper.isActive() }.keys.forEach { uriToManager.remove(it) }
-        }
-
-        /**
-         * @param editor An editor
-         * @return The manager for the given editor, or None
-         */
-        fun forEditor(editor: Editor): EditorEventManager? {
-            prune()
-            return editorToManager[editor]
-        }
-
-        /**
          * Tells the server that all the documents will be saved
          */
         fun willSaveAll(): Unit {
-            prune()
-            editorToManager.forEach { e -> e.value.willSave() }
+            service<EditorApplicationService>().willSaveAll()
         }
     }
 
@@ -230,13 +206,8 @@ class EditorEventManager(
     private val DCEs: MutableList<DocumentEvent> = ArrayList()
 
     init {
-        val uri = FileUtils.editorToURIString(editor)
-        if (uri != null) {
-            uriToManager[uri] = this
-        } else {
-            logger.warn("Null URI for $editor")
-        }
-        editorToManager[editor] = this
+        project.service<EditorProjectService>().addManager(this)
+        service<EditorApplicationService>().addManager(this)
         changesParams.textDocument.uri = identifier.uri
     }
 
@@ -564,7 +535,7 @@ class EditorEventManager(
                             val ret = f.get(EXECUTE_COMMAND_TIMEOUT(), TimeUnit.MILLISECONDS)
                             wrapper.notifySuccess(Timeouts.EXECUTE_COMMAND)
                             when (ret) {
-                                is WorkspaceEdit -> WorkspaceEditHandler.applyEdit(ret, name = "Execute command")
+                                is WorkspaceEdit -> WorkspaceEditHandler.applyEdit(ret, project, name = "Execute command")
                                 else -> logger.warn("ExecuteCommand returned $ret")
                             }
                         } catch (e: TimeoutException) {
@@ -774,8 +745,8 @@ class EditorEventManager(
             if (isOpen) {
                 requestManager.didClose(DidCloseTextDocumentParams(identifier))
                 isOpen = false
-                editorToManager.remove(editor)
-                uriToManager.remove(FileUtils.editorToURIString(editor))
+                project.service<EditorProjectService>().removeManager(this)
+                service<EditorApplicationService>().removeManager(this)
             } else {
                 logger.warn("Editor " + identifier.uri + " was already closed")
             }
@@ -978,7 +949,7 @@ class EditorEventManager(
                     writeAction {
                         editor.caretModel.moveToOffset(startOffset)
                         editor.selectionModel.setSelection(startOffset, LSPPosToOffset(editor, loc.targetRange.end))
-                        editor.scrollingModel.scrollToCaret(ScrollType.CENTER);
+                        editor.scrollingModel.scrollToCaret(ScrollType.CENTER)
                     }
                 }
             } else {
@@ -991,7 +962,7 @@ class EditorEventManager(
                             val startOffset = LSPPosToOffset(newEditor, loc.targetRange.start)
                             newEditor.caretModel.currentCaret.moveToOffset(startOffset)
                             newEditor.selectionModel.setSelection(startOffset, LSPPosToOffset(newEditor, loc.targetRange.end))
-                            newEditor.scrollingModel.scrollToCaret(ScrollType.CENTER);
+                            newEditor.scrollingModel.scrollToCaret(ScrollType.CENTER)
                         }
                     }
                 } else {
@@ -1125,7 +1096,7 @@ class EditorEventManager(
                 }
             }
 
-            val manager = forUri(uri)
+            val manager = project.service<EditorProjectService>().forUri(uri)
             if (manager != null) {
                 try {
                     startOffset = LSPPosToOffset(manager.editor, start)
@@ -1355,7 +1326,7 @@ class EditorEventManager(
             val psiFile = PsiDocumentManager.getInstance(project).getPsiFile(editor.document)
             if (psiFile != null) {
                 val language = psiFile.language
-                if ((LSPState.instance?.isAlwaysSendRequests != false || LanguageDocumentation.INSTANCE.allForLanguage(language)
+                if ((project.service<LSPProjectState>().isAlwaysSendRequests != false || LanguageDocumentation.INSTANCE.allForLanguage(language)
                         .isEmpty() || language == PlainTextLanguage.INSTANCE)
                     && (ctrlDown || EditorSettingsExternalizable.getInstance().isShowQuickDocOnMouseOverElement)) {
                     val lPos = getPos(e)
@@ -1771,7 +1742,7 @@ class EditorEventManager(
                 val params = RenameParams(identifier, servPos, renameTo)
                 val request = requestManager.rename(params)
                 if (request != null) request.thenAccept { res ->
-                    WorkspaceEditHandler.applyEdit(res, "Rename to $renameTo", LSPRenameProcessor.getEditors())
+                    WorkspaceEditHandler.applyEdit(res, project, "Rename to $renameTo", LSPRenameProcessor.getEditors())
                     LSPRenameProcessor.clearEditors()
                 }
             }

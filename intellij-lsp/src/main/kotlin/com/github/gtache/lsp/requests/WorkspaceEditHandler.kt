@@ -1,19 +1,18 @@
 package com.github.gtache.lsp.requests
 
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
-import com.github.gtache.lsp.editor.EditorEventManager
-import com.github.gtache.lsp.headOrNull
+import com.github.gtache.lsp.editor.EditorApplicationService
+import com.github.gtache.lsp.editor.EditorProjectService
 import com.github.gtache.lsp.utils.ApplicationUtils.invokeLater
 import com.github.gtache.lsp.utils.ApplicationUtils.writeAction
 import com.github.gtache.lsp.utils.DocumentUtils
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.command.UndoConfirmationPolicy
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.project.ProjectManager
-import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.refactoring.listeners.RefactoringElementListener
@@ -65,7 +64,7 @@ object WorkspaceEditHandler {
                         mapping[edit.key] = edit.value
                     }
                     val workspaceEdit = WorkspaceEdit(mapping)
-                    applyEdit(workspaceEdit, "Rename " + elem.name + " to " + newName, openedEditors)
+                    applyEdit(workspaceEdit, elem.project, "Rename " + elem.name + " to " + newName, openedEditors)
                 }
             }
             else -> logger.warn("Not an LSPPsiElement : $elem")
@@ -78,12 +77,11 @@ object WorkspaceEditHandler {
      * @param edit The edit
      * @return True if everything was applied, false otherwise
      */
-    fun applyEdit(edit: WorkspaceEdit, name: String = "LSP edits", toClose: Iterable<VirtualFile> = ArrayList()): Boolean {
+    fun applyEdit(edit: WorkspaceEdit, project: Project, name: String = "LSP edits", toClose: Iterable<VirtualFile> = ArrayList()): Boolean {
         val dChanges = if (edit.documentChanges != null) edit.documentChanges else null
         var didApply = true
 
         invokeLater {
-            var curProject: Project? = null
             val openedEditors = ArrayList<VirtualFile>()
 
             /**
@@ -95,24 +93,9 @@ object WorkspaceEditHandler {
              * @return The runnable containing the edits
              */
             fun manageUnopenedEditor(edits: Iterable<TextEdit>, uri: String, version: Int = Int.MAX_VALUE): Runnable? {
-                val projects = ProjectManager.getInstance().openProjects
-                val project = projects //Infer the project from the uri
-                    .filter { p -> !p.isDefault }
-                    .mapNotNull { p ->
-                        p.guessProjectDir()?.let { vf ->
-                            FileUtils.VFSToURI(vf)?.let {
-                                Pair(it, p)
-                            }
-                        }
-                    }
-                    .filter { p -> uri.startsWith(p.first) }
-                    .sortedBy { s -> s.first.length }.reversed()
-                    .map { p -> p.second }
-                    .headOrNull ?: projects[0]
                 return FileUtils.openClosedEditor(uri, project)?.let {
                     openedEditors += it.first
-                    curProject = it.second.project
-                    EditorEventManager.forEditor(it.second)?.getEditsRunnable(version, edits, name)
+                    service<EditorApplicationService>().forEditor(it.second)?.getEditsRunnable(version, edits, name)
                 }
             }
 
@@ -125,9 +108,8 @@ object WorkspaceEditHandler {
                         val doc = textEdit.textDocument
                         val version = doc.version
                         val uri = FileUtils.sanitizeURI(doc.uri)
-                        val manager = EditorEventManager.forUri(uri)
+                        val manager = project.service<EditorProjectService>().forUri(uri)
                         val runnable = if (manager != null) {
-                            curProject = manager.editor.project
                             manager.getEditsRunnable(version, textEdit.edits, name)
                         } else manageUnopenedEditor(textEdit.edits, uri, version)
                         toApply += runnable
@@ -142,9 +124,8 @@ object WorkspaceEditHandler {
             } else (if (edit.changes != null) edit.changes else null)?.forEach { edit ->
                 val uri = FileUtils.sanitizeURI(edit.key)
                 val changes = edit.value
-                val manager = EditorEventManager.forUri(uri)
+                val manager = project.service<EditorProjectService>().forUri(uri)
                 val runnable = if (manager != null) {
-                    curProject = manager.editor.project
                     manager.getEditsRunnable(edits = changes, name = name)
                 } else manageUnopenedEditor(changes, uri)
                 toApply += runnable
@@ -153,7 +134,6 @@ object WorkspaceEditHandler {
                 logger.warn("Didn't apply, null runnable")
                 didApply = false
             } else {
-                val project = curProject!!
                 val runnable = Runnable {
                     toApply.filterNotNull().forEach { r -> r.run() }
                 }

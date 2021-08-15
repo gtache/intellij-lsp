@@ -470,7 +470,7 @@ data class LSPPsiElement(private var name: String, private val project: Project,
     override fun isEquivalentTo(another: PsiElement): Boolean = this == another
 
     override fun getName(): String {
-        return name;
+        return name
     }
 
     override fun getIcon(flags: Int): Icon? = null

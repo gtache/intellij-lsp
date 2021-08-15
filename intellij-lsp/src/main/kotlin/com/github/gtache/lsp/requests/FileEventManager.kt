@@ -1,13 +1,17 @@
 package com.github.gtache.lsp.requests
 
-import com.github.gtache.lsp.PluginMain
+import com.github.gtache.lsp.LSPProjectService
 import com.github.gtache.lsp.client.languageserver.ServerStatus
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
+import com.github.gtache.lsp.editor.EditorApplicationService
 import com.github.gtache.lsp.editor.EditorEventManager
+import com.github.gtache.lsp.editor.EditorProjectService
 import com.github.gtache.lsp.utils.ApplicationUtils
 import com.github.gtache.lsp.utils.FileUtils
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Document
-import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.VirtualFile
 import org.eclipse.lsp4j.FileChangeType
 
@@ -22,12 +26,7 @@ object FileEventManager {
      * @param doc The document
      */
     fun willSave(doc: Document): Unit {
-        FileDocumentManager.getInstance().getFile(doc)?.let {
-            val uri = FileUtils.VFSToURI(it)
-            if (uri != null) {
-                EditorEventManager.forUri(uri)?.willSave()
-            }
-        }
+        service<EditorApplicationService>().forDocument(doc)?.willSave()
     }
 
     /**
@@ -45,12 +44,12 @@ object FileEventManager {
     fun fileChanged(file: VirtualFile): Unit {
         val uri = FileUtils.VFSToURI(file)
         if (uri != null) {
-            val manager = EditorEventManager.forUri(uri)
-            if (manager != null) {
-                manager.documentSaved()
-                notifyServers(uri, FileChangeType.Changed, manager.wrapper)
+            val managers = ProjectManager.getInstance().openProjects.mapNotNull { p -> p.service<EditorProjectService>().forUri(uri) }
+            managers.forEach { it.documentSaved() }
+            if (managers.isNotEmpty()) {
+                notifyServers(file, FileChangeType.Changed, managers.map { m -> m.wrapper })
             } else {
-                notifyServers(uri, FileChangeType.Changed)
+                notifyServers(file, FileChangeType.Changed)
             }
         }
     }
@@ -70,18 +69,19 @@ object FileEventManager {
      * @param file The file
      */
     fun fileDeleted(file: VirtualFile): Unit {
-        val uri = FileUtils.VFSToURI(file)
-        if (uri != null) {
-            notifyServers(uri, FileChangeType.Deleted)
-        }
+        notifyServers(file, FileChangeType.Deleted)
     }
 
-    private fun notifyServers(uri: String, typ: FileChangeType, wrapper: LanguageServerWrapper? = null): Unit {
-        ApplicationUtils.pool {
-            val wrappers = PluginMain.getAllServerWrappers()
-            wrappers.forEach { w ->
-                if (w != wrapper && w.requestManager != null && w.status == ServerStatus.STARTED)
-                    w.didChangeWatchedFiles(uri, typ)
+    private fun notifyServers(file: VirtualFile, typ: FileChangeType, wrappers: Collection<LanguageServerWrapper> = emptyList()): Unit {
+        val uri = FileUtils.VFSToURI(file)
+        if (uri != null) {
+            ApplicationUtils.pool {
+                val projects = ProjectManager.getInstance().openProjects.filter { p -> ProjectRootManager.getInstance(p).fileIndex.isInContent(file) }
+                projects.forEach { p ->
+                    p.service<LSPProjectService>().getAllWrappers().forEach { w ->
+                        if (!wrappers.contains(w) && w.requestManager != null && w.status == ServerStatus.STARTED) w.didChangeWatchedFiles(uri, typ)
+                    }
+                }
             }
         }
     }
@@ -102,10 +102,8 @@ object FileEventManager {
      * @param file The file
      */
     fun fileCreated(file: VirtualFile): Unit {
-        val uri = FileUtils.VFSToURI(file)
-        if (uri != null) {
-            notifyServers(uri, FileChangeType.Created)
-        }
+        notifyServers(file, FileChangeType.Created)
+
     }
 
 }

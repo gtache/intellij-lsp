@@ -1,8 +1,9 @@
 package com.github.gtache.lsp.settings.gui;
 
-import com.github.gtache.lsp.settings.LSPState;
+import com.github.gtache.lsp.settings.LSPApplicationState;
 import com.github.gtache.lsp.utils.Utils;
 import com.github.gtache.lsp.utils.aether.AetherImpl;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
@@ -20,12 +21,13 @@ public final class ArtifactGUI implements LSPGUI {
     private static final Logger logger = Logger.getInstance(ArtifactGUI.class);
 
     private static final String placeholder = Utils.getBundle().getString("coursier.settings.textarea.basetext");
-    private final LSPState state = state();
     private JPanel rootPanel;
     private JTextArea repositoriesTextArea;
     private JLabel repositoriesLabel;
+    private final LSPApplicationState state;
 
     public ArtifactGUI() {
+        state = ApplicationManager.getApplication().getService(LSPApplicationState.class);
         final String str = getStateString();
         repositoriesTextArea.setText(str.isEmpty() ? placeholder : str);
     }
@@ -46,9 +48,9 @@ public final class ArtifactGUI implements LSPGUI {
         if (state != null) {
             final String text = repositoriesTextArea.getText();
             if (text.trim().isEmpty() || text.equals(placeholder)) {
-                state.setCoursierResolvers(Collections.emptyList());
+                state.setAdditionalRepositories(Collections.emptyList());
             } else if (AetherImpl.checkRepositories(text, true)) {
-                state.setCoursierResolvers(Arrays.stream(text.split(Utils.getLineSeparator())).collect(Collectors.toList()));
+                state.setAdditionalRepositories(Arrays.stream(text.split(Utils.getLineSeparator())).collect(Collectors.toList()));
             }
         } else {
             logger.warn("Null state");
@@ -61,12 +63,7 @@ public final class ArtifactGUI implements LSPGUI {
     }
 
     private String getStateString() {
-        return state != null ? String.join(Utils.getLineSeparator(), state.getCoursierResolvers()) : "";
-    }
-
-    @Override
-    public LSPState state() {
-        return state;
+        return state != null ? String.join(Utils.getLineSeparator(), state.getAdditionalRepositories()) : "";
     }
 
     {

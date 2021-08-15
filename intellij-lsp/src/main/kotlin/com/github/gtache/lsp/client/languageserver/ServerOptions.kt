@@ -23,6 +23,4 @@ data class ServerOptions(
     val executeCommandOptions: ExecuteCommandOptions,
     val semanticHighlightingOptions: SemanticHighlightingServerCapabilities,
     val renameOptions: RenameOptions
-) {
-
-}
+)

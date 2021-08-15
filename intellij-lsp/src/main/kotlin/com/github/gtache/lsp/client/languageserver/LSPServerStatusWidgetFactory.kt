@@ -1,6 +1,7 @@
 package com.github.gtache.lsp.client.languageserver
 
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.StatusBar
@@ -15,7 +16,7 @@ class LSPServerStatusWidgetFactory : StatusBarWidgetFactory {
 
     override fun getDisplayName(): String = "Language servers"
 
-    override fun isAvailable(project: Project): Boolean = false//wrappers.isNotEmpty() && wrappers[project]?.isEmpty() != true
+    override fun isAvailable(project: Project): Boolean = wrappers.isNotEmpty() && wrappers[project]?.isEmpty() != true
 
     override fun createWidget(project: Project): StatusBarWidget {
         return LSPServerStatusWidget(wrappers[project] ?: emptyList(), project)
@@ -67,7 +68,7 @@ class LSPServerStatusWidgetFactory : StatusBarWidgetFactory {
     }
 
     private fun updateWidget(wrapper: LanguageServerWrapper) {
-        wrapper.project.getService(StatusBarWidgetsManager::class.java).updateWidget(this)
+        wrapper.project.service<StatusBarWidgetsManager>().updateWidget(this)
     }
 
     companion object {

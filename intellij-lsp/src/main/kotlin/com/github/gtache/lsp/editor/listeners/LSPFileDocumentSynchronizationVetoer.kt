@@ -1,7 +1,7 @@
 package com.github.gtache.lsp.editor.listeners
 
-import com.github.gtache.lsp.editor.EditorEventManager
-import com.github.gtache.lsp.utils.FileUtils
+import com.github.gtache.lsp.editor.EditorApplicationService
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentSynchronizationVetoer
 
@@ -12,7 +12,7 @@ import com.intellij.openapi.fileEditor.FileDocumentSynchronizationVetoer
 //TODO check called before willSave
 class LSPFileDocumentSynchronizationVetoer : FileDocumentSynchronizationVetoer() {
     override fun maySaveDocument(document: Document, isSaveExplicit: Boolean): Boolean {
-        val manager = FileUtils.documentToUri(document)?.let { EditorEventManager.forUri(it) }
+        val manager = service<EditorApplicationService>().forDocument(document)
         return if (manager != null) {
             if (manager.needSave) {
                 val ret = super.maySaveDocument(document, isSaveExplicit)
