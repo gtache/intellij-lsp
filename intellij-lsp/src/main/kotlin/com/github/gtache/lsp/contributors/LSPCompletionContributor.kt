@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.contributors
 
-import com.github.gtache.lsp.editor.EditorApplicationService
+import com.github.gtache.lsp.editor.services.application.EditorApplicationService
 import com.github.gtache.lsp.utils.DocumentUtils
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters

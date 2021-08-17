@@ -1,4 +1,4 @@
-package com.github.gtache.lsp.client.languageserver
+package com.github.gtache.lsp.client.languageserver.status
 
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.intellij.openapi.components.service

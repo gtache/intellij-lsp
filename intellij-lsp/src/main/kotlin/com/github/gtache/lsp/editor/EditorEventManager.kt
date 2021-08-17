@@ -7,6 +7,8 @@ import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapperImpl
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.contributors.rename.LSPRenameProcessor
+import com.github.gtache.lsp.editor.services.application.EditorApplicationService
+import com.github.gtache.lsp.editor.services.project.EditorProjectService
 import com.github.gtache.lsp.head
 import com.github.gtache.lsp.multicatch
 import com.github.gtache.lsp.requests.HoverHandler

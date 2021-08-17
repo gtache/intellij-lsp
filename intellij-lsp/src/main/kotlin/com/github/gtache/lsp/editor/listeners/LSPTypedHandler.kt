@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.editor.listeners
 
-import com.github.gtache.lsp.editor.EditorApplicationService
+import com.github.gtache.lsp.editor.services.application.EditorApplicationService
 import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor

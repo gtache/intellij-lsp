@@ -1,4 +1,4 @@
-package com.github.gtache.lsp.client.languageserver
+package com.github.gtache.lsp.client.languageserver.status
 
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.requests.Timeouts
@@ -10,12 +10,13 @@ import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
-import com.intellij.openapi.ui.popup.ListPopup
-import com.intellij.openapi.util.Condition
+import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.wm.StatusBar
 import com.intellij.openapi.wm.StatusBarWidget
-import com.intellij.ui.popup.PopupFactoryImpl
+import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.Consumer
+import java.awt.Component
+import java.awt.Point
 import java.awt.event.MouseEvent
 import java.util.*
 import javax.swing.Icon
@@ -50,55 +51,64 @@ class ServerStatusWidget(private var wrappers: List<LanguageServerWrapper>, priv
         )
     }
 
-    override fun getPresentation(): StatusBarWidget.WidgetPresentation = object : StatusBarWidget.MultipleTextValuesPresentation {
+    //TODO revisit later
+    override fun getPresentation(): StatusBarWidget.WidgetPresentation = object : StatusBarWidget.IconPresentation {
 
         override fun getIcon(): Icon {
             return AllIcons.General.Settings
         }
 
-        override fun getClickConsumer(): Consumer<MouseEvent> = Consumer<MouseEvent> { t: MouseEvent ->
-//            val mnemonics = JBPopupFactory.ActionSelectionAid.MNEMONICS
-//            val component = t.component
-//            val actions = when (wrapper.status) {
-//                ServerStatus.STARTED -> listOf(restart, showConnectedFiles, showTimeouts)
-//                ServerStatus.STARTING -> listOf(showTimeouts)
-//                else -> listOf(restart, showTimeouts)
-//            }
-//            val title = "Server actions for $ext - $projectName"
-//            val context = DataManager.getInstance().getDataContext(component)
-//            val group = DefaultActionGroup(actions)
-//            val popup = JBPopupFactory.getInstance().createActionGroupPopup(title, group, context, mnemonics, true)
-//            val dimension = popup.content.preferredSize
-//            val at = Point(0, -dimension.height)
-//            popup.show(RelativePoint(t.component, at))
+        override fun getClickConsumer(): Consumer<MouseEvent> = Consumer<MouseEvent> { e ->
+            val mnemonics = JBPopupFactory.ActionSelectionAid.MNEMONICS
+            val component = e.component
+            val title = "List of servers for ${project.name}"
+            val context = DataManager.getInstance().getDataContext(component)
+            val group = createActionGroup(component)
+            val popup = JBPopupFactory.getInstance().createActionGroupPopup(title, group, context, mnemonics, true)
+            val dimension = popup.content.preferredSize
+            val at = Point(0, -dimension.height)
+            popup.show(RelativePoint(e.component, at))
         }
 
-        override fun getPopupStep(): ListPopup {
-            val context = DataManager.getInstance().getDataContext(statusBar!!.component)
-            return PopupFactoryImpl.ActionGroupPopup(
-                "List of servers for $project", createActionGroup(), context, false, false,
-                false, false, null, -1, Condition { true }, null
-            )
-        }
-
-        fun createActionGroup(): ActionGroup {
-            val actions = wrappers.map { w ->
-                object : AnAction(
-                    w.serverDefinition.ext,
-                    "Language server for ${w.serverDefinition.ext}",
-                    GUIUtils.getIconProviderFor(w.serverDefinition).statusIcons[w.status]
-                ) {
-                    override fun actionPerformed(e: AnActionEvent) {
-                        TODO("Not yet implemented")
-                    }
+        inner class ServerAction(private val w: LanguageServerWrapper, private val c: Component) :
+            AnAction(
+                w.serverDefinition.ext,
+                "Language server for ${w.serverDefinition.ext}",
+                GUIUtils.getIconProviderFor(w.serverDefinition).statusIcons[w.status]
+            ) {
+            override fun actionPerformed(e: AnActionEvent) {
+                val mnemonics = JBPopupFactory.ActionSelectionAid.MNEMONICS
+                val actions = when (w.status) {
+                    ServerStatus.STARTED -> listOf(RestartAction(w), ShowConnectedFilesAction(w), ShowTimeoutsAction(w))
+                    ServerStatus.STARTING -> listOf(ShowTimeoutsAction(w))
+                    else -> listOf(RestartAction(w), ShowTimeoutsAction(w))
                 }
+                val title = "Actions for server ${w.serverDefinition.ext}"
+                val context = DataManager.getInstance().getDataContext(c)
+                val group = DefaultActionGroup(actions)
+                val popup = JBPopupFactory.getInstance().createActionGroupPopup(title, group, context, mnemonics, true)
+                val dimension = popup.content.preferredSize
+                val at = Point(0, -dimension.height)
+                popup.show(RelativePoint(c, at))
             }
-            return object : DefaultActionGroup("List of language servers", actions), AlwaysVisibleActionGroup {}
+
         }
 
-        override fun getSelectedValue(): String? {
-            return null
+//        override fun getPopupStep(): ListPopup {
+//            val context = DataManager.getInstance().getDataContext(statusBar!!.component)
+//            return PopupFactoryImpl.ActionGroupPopup(
+//                "List of servers for $project", createActionGroup(), context, false, false,
+//                false, false, null, -1, Condition { true }, null
+//            )
+//        }
+
+        fun createActionGroup(c: Component): ActionGroup {
+            return DefaultActionGroup(wrappers.map { w -> ServerAction(w, c) })
         }
+
+//        override fun getSelectedValue(): String? {
+//            return null
+//        }
 
         inner class RestartAction(private val wrapper: LanguageServerWrapper) :
             AnAction("&Restart the server", "Try to restart the server after it failed", AllIcons.Actions.Restart), DumbAware {

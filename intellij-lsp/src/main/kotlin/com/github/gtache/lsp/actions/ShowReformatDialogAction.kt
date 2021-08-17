@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.actions
 
-import com.github.gtache.lsp.editor.EditorApplicationService
+import com.github.gtache.lsp.editor.services.application.EditorApplicationService
 import com.github.gtache.lsp.services.project.LSPProjectService
 import com.github.gtache.lsp.settings.project.LSPProjectSettings
 import com.intellij.codeInsight.actions.LayoutCodeDialog

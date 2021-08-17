@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.actions
 
-import com.github.gtache.lsp.editor.EditorApplicationService
+import com.github.gtache.lsp.editor.services.application.EditorApplicationService
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.head
 import com.intellij.codeInsight.hint.HintManager

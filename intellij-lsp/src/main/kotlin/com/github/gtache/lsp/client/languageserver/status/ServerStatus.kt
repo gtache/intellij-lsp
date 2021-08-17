@@ -1,4 +1,4 @@
-package com.github.gtache.lsp.client.languageserver
+package com.github.gtache.lsp.client.languageserver.status
 
 /**
  * An enum representing a server status

@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.contributors.icon
 
-import com.github.gtache.lsp.client.languageserver.ServerStatus
+import com.github.gtache.lsp.client.languageserver.status.ServerStatus
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.util.IconLoader

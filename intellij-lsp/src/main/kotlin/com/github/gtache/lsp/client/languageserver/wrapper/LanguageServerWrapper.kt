@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.client.languageserver.wrapper
 
-import com.github.gtache.lsp.client.languageserver.ServerStatus
+import com.github.gtache.lsp.client.languageserver.status.ServerStatus
 import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.editor.EditorEventManager

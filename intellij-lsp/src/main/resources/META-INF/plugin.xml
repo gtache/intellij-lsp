@@ -56,11 +56,11 @@
                             serviceInterface="com.github.gtache.lsp.services.application.LSPApplicationService"
                             serviceImplementation="com.github.gtache.lsp.services.application.LSPApplicationServiceImpl"/>
         <projectService id="EditorProjectService"
-                        serviceInterface="com.github.gtache.lsp.editor.EditorProjectService"
-                        serviceImplementation="com.github.gtache.lsp.editor.EditorProjectServiceImpl"/>
+                        serviceInterface="com.github.gtache.lsp.editor.services.project.EditorProjectService"
+                        serviceImplementation="com.github.gtache.lsp.editor.services.project.EditorProjectServiceImpl"/>
         <applicationService id="EditorApplicationService"
-                            serviceInterface="com.github.gtache.lsp.editor.EditorApplicationService"
-                            serviceImplementation="com.github.gtache.lsp.editor.EditorApplicationServiceImpl"/>
+                            serviceInterface="com.github.gtache.lsp.editor.services.application.EditorApplicationService"
+                            serviceImplementation="com.github.gtache.lsp.editor.services.application.EditorApplicationServiceImpl"/>
         <projectService id="LSPProjectState"
                         serviceInterface="com.github.gtache.lsp.settings.project.LSPProjectSettings"
                         serviceImplementation="com.github.gtache.lsp.settings.project.LSPProjectSettingsImpl"/>
@@ -90,7 +90,7 @@
         <lang.documentationProvider implementationClass="com.github.gtache.lsp.contributors.LSPDocumentationProvider"
                                     id="LSPDocumentationProvider" language="TEXT" order="first"/>
         <statusBarWidgetFactory
-                implementation="com.github.gtache.lsp.client.languageserver.ServerStatusWidgetFactory"/>
+                implementation="com.github.gtache.lsp.client.languageserver.status.ServerStatusWidgetFactory"/>
 
         <!--        <lang.findUsagesProvider implementationClass="com.github.gtache.lsp.contributors.LSPFindUsagesProvider" id="LSPFindUsagesProvider" language="TEXT" order="first" />
                 <findUsagesHandlerFactory implementation="com.github.gtache.lsp.contributors.LSPFindUsagesHandlerFactory" id="LSPFindUsagesHandlerFactory" />-->

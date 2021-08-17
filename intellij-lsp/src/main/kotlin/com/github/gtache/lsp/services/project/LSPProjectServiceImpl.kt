@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.services.project
 
-import com.github.gtache.lsp.client.languageserver.ServerStatus
+import com.github.gtache.lsp.client.languageserver.status.ServerStatus
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.client.languageserver.serverdefinition.UserConfigurableServerDefinition
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper

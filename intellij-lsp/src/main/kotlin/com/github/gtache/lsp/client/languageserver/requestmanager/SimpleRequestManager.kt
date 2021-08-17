@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.client.languageserver.requestmanager
 
-import com.github.gtache.lsp.client.languageserver.ServerStatus
+import com.github.gtache.lsp.client.languageserver.status.ServerStatus
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.intellij.openapi.diagnostic.Logger
 import org.eclipse.lsp4j.*

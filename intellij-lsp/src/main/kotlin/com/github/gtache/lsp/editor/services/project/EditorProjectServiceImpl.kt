@@ -1,5 +1,6 @@
-package com.github.gtache.lsp.editor
+package com.github.gtache.lsp.editor.services.project
 
+import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor

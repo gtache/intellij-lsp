@@ -1,8 +1,8 @@
 package com.github.gtache.lsp.requests
 
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
-import com.github.gtache.lsp.editor.EditorApplicationService
-import com.github.gtache.lsp.editor.EditorProjectService
+import com.github.gtache.lsp.editor.services.application.EditorApplicationService
+import com.github.gtache.lsp.editor.services.project.EditorProjectService
 import com.github.gtache.lsp.utils.ApplicationUtils.invokeLater
 import com.github.gtache.lsp.utils.ApplicationUtils.writeAction
 import com.github.gtache.lsp.utils.DocumentUtils

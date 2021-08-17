@@ -4,7 +4,7 @@ import com.github.gtache.lsp.contributors.fixes.CodeActionFix
 import com.github.gtache.lsp.contributors.fixes.CommandFix
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.editor.EditorEventManager
-import com.github.gtache.lsp.editor.EditorProjectService
+import com.github.gtache.lsp.editor.services.project.EditorProjectService
 import com.github.gtache.lsp.services.project.LSPProjectService
 import com.github.gtache.lsp.utils.DocumentUtils.getTextClamped
 import com.github.gtache.lsp.utils.FileUtils

@@ -1,7 +1,7 @@
 package com.github.gtache.lsp.contributors.fixes
 
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
-import com.github.gtache.lsp.editor.EditorApplicationService
+import com.github.gtache.lsp.editor.services.application.EditorApplicationService
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.openapi.components.service

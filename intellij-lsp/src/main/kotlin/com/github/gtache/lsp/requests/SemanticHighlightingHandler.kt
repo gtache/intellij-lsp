@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.requests
 
-import com.github.gtache.lsp.editor.EditorProjectService
+import com.github.gtache.lsp.editor.services.project.EditorProjectService
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger

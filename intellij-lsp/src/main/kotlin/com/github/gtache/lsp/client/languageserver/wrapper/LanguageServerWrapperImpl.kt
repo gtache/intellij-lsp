@@ -7,6 +7,9 @@ import com.github.gtache.lsp.client.languageserver.*
 import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.client.languageserver.requestmanager.SimpleRequestManager
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
+import com.github.gtache.lsp.client.languageserver.status.ServerStatus
+import com.github.gtache.lsp.client.languageserver.status.ServerStatusWidget
+import com.github.gtache.lsp.client.languageserver.status.ServerStatusWidgetFactory
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.listeners.DocumentListenerImpl
 import com.github.gtache.lsp.editor.listeners.EditorMouseListenerImpl

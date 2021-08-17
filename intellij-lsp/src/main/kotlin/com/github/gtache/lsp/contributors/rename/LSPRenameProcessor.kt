@@ -1,7 +1,7 @@
 package com.github.gtache.lsp.contributors.rename
 
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
-import com.github.gtache.lsp.editor.EditorApplicationService
+import com.github.gtache.lsp.editor.services.application.EditorApplicationService
 import com.github.gtache.lsp.requests.WorkspaceEditHandler
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.openapi.components.service

@@ -1,7 +1,7 @@
 package com.github.gtache.lsp.contributors
 
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
-import com.github.gtache.lsp.editor.EditorApplicationService
+import com.github.gtache.lsp.editor.services.application.EditorApplicationService
 import com.github.gtache.lsp.utils.ApplicationUtils
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.find.findUsages.FindUsagesHandler

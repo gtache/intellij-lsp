@@ -1,10 +1,10 @@
 package com.github.gtache.lsp.requests
 
-import com.github.gtache.lsp.client.languageserver.ServerStatus
+import com.github.gtache.lsp.client.languageserver.status.ServerStatus
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
-import com.github.gtache.lsp.editor.EditorApplicationService
+import com.github.gtache.lsp.editor.services.application.EditorApplicationService
 import com.github.gtache.lsp.editor.EditorEventManager
-import com.github.gtache.lsp.editor.EditorProjectService
+import com.github.gtache.lsp.editor.services.project.EditorProjectService
 import com.github.gtache.lsp.services.project.LSPProjectService
 import com.github.gtache.lsp.utils.ApplicationUtils
 import com.github.gtache.lsp.utils.FileUtils
