@@ -1,11 +1,11 @@
 package com.github.gtache.lsp.contributors.inspection
 
-import com.github.gtache.lsp.LSPProjectService
-import com.github.gtache.lsp.contributors.fixes.LSPCodeActionFix
-import com.github.gtache.lsp.contributors.fixes.LSPCommandFix
+import com.github.gtache.lsp.contributors.fixes.CodeActionFix
+import com.github.gtache.lsp.contributors.fixes.CommandFix
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.editor.EditorProjectService
+import com.github.gtache.lsp.services.project.LSPProjectService
 import com.github.gtache.lsp.utils.DocumentUtils.getTextClamped
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.codeInspection.InspectionManager
@@ -58,8 +58,8 @@ class LSPInspection : LocalInspectionTool() {
                                 val (commandsE, codeActionsE) = codeActionResult.filter { e -> e.isLeft || e.isRight }
                                     .partition { e -> e.isLeft }
                                 uri?.let {
-                                    val commands = commandsE.map { e -> e.left }.map { c -> LSPCommandFix(uri, c) }
-                                    val codeActions = codeActionsE.map { e -> e.right }.map { c -> LSPCodeActionFix(uri, c) }
+                                    val commands = commandsE.map { e -> e.left }.map { c -> CommandFix(uri, c) }
+                                    val codeActions = codeActionsE.map { e -> e.right }.map { c -> CodeActionFix(uri, c) }
                                     (commands + codeActions).toTypedArray()
                                 } ?: emptyArray()
                             } else emptyArray()

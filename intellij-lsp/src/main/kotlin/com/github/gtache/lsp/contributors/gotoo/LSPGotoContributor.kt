@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.contributors.gotoo
 
-import com.github.gtache.lsp.LSPProjectService
+import com.github.gtache.lsp.services.project.LSPProjectService
 import com.intellij.navigation.ChooseByNameContributor
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger

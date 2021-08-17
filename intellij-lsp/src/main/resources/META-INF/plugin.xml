@@ -35,26 +35,26 @@
 
     <extensions defaultExtensionNs="com.intellij">
 
-        <preloadingActivity implementation="com.github.gtache.lsp.LSPStartupActivity"/>
+        <preloadingActivity implementation="com.github.gtache.lsp.services.application.LSPStartupActivity"/>
         <!-- Add your extensions here -->
         <fileDocumentManagerListener
                 implementation="com.github.gtache.lsp.editor.listeners.FileDocumentManagerListenerImpl"/>
         <editorFactoryListener implementation="com.github.gtache.lsp.editor.listeners.EditorListener"/>
-        <projectConfigurable instance="com.github.gtache.lsp.settings.MiscSettings" id="MiscSettings"
+        <projectConfigurable instance="com.github.gtache.lsp.settings.project.MiscSettings" id="MiscSettings"
                              groupId="language" displayName="Language Server Protocol"/>
         <projectConfigurable parentId="MiscSettings" id="ServerSettings" displayName="Server Definitions"
-                             instance="com.github.gtache.lsp.settings.ServersSettings"/>
+                             instance="com.github.gtache.lsp.settings.project.ServersSettings"/>
         <applicationConfigurable parentId="MiscSettings" id="TimeoutSettings" displayName="Timeouts"
-                                 instance="com.github.gtache.lsp.settings.TimeoutSettings"/>
+                                 instance="com.github.gtache.lsp.settings.application.TimeoutSettings"/>
         <applicationConfigurable parentId="MiscSettings" id="ArtifactSettings" displayName="Artifacts"
-                                 instance="com.github.gtache.lsp.settings.ArtifactSettings"/>
+                                 instance="com.github.gtache.lsp.settings.application.ArtifactSettings"/>
 
         <projectService id="LSPProjectService"
-                        serviceInterface="com.github.gtache.lsp.LSPProjectService"
-                        serviceImplementation="com.github.gtache.lsp.LSPProjectServiceImpl"/>
+                        serviceInterface="com.github.gtache.lsp.services.project.LSPProjectService"
+                        serviceImplementation="com.github.gtache.lsp.services.project.LSPProjectServiceImpl"/>
         <applicationService id="LSPApplicationService"
-                            serviceInterface="com.github.gtache.lsp.LSPApplicationService"
-                            serviceImplementation="com.github.gtache.lsp.LSPApplicationServiceImpl"/>
+                            serviceInterface="com.github.gtache.lsp.services.application.LSPApplicationService"
+                            serviceImplementation="com.github.gtache.lsp.services.application.LSPApplicationServiceImpl"/>
         <projectService id="EditorProjectService"
                         serviceInterface="com.github.gtache.lsp.editor.EditorProjectService"
                         serviceImplementation="com.github.gtache.lsp.editor.EditorProjectServiceImpl"/>
@@ -62,11 +62,11 @@
                             serviceInterface="com.github.gtache.lsp.editor.EditorApplicationService"
                             serviceImplementation="com.github.gtache.lsp.editor.EditorApplicationServiceImpl"/>
         <projectService id="LSPProjectState"
-                        serviceInterface="com.github.gtache.lsp.settings.LSPProjectSettings"
-                        serviceImplementation="com.github.gtache.lsp.settings.LSPProjectSettingsImpl"/>
+                        serviceInterface="com.github.gtache.lsp.settings.project.LSPProjectSettings"
+                        serviceImplementation="com.github.gtache.lsp.settings.project.LSPProjectSettingsImpl"/>
         <applicationService id="LSPApplicationState"
-                            serviceInterface="com.github.gtache.lsp.settings.LSPApplicationSettings"
-                            serviceImplementation="com.github.gtache.lsp.settings.LSPApplicationSettingsImpl"/>
+                            serviceInterface="com.github.gtache.lsp.settings.application.LSPApplicationSettings"
+                            serviceImplementation="com.github.gtache.lsp.settings.application.LSPApplicationSettingsImpl"/>
         <applicationService id="Aether" serviceInterface="com.github.gtache.lsp.utils.aether.Aether"
                             serviceImplementation="com.github.gtache.lsp.utils.aether.AetherImpl"/>
 
@@ -90,27 +90,27 @@
         <lang.documentationProvider implementationClass="com.github.gtache.lsp.contributors.LSPDocumentationProvider"
                                     id="LSPDocumentationProvider" language="TEXT" order="first"/>
         <statusBarWidgetFactory
-                implementation="com.github.gtache.lsp.client.languageserver.LSPServerStatusWidgetFactory"/>
+                implementation="com.github.gtache.lsp.client.languageserver.ServerStatusWidgetFactory"/>
 
         <!--        <lang.findUsagesProvider implementationClass="com.github.gtache.lsp.contributors.LSPFindUsagesProvider" id="LSPFindUsagesProvider" language="TEXT" order="first" />
                 <findUsagesHandlerFactory implementation="com.github.gtache.lsp.contributors.LSPFindUsagesHandlerFactory" id="LSPFindUsagesHandlerFactory" />-->
     </extensions>
 
     <actions>
-        <action class="com.github.gtache.lsp.actions.LSPQuickDocAction" id="QuickJavaDoc" text="Quick Doc"
+        <action class="com.github.gtache.lsp.actions.QuickDocAction" id="QuickJavaDoc" text="Quick Doc"
                 overrides="true"/> <!-- Overrides quickdoc if possible, otherwise delegates to it -->
-        <action class="com.github.gtache.lsp.actions.LSPReformatAction" id="ReformatCode" use-shortcut-of="ReformatCode"
+        <action class="com.github.gtache.lsp.actions.ReformatAction" id="ReformatCode" use-shortcut-of="ReformatCode"
                 overrides="true" text="Reformat Code"/>
-        <action class="com.github.gtache.lsp.actions.LSPShowReformatDialogAction" id="ShowReformatFileDialog"
+        <action class="com.github.gtache.lsp.actions.ShowReformatDialogAction" id="ShowReformatFileDialog"
                 use-shortcut-of="ShowReformatFileDialog" overrides="true" text="Show Reformat File Dialog"/>
-        <action class="com.github.gtache.lsp.actions.LSPReferencesAction"
+        <action class="com.github.gtache.lsp.actions.ReferencesAction"
                 id="LSPFindUsages">
             <keyboard-shortcut first-keystroke="shift alt F7" keymap="$default"/>
         </action>
-        <action class="com.github.gtache.lsp.actions.LSPRefactoringAction" id="LSPRefactoringAction">
+        <action class="com.github.gtache.lsp.actions.RefactoringAction" id="LSPRefactoringAction">
             <keyboard-shortcut first-keystroke="shift alt F6" keymap="$default"/>
         </action>
-        <action class="com.github.gtache.lsp.actions.LSPLinkToServerAction" id="LSPForceLink"
+        <action class="com.github.gtache.lsp.actions.LinkToServerAction" id="LSPForceLink"
                 text="Link to LSP Server..." description="Forces linking a file with an LSP server">
             <add-to-group group-id="EditorPopupMenu"/>
             <add-to-group group-id="EditorTabPopupMenu"/>

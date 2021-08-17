@@ -6,7 +6,7 @@ import com.github.gtache.lsp.head
 import com.github.gtache.lsp.tail
 import com.github.gtache.lsp.utils.Utils
 import com.github.gtache.lsp.utils.aether.Aether
-import com.github.gtache.lsp.utils.coursier.AetherException
+import com.github.gtache.lsp.utils.aether.AetherException
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import java.util.*

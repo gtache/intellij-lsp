@@ -2,11 +2,9 @@ package com.github.gtache.lsp.utils.aether
 
 import com.github.gtache.lsp.head
 import com.github.gtache.lsp.runCommand
-import com.github.gtache.lsp.settings.LSPApplicationSettings
+import com.github.gtache.lsp.settings.application.LSPApplicationSettings
 import com.github.gtache.lsp.utils.ApplicationUtils.invokeLater
 import com.github.gtache.lsp.utils.Utils
-import com.github.gtache.lsp.utils.coursier.AetherException
-import com.github.gtache.lsp.utils.coursier.Repositories
 import com.intellij.openapi.components.service
 import com.intellij.openapi.ui.Messages
 import org.eclipse.aether.repository.RemoteRepository

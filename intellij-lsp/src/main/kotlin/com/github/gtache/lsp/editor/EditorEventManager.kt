@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.editor
 
-import com.github.gtache.lsp.actions.LSPReferencesAction
+import com.github.gtache.lsp.actions.ReferencesAction
 import com.github.gtache.lsp.client.languageserver.DummyServerOptions
 import com.github.gtache.lsp.client.languageserver.ServerOptions
 import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
@@ -24,7 +24,7 @@ import com.github.gtache.lsp.requests.Timeout.SIGNATURE_TIMEOUT
 import com.github.gtache.lsp.requests.Timeout.WILLSAVE_TIMEOUT
 import com.github.gtache.lsp.requests.Timeouts
 import com.github.gtache.lsp.requests.WorkspaceEditHandler
-import com.github.gtache.lsp.settings.LSPProjectSettings
+import com.github.gtache.lsp.settings.project.LSPProjectSettings
 import com.github.gtache.lsp.tail
 import com.github.gtache.lsp.utils.ApplicationUtils.computableReadAction
 import com.github.gtache.lsp.utils.ApplicationUtils.computableWriteAction
@@ -943,7 +943,7 @@ class EditorEventManager(
             val locUri = FileUtils.sanitizeURI(loc.targetUri)
             if (identifier.uri == locUri) {
                 if (docRange!!.definitionContainsOffset(offset)) {
-                    (ActionManager.getInstance().getAction("LSPFindUsages") as LSPReferencesAction).forManagerAndOffset(this, offset)
+                    (ActionManager.getInstance().getAction("LSPFindUsages") as ReferencesAction).forManagerAndOffset(this, offset)
                 } else {
                     val startOffset = LSPPosToOffset(editor, loc.targetRange.start)
                     writeAction {

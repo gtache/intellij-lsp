@@ -5,7 +5,7 @@ import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.editor.EditorEventManager
 import com.github.gtache.lsp.requests.Timeouts
-import com.github.gtache.lsp.settings.server.LSPConfiguration
+import com.github.gtache.lsp.settings.server.Configuration
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import org.eclipse.lsp4j.FileChangeType
@@ -49,7 +49,7 @@ interface LanguageServerWrapper {
     /**
      * The language server configuration
      */
-    var configuration: LSPConfiguration?
+    var configuration: Configuration?
 
     /**
      * Tells the wrapper if a request was timed out or not

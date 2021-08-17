@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.settings.server.parser
 
-import com.github.gtache.lsp.settings.server.LSPConfiguration
+import com.github.gtache.lsp.settings.server.Configuration
 import com.google.gson.*
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.io.FileUtilRt
@@ -10,15 +10,15 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 
 interface ConfigurationParser {
-    fun parse(file: File): LSPConfiguration
+    fun parse(file: File): Configuration
 
     companion object {
-        fun getConfiguration(file: File): LSPConfiguration? {
+        fun getConfiguration(file: File): Configuration? {
             val parser = forFile(file)
             return parser?.parse(file)
         }
 
-        fun getConfiguration(doc: String, typ: ConfigType): LSPConfiguration? {
+        fun getConfiguration(doc: String, typ: ConfigType): Configuration? {
             val parser = forType(typ)
             val file = FileUtilRt.createTempFile("config", "." + ConfigType.toExt(typ), true)
             return parser?.parse(file)
@@ -68,10 +68,10 @@ interface ConfigurationParser {
             private val logger: Logger = Logger.getInstance(JsonParser::class.java)
         }
 
-        override fun parse(file: File): LSPConfiguration {
+        override fun parse(file: File): Configuration {
             val reader = FileReader(file)
             if (file.length() == 0L) {
-                return LSPConfiguration.emptyConfiguration
+                return Configuration.emptyConfiguration
             } else {
                 try {
                     val json = com.google.gson.JsonParser.parseReader(reader)
@@ -126,20 +126,20 @@ interface ConfigurationParser {
                                 else -> return updatedMap + (trueScope to subMap + (trueKey to null))
                             }
                         }
-                        return LSPConfiguration(flatten("global", null, jsonObject, configMap))
+                        return Configuration(flatten("global", null, jsonObject, configMap))
                     } else {
-                        return LSPConfiguration.invalidConfiguration
+                        return Configuration.invalidConfiguration
                     }
                 } catch (t: Throwable) {
                     logger.warn("Error parsing JSON", t)
-                    return LSPConfiguration.invalidConfiguration
+                    return Configuration.invalidConfiguration
                 }
             }
         }
     }
 
     class XmlParser : ConfigurationParser {
-        override fun parse(file: File): LSPConfiguration {
+        override fun parse(file: File): Configuration {
             val factory = DocumentBuilderFactory.newInstance()
             val builder = factory.newDocumentBuilder()
             val doc = builder.parse(file)
@@ -149,7 +149,7 @@ interface ConfigurationParser {
     }
 
     class FlatParser : ConfigurationParser {
-        override fun parse(file: File): LSPConfiguration {
+        override fun parse(file: File): Configuration {
             throw UnsupportedOperationException()
         }
     }

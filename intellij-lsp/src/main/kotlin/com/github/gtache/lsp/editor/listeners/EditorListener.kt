@@ -1,7 +1,7 @@
 package com.github.gtache.lsp.editor.listeners
 
-import com.github.gtache.lsp.LSPProjectService
 import com.github.gtache.lsp.editor.EditorApplicationService
+import com.github.gtache.lsp.services.project.LSPProjectService
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.event.EditorFactoryEvent

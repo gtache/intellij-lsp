@@ -17,8 +17,8 @@ import com.github.gtache.lsp.multicatch
 import com.github.gtache.lsp.requests.Timeout
 import com.github.gtache.lsp.requests.Timeouts
 import com.github.gtache.lsp.reversed
-import com.github.gtache.lsp.settings.LSPProjectSettings
-import com.github.gtache.lsp.settings.server.LSPConfiguration
+import com.github.gtache.lsp.settings.project.LSPProjectSettings
+import com.github.gtache.lsp.settings.server.Configuration
 import com.github.gtache.lsp.utils.ApplicationUtils
 import com.github.gtache.lsp.utils.FileUtils
 import com.github.gtache.lsp.utils.LSPException
@@ -92,11 +92,11 @@ class LanguageServerWrapperImpl(
     private val toConnect: MutableSet<Editor> = HashSet()
     private val rootPath = project.basePath
     private val connectedEditors: MutableMap<String, EditorEventManager> = HashMap()
-    private val statusWidget: LSPServerStatusWidget? = LSPServerStatusWidget.widgets[project]
+    private val statusWidget: ServerStatusWidget? = ServerStatusWidget.widgets[project]
     private val registrations: MutableMap<String, DynamicRegistrationMethods> = HashMap()
     private var crashCount = 0
 
-    private val factory = project.service<StatusBarWidgetsManager>().widgetFactories.filterIsInstance(LSPServerStatusWidgetFactory::class.java).head
+    private val factory = project.service<StatusBarWidgetsManager>().widgetFactories.filterIsInstance(ServerStatusWidgetFactory::class.java).head
 
     init {
         factory.addWrapper(this)
@@ -117,7 +117,7 @@ class LanguageServerWrapperImpl(
 
     override var languageServer: LanguageServer? = null
     override var requestManager: RequestManager? = null
-    override var configuration: LSPConfiguration? = null
+    override var configuration: Configuration? = null
         set(newConfiguration) {
             if (newConfiguration != null) {
                 if (newConfiguration.isValid()) {
@@ -658,7 +658,7 @@ class LanguageServerWrapperImpl(
         if (!file.exists()) {
             file.createNewFile()
         }
-        configuration = LSPConfiguration.fromFile(file)
+        configuration = Configuration.fromFile(file)
     }
 
     private fun getConfPath(): String {
@@ -689,7 +689,7 @@ class LanguageServerWrapperImpl(
         val confFile = File(getConfPath())
         try {
             if (uriFile.exists() && confFile.exists() && Files.isSameFile(uriFile.toPath(), confFile.toPath())) {
-                configuration = LSPConfiguration.fromFile(confFile)
+                configuration = Configuration.fromFile(confFile)
             }
         } catch (e: Exception) {
             logger.warn(e)
