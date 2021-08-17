@@ -1,7 +1,7 @@
 package com.github.gtache.lsp.actions
 
 import com.github.gtache.lsp.editor.EditorApplicationService
-import com.github.gtache.lsp.settings.LSPProjectState
+import com.github.gtache.lsp.settings.LSPProjectSettings
 import com.intellij.codeInsight.documentation.actions.ShowQuickDocInfoAction
 import com.intellij.lang.LanguageDocumentation
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -30,7 +30,7 @@ class LSPQuickDocAction : ShowQuickDocInfoAction(), DumbAware {
             if (file != null && project != null) {
                 val language = PsiManager.getInstance(project).findFile(file)?.language
                 //Hack for IntelliJ 2018 TODO proper way
-                if (language != null && (project.service<LSPProjectState>().isAlwaysSendRequests || LanguageDocumentation.INSTANCE.allForLanguage(language)
+                if (language != null && (project.service<LSPProjectSettings>().projectState.isAlwaysSendRequests || LanguageDocumentation.INSTANCE.allForLanguage(language)
                         .isEmpty()
                             || (ApplicationInfo.getInstance().majorVersion.toInt() > 2017) && PlainTextLanguage.INSTANCE == language)) {
                     val manager = service<EditorApplicationService>().forEditor(editor)

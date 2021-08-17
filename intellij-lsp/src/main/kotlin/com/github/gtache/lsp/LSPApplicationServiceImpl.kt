@@ -1,6 +1,6 @@
 package com.github.gtache.lsp
 
-import com.github.gtache.lsp.settings.LSPApplicationState
+import com.github.gtache.lsp.settings.LSPApplicationSettings
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 
@@ -10,7 +10,7 @@ import com.intellij.openapi.diagnostic.Logger
 class LSPApplicationServiceImpl : LSPApplicationService {
 
     init {
-        service<LSPApplicationState>()
+        service<LSPApplicationSettings>()
         logger.info("LSPApplication init finished")
     }
 

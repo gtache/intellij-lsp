@@ -36,9 +36,7 @@ class LSPServerStatusWidgetFactory : StatusBarWidgetFactory {
      */
     fun addWrapper(wrapper: LanguageServerWrapper): Unit {
         val project = wrapper.project
-        if (!wrappers.contains(project)) {
-            wrappers[project] = mutableListOf(wrapper)
-        } else {
+        if (wrappers.contains(project)) {
             val projectWrappers = wrappers[project]!!
             if (!projectWrappers.contains(wrapper)) {
                 projectWrappers += wrapper
@@ -46,6 +44,9 @@ class LSPServerStatusWidgetFactory : StatusBarWidgetFactory {
             } else {
                 logger.warn("Trying to add already existing wrapper $wrapper")
             }
+        } else {
+            wrappers[project] = mutableListOf(wrapper)
+            updateWidget(wrapper)
         }
     }
 

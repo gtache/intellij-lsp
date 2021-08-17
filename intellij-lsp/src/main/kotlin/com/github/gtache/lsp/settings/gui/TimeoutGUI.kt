@@ -2,7 +2,7 @@ package com.github.gtache.lsp.settings.gui
 
 import com.github.gtache.lsp.requests.Timeout.timeouts
 import com.github.gtache.lsp.requests.Timeouts
-import com.github.gtache.lsp.settings.LSPApplicationState
+import com.github.gtache.lsp.settings.LSPApplicationSettings
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.uiDesigner.core.GridConstraints
@@ -57,7 +57,8 @@ class TimeoutGUI : LSPGUI {
 
     override fun apply() {
         val newTimeouts = rows.map { e -> Pair(e.key, e.value.text.toLong()) }.toMap()
-        service<LSPApplicationState>().timeouts = newTimeouts
+        val appSettings = service<LSPApplicationSettings>()
+        appSettings.appState = appSettings.appState.withTimeouts(newTimeouts)
         timeouts = newTimeouts
     }
 
@@ -129,11 +130,13 @@ class TimeoutGUI : LSPGUI {
             val format = NumberFormat.getInstance()
             val formatter = NumberFormatter(format)
             format.isGroupingUsed = false
-            formatter.valueClass = Int::class.java
+            formatter.valueClass = Long::class.java
             formatter.minimum = 0
-            formatter.allowsInvalid = true
             formatter.maximum = Int.MAX_VALUE
+            formatter.format = NumberFormat.getIntegerInstance()
+            formatter.allowsInvalid = true
             val field = JFormattedTextField(formatter)
+            field.focusLostBehavior = JFormattedTextField.COMMIT
             field.toolTipText = FIELD_TOOLTIP
             field.text = e.value.toString()
             Pair(e.key, field)

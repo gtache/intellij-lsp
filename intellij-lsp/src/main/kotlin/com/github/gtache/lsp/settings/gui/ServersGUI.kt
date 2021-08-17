@@ -2,7 +2,7 @@ package com.github.gtache.lsp.settings.gui
 
 import com.github.gtache.lsp.LSPProjectService
 import com.github.gtache.lsp.client.languageserver.serverdefinition.*
-import com.github.gtache.lsp.settings.LSPProjectState
+import com.github.gtache.lsp.settings.LSPProjectSettings
 import com.github.gtache.lsp.utils.Utils
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
@@ -34,6 +34,7 @@ class ServersGUI(private val project: Project) : LSPGUI {
     private val rootPanel: JPanel = JPanel()
     private val rows: MutableList<ServersGUIRow> = ArrayList(5)
     private val serverDefinitions: MutableMap<String, UserConfigurableServerDefinition> = LinkedHashMap(5)
+    private val projectSettings = project.service<LSPProjectSettings>()
     override fun getRootPanel(): JPanel {
         return rootPanel
     }
@@ -89,7 +90,7 @@ class ServersGUI(private val project: Project) : LSPGUI {
                 serverDefinitions[ext] = serverDefinition
             }
         }
-        project.service<LSPProjectState>().extToServ = serverDefinitions.mapValues { it.value.toArray() }
+        projectSettings.projectState = projectSettings.projectState.withExtToServ(serverDefinitions.mapValues { it.value.toArray() })
         project.service<LSPProjectService>().extToServerDefinition = serverDefinitions
     }
 
@@ -112,7 +113,7 @@ class ServersGUI(private val project: Project) : LSPGUI {
 
     override fun reset() {
         this.clear()
-        val state = project.service<LSPProjectState>()
+        val state = project.service<LSPProjectSettings>().projectState
         if (state.extToServ.isNotEmpty()) {
             for (serverDefinition in state.extToServ.values) {
                 addServerDefinition(UserConfigurableServerDefinition.fromArray(serverDefinition))

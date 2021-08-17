@@ -8,7 +8,7 @@ import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.contributors.LSPNavigationItem
 import com.github.gtache.lsp.requests.Timeout
 import com.github.gtache.lsp.requests.Timeouts
-import com.github.gtache.lsp.settings.LSPProjectState
+import com.github.gtache.lsp.settings.LSPProjectSettings
 import com.github.gtache.lsp.utils.ApplicationUtils
 import com.github.gtache.lsp.utils.FileUtils
 import com.github.gtache.lsp.utils.GUIUtils
@@ -32,6 +32,8 @@ import java.util.concurrent.TimeoutException
 class LSPProjectServiceImpl(private val project: Project) : LSPProjectService {
 
     private val extToServerWrapper: MutableMap<String, LanguageServerWrapper> = HashMap()
+
+    private val projectSettings = project.service<LSPProjectSettings>()
 
     override var extToServerDefinition: Map<String, LanguageServerDefinition> = emptyMap()
         get() {
@@ -85,7 +87,7 @@ class LSPProjectServiceImpl(private val project: Project) : LSPProjectService {
     }
 
     init {
-        project.service<LSPProjectState>()
+        project.service<LSPProjectSettings>()
     }
 
     override fun editorOpened(editor: Editor): Unit {
@@ -148,9 +150,9 @@ class LSPProjectServiceImpl(private val project: Project) : LSPProjectService {
                     logger.info("Opened ${file.name}" + file.name)
                     val wrapper = getWrapperFor(serverDefinition.ext, editor, serverDefinition)
                     wrapper?.let {
-                        project.service<LSPProjectState>().forcedAssociations = forcedAssociations.map { mapping ->
+                        projectSettings.projectState = projectSettings.projectState.withForcedAssociations(forcedAssociations.map { mapping ->
                             mapping.key to mapping.value.toArray()
-                        }.toMap()
+                        }.toMap())
                         it.connect(editor)
                         logger.info("Adding file " + file.name)
                     }
@@ -264,7 +266,7 @@ class LSPProjectServiceImpl(private val project: Project) : LSPProjectService {
     }
 
     override fun notifyStateLoaded() {
-        val state = project.service<LSPProjectState>()
+        val state = project.service<LSPProjectSettings>().projectState
         extToServerDefinition = state.extToServ.mapValues { e -> UserConfigurableServerDefinition.fromArray(e.value) }
             .filterValues { e -> e != null }.mapValues { e -> e.value!! }
         forcedAssociations.clear()
@@ -298,7 +300,7 @@ class LSPProjectServiceImpl(private val project: Project) : LSPProjectService {
         }
         synchronized(forcedAssociations) {
             forcedAssociations.clear()
-            project.service<LSPProjectState>().forcedAssociations = emptyMap()
+            projectSettings.projectState = projectSettings.projectState.withForcedAssociations(emptyMap())
         }
     }
 

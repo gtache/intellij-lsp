@@ -24,7 +24,7 @@ import com.github.gtache.lsp.requests.Timeout.SIGNATURE_TIMEOUT
 import com.github.gtache.lsp.requests.Timeout.WILLSAVE_TIMEOUT
 import com.github.gtache.lsp.requests.Timeouts
 import com.github.gtache.lsp.requests.WorkspaceEditHandler
-import com.github.gtache.lsp.settings.LSPProjectState
+import com.github.gtache.lsp.settings.LSPProjectSettings
 import com.github.gtache.lsp.tail
 import com.github.gtache.lsp.utils.ApplicationUtils.computableReadAction
 import com.github.gtache.lsp.utils.ApplicationUtils.computableWriteAction
@@ -1326,7 +1326,7 @@ class EditorEventManager(
             val psiFile = PsiDocumentManager.getInstance(project).getPsiFile(editor.document)
             if (psiFile != null) {
                 val language = psiFile.language
-                if ((project.service<LSPProjectState>().isAlwaysSendRequests != false || LanguageDocumentation.INSTANCE.allForLanguage(language)
+                if ((project.service<LSPProjectSettings>().projectState.isAlwaysSendRequests != false || LanguageDocumentation.INSTANCE.allForLanguage(language)
                         .isEmpty() || language == PlainTextLanguage.INSTANCE)
                     && (ctrlDown || EditorSettingsExternalizable.getInstance().isShowQuickDocOnMouseOverElement)) {
                     val lPos = getPos(e)

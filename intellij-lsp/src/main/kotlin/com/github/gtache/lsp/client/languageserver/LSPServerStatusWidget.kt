@@ -52,7 +52,7 @@ class LSPServerStatusWidget(private var wrappers: List<LanguageServerWrapper>, p
 
     override fun getPresentation(): StatusBarWidget.WidgetPresentation = object : StatusBarWidget.MultipleTextValuesPresentation {
 
-        override fun getIcon(): Icon? {
+        override fun getIcon(): Icon {
             return AllIcons.General.Settings
         }
 
@@ -96,8 +96,8 @@ class LSPServerStatusWidget(private var wrappers: List<LanguageServerWrapper>, p
             return object : DefaultActionGroup("List of language servers", actions), AlwaysVisibleActionGroup {}
         }
 
-        override fun getSelectedValue(): String {
-            TODO("Not yet implemented")
+        override fun getSelectedValue(): String? {
+            return null
         }
 
         inner class RestartAction(private val wrapper: LanguageServerWrapper) :

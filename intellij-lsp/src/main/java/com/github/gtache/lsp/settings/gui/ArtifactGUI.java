@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.settings.gui;
 
-import com.github.gtache.lsp.settings.LSPApplicationState;
+import com.github.gtache.lsp.settings.LSPApplicationSettings;
 import com.github.gtache.lsp.utils.Utils;
 import com.github.gtache.lsp.utils.aether.AetherImpl;
 import com.intellij.openapi.application.ApplicationManager;
@@ -24,10 +24,10 @@ public final class ArtifactGUI implements LSPGUI {
     private JPanel rootPanel;
     private JTextArea repositoriesTextArea;
     private JLabel repositoriesLabel;
-    private final LSPApplicationState state;
+    private final LSPApplicationSettings settings;
 
     public ArtifactGUI() {
-        state = ApplicationManager.getApplication().getService(LSPApplicationState.class);
+        settings = ApplicationManager.getApplication().getService(LSPApplicationSettings.class);
         final String str = getStateString();
         repositoriesTextArea.setText(str.isEmpty() ? placeholder : str);
     }
@@ -45,12 +45,12 @@ public final class ArtifactGUI implements LSPGUI {
 
     @Override
     public void apply() {
-        if (state != null) {
+        if (settings != null) {
             final String text = repositoriesTextArea.getText();
             if (text.trim().isEmpty() || text.equals(placeholder)) {
-                state.setAdditionalRepositories(Collections.emptyList());
+                settings.setAppState(settings.getAppState().withAdditionalRepositories(Collections.emptyList()));
             } else if (AetherImpl.checkRepositories(text, true)) {
-                state.setAdditionalRepositories(Arrays.stream(text.split(Utils.getLineSeparator())).collect(Collectors.toList()));
+                settings.setAppState(settings.getAppState().withAdditionalRepositories(Arrays.stream(text.split(Utils.getLineSeparator())).collect(Collectors.toList())));
             }
         } else {
             logger.warn("Null state");
@@ -63,7 +63,7 @@ public final class ArtifactGUI implements LSPGUI {
     }
 
     private String getStateString() {
-        return state != null ? String.join(Utils.getLineSeparator(), state.getAdditionalRepositories()) : "";
+        return settings != null ? String.join(Utils.getLineSeparator(), settings.getAppState().getAdditionalRepositories()) : "";
     }
 
     {

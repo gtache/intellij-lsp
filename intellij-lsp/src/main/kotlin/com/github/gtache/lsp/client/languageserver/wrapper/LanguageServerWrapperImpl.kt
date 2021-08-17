@@ -17,7 +17,7 @@ import com.github.gtache.lsp.multicatch
 import com.github.gtache.lsp.requests.Timeout
 import com.github.gtache.lsp.requests.Timeouts
 import com.github.gtache.lsp.reversed
-import com.github.gtache.lsp.settings.LSPProjectState
+import com.github.gtache.lsp.settings.LSPProjectSettings
 import com.github.gtache.lsp.settings.server.LSPConfiguration
 import com.github.gtache.lsp.utils.ApplicationUtils
 import com.github.gtache.lsp.utils.FileUtils
@@ -436,7 +436,7 @@ class LanguageServerWrapperImpl(
                         val outWriter = getOutWriter()
 
                         val launcher =
-                            if (project.service<LSPProjectState>().isLoggingServersOutput) LSPLauncher.createClientLauncher(
+                            if (project.service<LSPProjectSettings>().projectState.isLoggingServersOutput) LSPLauncher.createClientLauncher(
                                 c,
                                 inputStream,
                                 outputStream,

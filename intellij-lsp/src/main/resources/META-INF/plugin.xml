@@ -34,6 +34,8 @@
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.intellij">
+
+        <preloadingActivity implementation="com.github.gtache.lsp.LSPStartupActivity"/>
         <!-- Add your extensions here -->
         <fileDocumentManagerListener
                 implementation="com.github.gtache.lsp.editor.listeners.FileDocumentManagerListenerImpl"/>
@@ -60,11 +62,11 @@
                             serviceInterface="com.github.gtache.lsp.editor.EditorApplicationService"
                             serviceImplementation="com.github.gtache.lsp.editor.EditorApplicationServiceImpl"/>
         <projectService id="LSPProjectState"
-                        serviceInterface="com.github.gtache.lsp.settings.LSPProjectState"
-                        serviceImplementation="com.github.gtache.lsp.settings.LSPProjectStateImpl"/>
+                        serviceInterface="com.github.gtache.lsp.settings.LSPProjectSettings"
+                        serviceImplementation="com.github.gtache.lsp.settings.LSPProjectSettingsImpl"/>
         <applicationService id="LSPApplicationState"
-                            serviceInterface="com.github.gtache.lsp.settings.LSPApplicationState"
-                            serviceImplementation="com.github.gtache.lsp.settings.LSPApplicationStateImpl"/>
+                            serviceInterface="com.github.gtache.lsp.settings.LSPApplicationSettings"
+                            serviceImplementation="com.github.gtache.lsp.settings.LSPApplicationSettingsImpl"/>
         <applicationService id="Aether" serviceInterface="com.github.gtache.lsp.utils.aether.Aether"
                             serviceImplementation="com.github.gtache.lsp.utils.aether.AetherImpl"/>
 

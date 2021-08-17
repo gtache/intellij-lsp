@@ -1,7 +1,7 @@
 package com.github.gtache.lsp.settings.gui;
 
 import com.github.gtache.lsp.LSPProjectService;
-import com.github.gtache.lsp.settings.LSPProjectState;
+import com.github.gtache.lsp.settings.LSPProjectSettings;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.uiDesigner.core.GridConstraints;
@@ -17,11 +17,11 @@ public final class MiscGUI implements LSPGUI {
     private JCheckBox alwaysSendRequestsCheckBox;
     private JButton resetCustomAssociationsButton;
     private JCheckBox logServersCommunicationsCheckBox;
-    private final LSPProjectState state;
+    private final LSPProjectSettings settings;
     private final LSPProjectService service;
 
     public MiscGUI(final Project project) {
-        state = project.getService(LSPProjectState.class);
+        settings = project.getService(LSPProjectSettings.class);
         service = project.getService(LSPProjectService.class);
         resetCustomAssociationsButton.addActionListener((e) -> {
             if (Messages.showYesNoCancelDialog(rootPanel, "This will remove all manually added associations. Proceed?", "Remove all associations", Messages.getWarningIcon()) == Messages.YES) {
@@ -37,22 +37,22 @@ public final class MiscGUI implements LSPGUI {
 
     @Override
     public boolean isModified() {
-        return state != null && (state.isAlwaysSendRequests() != alwaysSendRequestsCheckBox.isSelected() || state.isLoggingServersOutput() != logServersCommunicationsCheckBox.isSelected());
+        return settings != null && (settings.getProjectState().isAlwaysSendRequests() != alwaysSendRequestsCheckBox.isSelected() || settings.getProjectState().isLoggingServersOutput() != logServersCommunicationsCheckBox.isSelected());
     }
 
     @Override
     public void reset() {
-        if (state != null) {
-            alwaysSendRequestsCheckBox.setSelected(state.isAlwaysSendRequests());
-            logServersCommunicationsCheckBox.setSelected(state.isLoggingServersOutput());
+        if (settings != null) {
+            alwaysSendRequestsCheckBox.setSelected(settings.getProjectState().isAlwaysSendRequests());
+            logServersCommunicationsCheckBox.setSelected(settings.getProjectState().isLoggingServersOutput());
         }
     }
 
     @Override
     public void apply() {
-        if (state != null) {
-            state.setAlwaysSendRequests(alwaysSendRequestsCheckBox.isSelected());
-            state.setLoggingServersOutput(logServersCommunicationsCheckBox.isSelected());
+        if (settings != null) {
+            settings.setProjectState(settings.getProjectState().withAlwaysSendRequests(alwaysSendRequestsCheckBox.isSelected()));
+            settings.setProjectState(settings.getProjectState().withLoggingServersOutput(logServersCommunicationsCheckBox.isSelected()));
         }
     }
 

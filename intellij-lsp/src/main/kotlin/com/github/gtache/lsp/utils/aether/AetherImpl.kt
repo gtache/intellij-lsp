@@ -2,7 +2,7 @@ package com.github.gtache.lsp.utils.aether
 
 import com.github.gtache.lsp.head
 import com.github.gtache.lsp.runCommand
-import com.github.gtache.lsp.settings.LSPApplicationState
+import com.github.gtache.lsp.settings.LSPApplicationSettings
 import com.github.gtache.lsp.utils.ApplicationUtils.invokeLater
 import com.github.gtache.lsp.utils.Utils
 import com.github.gtache.lsp.utils.coursier.AetherException
@@ -40,7 +40,7 @@ class AetherImpl : Aether {
 
 
     private fun getAdditionalRepositories(): Iterable<RemoteRepository> {
-        val repos = service<LSPApplicationState>().additionalRepositories
+        val repos = service<LSPApplicationSettings>().appState.additionalRepositories
         return if (!checkRepositories(repos, showErrorMessage = false)) {
             invokeLater { Messages.showErrorDialog("Malformed artifact repositories, please check LSP settings", "Artifact retrieval error") }
             emptyList()

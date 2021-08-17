@@ -2,7 +2,7 @@ package com.github.gtache.lsp.actions
 
 import com.github.gtache.lsp.LSPProjectService
 import com.github.gtache.lsp.editor.EditorApplicationService
-import com.github.gtache.lsp.settings.LSPProjectState
+import com.github.gtache.lsp.settings.LSPProjectSettings
 import com.intellij.codeInsight.actions.LayoutCodeDialog
 import com.intellij.codeInsight.actions.ShowReformatFileDialog
 import com.intellij.codeInsight.actions.TextRangeType
@@ -30,7 +30,7 @@ class LSPShowReformatDialogAction : ShowReformatFileDialog(), DumbAware {
         val project = e.getData(CommonDataKeys.PROJECT)
         if (editor != null && project != null) {
             val file = PsiDocumentManager.getInstance(project).getPsiFile(editor.document)
-            if (file != null && (project.service<LSPProjectState>().isAlwaysSendRequests || (LanguageFormatting.INSTANCE.allForLanguage(file.language).isEmpty()
+            if (file != null && (project.service<LSPProjectSettings>().projectState.isAlwaysSendRequests || (LanguageFormatting.INSTANCE.allForLanguage(file.language).isEmpty()
                         && project.service<LSPProjectService>().isExtensionSupported(
                     FileDocumentManager.getInstance().getFile(editor.document)?.extension
                 )))
