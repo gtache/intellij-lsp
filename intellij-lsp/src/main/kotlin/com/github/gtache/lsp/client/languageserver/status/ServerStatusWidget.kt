@@ -52,11 +52,7 @@ class ServerStatusWidget(private var wrappers: List<LanguageServerWrapper>, priv
     }
 
     //TODO revisit later
-    override fun getPresentation(): StatusBarWidget.WidgetPresentation = object : StatusBarWidget.IconPresentation {
-
-        override fun getIcon(): Icon {
-            return AllIcons.General.Settings
-        }
+    override fun getPresentation(): StatusBarWidget.WidgetPresentation = object : StatusBarWidget.TextPresentation {
 
         override fun getClickConsumer(): Consumer<MouseEvent> = Consumer<MouseEvent> { e ->
             val mnemonics = JBPopupFactory.ActionSelectionAid.MNEMONICS
@@ -68,6 +64,14 @@ class ServerStatusWidget(private var wrappers: List<LanguageServerWrapper>, priv
             val dimension = popup.content.preferredSize
             val at = Point(0, -dimension.height)
             popup.show(RelativePoint(e.component, at))
+        }
+
+        override fun getText(): String {
+           return "LSP"
+        }
+
+        override fun getAlignment(): Float {
+            return Component.CENTER_ALIGNMENT
         }
 
         inner class ServerAction(private val w: LanguageServerWrapper, private val c: Component) :
