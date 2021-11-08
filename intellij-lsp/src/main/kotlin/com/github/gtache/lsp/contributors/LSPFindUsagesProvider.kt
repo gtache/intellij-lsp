@@ -3,7 +3,6 @@ package com.github.gtache.lsp.contributors
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.intellij.lang.cacheBuilder.WordsScanner
 import com.intellij.lang.findUsages.FindUsagesProvider
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiNamedElement

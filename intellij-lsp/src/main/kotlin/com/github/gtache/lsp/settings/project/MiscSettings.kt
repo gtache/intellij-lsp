@@ -1,7 +1,6 @@
 package com.github.gtache.lsp.settings.project
 
 import com.github.gtache.lsp.settings.project.gui.MiscGUI
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.project.Project
 import org.jetbrains.annotations.Nls

@@ -6,7 +6,6 @@ import com.github.gtache.lsp.requests.WorkspaceEditHandler
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.openapi.components.service
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import org.eclipse.lsp4j.CodeAction
 
@@ -31,6 +30,6 @@ class CodeActionFix(private val uri: String, private val codeAction: CodeAction)
     override fun getName(): String {
         return codeAction.title
     }
-    
+
 }
 

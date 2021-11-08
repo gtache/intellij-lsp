@@ -2,7 +2,6 @@ package com.github.gtache.lsp.contributors.rename
 
 import com.github.gtache.lsp.editor.services.application.EditorApplicationService
 import com.intellij.openapi.components.service
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNamedElement

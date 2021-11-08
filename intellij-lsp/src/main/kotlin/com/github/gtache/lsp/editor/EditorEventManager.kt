@@ -34,10 +34,10 @@ import com.github.gtache.lsp.utils.ApplicationUtils.invokeLater
 import com.github.gtache.lsp.utils.ApplicationUtils.pool
 import com.github.gtache.lsp.utils.ApplicationUtils.writeAction
 import com.github.gtache.lsp.utils.DocumentUtils
-import com.github.gtache.lsp.utils.DocumentUtils.lspPositionToOffset
-import com.github.gtache.lsp.utils.DocumentUtils.lspRangeToTextRange
 import com.github.gtache.lsp.utils.DocumentUtils.expandOffsetToToken
 import com.github.gtache.lsp.utils.DocumentUtils.getTextClamped
+import com.github.gtache.lsp.utils.DocumentUtils.lspPositionToOffset
+import com.github.gtache.lsp.utils.DocumentUtils.lspRangeToTextRange
 import com.github.gtache.lsp.utils.DocumentUtils.offsetToLSPPosition
 import com.github.gtache.lsp.utils.FileUtils
 import com.github.gtache.lsp.utils.GUIUtils
@@ -1482,7 +1482,12 @@ class EditorEventManager(
             if (request != null) {
                 val result = request.get(DOC_HIGHLIGHT_TIMEOUT(), TimeUnit.MILLISECONDS)
                 if (result != null) {
-                    val docH = result.find { dh -> lspPositionToOffset(editor, dh.range.start) <= offset && lspPositionToOffset(editor, dh.range.end) >= offset }
+                    val docH = result.find { dh ->
+                        lspPositionToOffset(editor, dh.range.start) <= offset && lspPositionToOffset(
+                            editor,
+                            dh.range.end
+                        ) >= offset
+                    }
                     if (docH != null) lspRangeToTextRange(editor, docH.range) else expandOffsetToToken(editor, offset)
                 } else expandOffsetToToken(editor, offset)
             } else expandOffsetToToken(editor, offset)
