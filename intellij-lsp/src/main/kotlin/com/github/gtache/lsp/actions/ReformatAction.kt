@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.actions
 
-import com.github.gtache.lsp.requests.ReformatHandler
+import com.github.gtache.lsp.requests.services.project.ReformatProjectService
 import com.github.gtache.lsp.services.project.LSPProjectService
 import com.github.gtache.lsp.settings.project.LSPProjectSettings
 import com.intellij.codeInsight.actions.ReformatCodeAction
@@ -18,10 +18,6 @@ import com.intellij.psi.PsiDocumentManager
  */
 class ReformatAction : ReformatCodeAction(), DumbAware {
 
-    companion object {
-        private val logger: Logger = Logger.getInstance(ReformatAction::class.java)
-    }
-
     override fun actionPerformed(e: AnActionEvent): Unit {
         val project = e.getData(CommonDataKeys.PROJECT)
         val editor = e.getData(CommonDataKeys.EDITOR)
@@ -32,7 +28,7 @@ class ReformatAction : ReformatCodeAction(), DumbAware {
                         (LanguageFormatting.INSTANCE.allForLanguage(file.language).isEmpty()
                                 && project.service<LSPProjectService>().isExtensionSupported(file.virtualFile.extension)))
             ) {
-                ReformatHandler.reformatFile(editor)
+                project.service<ReformatProjectService>().reformatFile(editor)
             } else {
                 super.actionPerformed(e)
             }

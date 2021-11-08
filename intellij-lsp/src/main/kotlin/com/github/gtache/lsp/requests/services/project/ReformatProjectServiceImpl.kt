@@ -1,4 +1,4 @@
-package com.github.gtache.lsp.requests
+package com.github.gtache.lsp.requests.services.project
 
 import com.github.gtache.lsp.editor.services.application.EditorApplicationService
 import com.github.gtache.lsp.editor.services.project.EditorProjectService
@@ -14,25 +14,18 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFile
 
 /**
- * Object handling reformat events
+ * Implementation of ReformatHandlerService
  */
-object ReformatHandler {
+class ReformatProjectServiceImpl(private val project: Project) : ReformatProjectService {
 
-    /**
-     * Unused
-     * Reformats all the files in the project
-     *
-     * @param project The project
-     * @return True if all the files were supported by the language servers, false otherwise
-     */
-    fun reformatAllFiles(project: Project): Boolean {
+    override fun reformatAllFiles(): Boolean {
         var allFilesSupported = true
         ProjectFileIndex.getInstance(project).iterateContent { fileOrDir ->
             if (fileOrDir.isDirectory) {
                 true
             } else {
                 if (project.service<LSPProjectService>().isExtensionSupported(fileOrDir.extension)) {
-                    reformatFile(fileOrDir, project)
+                    reformatFile(fileOrDir)
                     true
                 } else {
                     allFilesSupported = false
@@ -43,15 +36,9 @@ object ReformatHandler {
         return allFilesSupported
     }
 
-    /**
-     * Reformat a file given a VirtualFile and a Project
-     *
-     * @param file    The file
-     * @param project The project
-     */
-    fun reformatFile(file: VirtualFile, project: Project): Unit {
+    override fun reformatFile(file: VirtualFile) {
         if (project.service<LSPProjectService>().isExtensionSupported(file.extension)) {
-            val uri = FileUtils.VFSToURI(file)
+            val uri = FileUtils.vfsToURI(file)
             if (uri != null) {
                 val manager = project.service<EditorProjectService>().forUri(uri)
                 if (manager != null) {
@@ -64,7 +51,7 @@ object ReformatHandler {
                             fileEditorManager.openTextEditor(descriptor, false)
                         }
                         if (editor != null) {
-                            service<EditorApplicationService>().forEditor(editor)?.reformat(closeAfter = true)
+                            service<EditorApplicationService>().managerForEditor(editor)?.reformat(closeAfter = true)
                         }
                     }
                 }
@@ -72,23 +59,11 @@ object ReformatHandler {
         }
     }
 
-    /**
-     * Reformat a file given its editor
-     *
-     * @param editor The editor
-     */
-    fun reformatFile(editor: Editor): Unit {
-        service<EditorApplicationService>().forEditor(editor)?.reformat()
+    override fun reformatFile(editor: Editor) {
+        service<EditorApplicationService>().managerForEditor(editor)?.reformat()
     }
 
-
-    /**
-     * Reformat a selection in a file given its editor
-     *
-     * @param editor The editor
-     */
-    fun reformatSelection(editor: Editor): Unit {
-        service<EditorApplicationService>().forEditor(editor)?.reformatSelection()
+    override fun reformatSelection(editor: Editor) {
+        service<EditorApplicationService>().managerForEditor(editor)?.reformatSelection()
     }
-
 }

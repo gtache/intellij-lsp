@@ -8,15 +8,18 @@ import com.github.gtache.lsp.client.connection.StreamConnectionProvider
  */
 interface CommandServerDefinition : UserConfigurableServerDefinition {
 
+    /**
+     * The command to run
+     */
     val command: Array<String>
 
-    override fun createConnectionProvider(workingDir: String): StreamConnectionProvider {
-        return ProcessStreamConnectionProvider(command, workingDir)
+    override fun createConnectionProvider(directory: String): StreamConnectionProvider {
+        return ProcessStreamConnectionProvider(command, directory)
     }
 
     companion object : UserConfigurableServerDefinitionObject {
-        override val presentableTyp: String = "Command"
-        override val typ = "command"
+        override val presentableType: String = "Command"
+        override val type: String = "command"
 
         override fun fromArray(arr: Array<String>): UserConfigurableServerDefinition? {
             return RawCommandServerDefinition.fromArray(arr) ?: ExeLanguageServerDefinition.fromArray(arr)

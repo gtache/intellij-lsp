@@ -18,10 +18,6 @@ import com.intellij.psi.PsiManager
  * Action overriding QuickDoc (CTRL+Q)
  */
 class QuickDocAction : ShowQuickDocInfoAction(), DumbAware {
-    companion object {
-        private val logger: Logger = Logger.getInstance(QuickDocAction::class.java)
-    }
-
     override fun actionPerformed(e: AnActionEvent): Unit {
         val editor = e.getData(CommonDataKeys.EDITOR)
         if (editor != null) {
@@ -35,7 +31,7 @@ class QuickDocAction : ShowQuickDocInfoAction(), DumbAware {
                     )
                         .isEmpty()
                             || (ApplicationInfo.getInstance().majorVersion.toInt() > 2017) && PlainTextLanguage.INSTANCE == language)) {
-                    val manager = service<EditorApplicationService>().forEditor(editor)
+                    val manager = service<EditorApplicationService>().managerForEditor(editor)
                     if (manager != null) {
                         manager.quickDoc(editor)
                     } else super.actionPerformed(e)

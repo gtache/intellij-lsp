@@ -8,6 +8,9 @@ import com.intellij.openapi.editor.event.SelectionListener
  */
 class SelectionListenerImpl : SelectionListener, AbstractLSPListener() {
 
+    /**
+     * Event [e] sent when the selection has changed
+     */
     override fun selectionChanged(e: SelectionEvent): Unit {
         if (checkEnabled()) {
             manager?.selectionChanged(e)

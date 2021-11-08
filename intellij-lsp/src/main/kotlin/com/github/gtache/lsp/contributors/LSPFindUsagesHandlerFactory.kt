@@ -13,8 +13,10 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiReference
 import com.intellij.psi.search.SearchScope
 
+/**
+ *  A factory for LSPFindUsagesHandler
+ */
 class LSPFindUsagesHandlerFactory : FindUsagesHandlerFactory() {
-
 
     override fun createFindUsagesHandler(element: PsiElement, forHighlightUsages: Boolean): FindUsagesHandler {
         return object : FindUsagesHandler(element) {
@@ -24,7 +26,7 @@ class LSPFindUsagesHandlerFactory : FindUsagesHandlerFactory() {
             init {
                 fun setElemsFromEditor(editor: Editor?) {
                     if (editor != null) {
-                        val manager = service<EditorApplicationService>().forEditor(editor)
+                        val manager = service<EditorApplicationService>().managerForEditor(editor)
                         if (manager != null) {
                             ApplicationUtils.invokeLater {
                                 if (!editor.isDisposed) {

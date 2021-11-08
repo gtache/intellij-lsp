@@ -10,7 +10,7 @@ import com.intellij.openapi.project.Project
 import java.util.*
 
 /**
- * Class representing the state of the LSP settings
+ * Class managing the persistent state of the LSP project settings
  */
 @State(name = "LSPProjectState", storages = [Storage(value = "LSPProjectState.xml")])
 class LSPProjectSettingsImpl(private val project: Project) : LSPProjectSettings {

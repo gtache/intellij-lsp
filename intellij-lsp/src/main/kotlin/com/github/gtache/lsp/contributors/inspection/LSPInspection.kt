@@ -26,14 +26,14 @@ class LSPInspection : LocalInspectionTool() {
         val virtualFile = file.virtualFile
         val ext = virtualFile.extension
         return if (ext != null && file.project.service<LSPProjectService>().isExtensionSupported(ext)) {
-            val uri = FileUtils.VFSToURI(virtualFile)
+            val uri = FileUtils.vfsToURI(virtualFile)
 
             /**
              * Get all the ProblemDescriptor given an EditorEventManager
              * Look at the DiagnosticHighlights, create dummy PsiElement for each, create descriptor using it
              *
              * @param m The manager
-             * @return The ProblemDescriptors
+             * Returns The ProblemDescriptors
              */
             fun descriptorsForManager(m: EditorEventManager): Array<ProblemDescriptor> {
                 val diagnostics = m.getDiagnostics()

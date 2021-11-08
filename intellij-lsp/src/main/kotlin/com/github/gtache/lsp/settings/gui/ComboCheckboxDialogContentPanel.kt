@@ -10,6 +10,9 @@ import javax.swing.DefaultComboBoxModel
 import javax.swing.JComboBox
 import javax.swing.JPanel
 
+/**
+ * Represents a combobox with a checkbox in a dialog panel
+ */
 class ComboCheckboxDialogContentPanel(serverDefinitions: List<String>, serverWrappers: List<String>) {
     private val serverDefModel: ComboBoxModel<String>
     private val serverWrapModel: ComboBoxModel<String>
@@ -18,6 +21,13 @@ class ComboCheckboxDialogContentPanel(serverDefinitions: List<String>, serverWra
 
     val comboBoxIndex: Int
         get() = serverBox.selectedIndex
+
+    init {
+        serverDefModel = DefaultComboBoxModel(serverDefinitions.toTypedArray())
+        serverWrapModel = DefaultComboBoxModel(serverWrappers.toTypedArray())
+        serverBox = ComboBox(serverDefModel)
+        setupUI()
+    }
 
     private fun setupUI() {
         rootPane.layout = GridLayoutManager(4, 3, JBUI.emptyInsets(), -1, -1)
@@ -134,12 +144,5 @@ class ComboCheckboxDialogContentPanel(serverDefinitions: List<String>, serverWra
                 false
             )
         )
-    }
-
-    init {
-        serverDefModel = DefaultComboBoxModel(serverDefinitions.toTypedArray())
-        serverWrapModel = DefaultComboBoxModel(serverWrappers.toTypedArray())
-        serverBox = ComboBox(serverDefModel)
-        setupUI()
     }
 }

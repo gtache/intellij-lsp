@@ -5,6 +5,9 @@ import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.diagnostic.Logger
 
+/**
+ * Class managing the persistent state of the LSP application settings
+ */
 @State(name = "LSPApplicationState", storages = [Storage(value = "LSPApplicationState.xml")])
 class LSPApplicationSettingsImpl : LSPApplicationSettings {
 

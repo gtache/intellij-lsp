@@ -6,7 +6,10 @@ import com.github.gtache.lsp.utils.ApplicationUtils
 import com.github.gtache.lsp.utils.GUIUtils
 import com.intellij.icons.AllIcons
 import com.intellij.ide.DataManager
-import com.intellij.openapi.actionSystem.*
+import com.intellij.openapi.actionSystem.ActionGroup
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
@@ -19,36 +22,37 @@ import java.awt.Component
 import java.awt.Point
 import java.awt.event.MouseEvent
 import java.util.*
-import javax.swing.Icon
 
 /**
  * A status bar widget for a server status
- *
- * @param wrapper The wrapper corresponding to the server
  */
 class ServerStatusWidget(private var wrappers: List<LanguageServerWrapper>, private val project: Project) : StatusBarWidget {
-
-    init {
-        widgets[project] = this
-    }
-
-    companion object {
-        val widgets: MutableMap<Project, ServerStatusWidget> = HashMap()
-    }
 
     private var statusBar: StatusBar? = null
     private val timeouts: MutableMap<Timeouts, Pair<Int, Int>> = EnumMap(Timeouts::class.java)
 
     init {
+        widgets[project] = this
         Timeouts.values().forEach { t -> timeouts[t] = Pair(0, 0) }
     }
 
+    companion object {
+        /**
+         * The map of project -> widget
+         */
+        val widgets: MutableMap<Project, ServerStatusWidget> = HashMap()
+    }
+
+    /**
+     * Notifies the widget of a [timeout] check and its [success]
+     */
     fun notifyResult(timeout: Timeouts, success: Boolean): Unit {
-        val oldValue = timeouts[timeout]
-        timeouts[timeout] = if (success) Pair(oldValue!!.first + 1, oldValue.second) else Pair(
-            oldValue!!.first,
-            oldValue.second + 1
-        )
+        timeouts[timeout]?.let { (first, second) ->
+            timeouts[timeout] = if (success) Pair(first + 1, second) else Pair(
+                first,
+                second + 1
+            )
+        }
     }
 
     //TODO revisit later
@@ -67,7 +71,7 @@ class ServerStatusWidget(private var wrappers: List<LanguageServerWrapper>, priv
         }
 
         override fun getText(): String {
-           return "LSP"
+            return "LSP"
         }
 
         override fun getAlignment(): Float {
@@ -163,9 +167,7 @@ class ServerStatusWidget(private var wrappers: List<LanguageServerWrapper>, priv
     }
 
     /**
-     * Sets the status of the server
-     *
-     * @param status The status
+     * Sets the status of the server for the given [wrapper]
      */
     fun statusUpdated(wrapper: LanguageServerWrapper): Unit {
         if (wrappers.contains(wrapper)) {
@@ -173,6 +175,9 @@ class ServerStatusWidget(private var wrappers: List<LanguageServerWrapper>, priv
         }
     }
 
+    /**
+     * Sets the wrapper for this widget
+     */
     fun setWrappers(wrappers: List<LanguageServerWrapper>): Unit {
         this.wrappers = wrappers.toList()
         updateWidget()

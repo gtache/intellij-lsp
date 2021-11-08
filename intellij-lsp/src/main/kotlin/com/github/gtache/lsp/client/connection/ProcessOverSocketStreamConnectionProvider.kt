@@ -11,7 +11,7 @@ import java.util.*
 import kotlin.concurrent.thread
 
 /**
- * Unused at the moment
+ * A connection to a process using sockets
  *
  * @param commands
  * @param workingDir

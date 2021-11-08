@@ -13,6 +13,9 @@ import org.jetbrains.annotations.NotNull;
 import javax.swing.*;
 import java.awt.*;
 
+/**
+ * GUI for the Miscellaneous settings
+ */
 public final class MiscGUI implements LSPGUI {
     private JPanel rootPanel;
     private JCheckBox alwaysSendRequestsCheckBox;

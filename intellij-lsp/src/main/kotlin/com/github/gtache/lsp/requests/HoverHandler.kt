@@ -1,6 +1,5 @@
 package com.github.gtache.lsp.requests
 
-import com.intellij.openapi.diagnostic.Logger
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.util.options.MutableDataSet
@@ -12,16 +11,12 @@ import org.eclipse.lsp4j.jsonrpc.validation.NonNull
  */
 object HoverHandler {
 
-    const val MARKUP_PLAIN: String = "plaintext"
-    const val MARKUP_MARKUP: String = "markup"
+    private const val MARKUP_PLAIN: String = "plaintext"
+    private const val MARKUP_MARKUP: String = "markup"
 
-    private val logger: Logger = Logger.getInstance(HoverHandler::class.java)
 
     /**
-     * Returns the hover string corresponding to an Hover response
-     *
-     * @param hover The Hover
-     * @return The string response
+     * Returns the hover string corresponding to the given [hover] response
      */
     fun getHoverString(@NonNull hover: Hover): String {
         if (hover.contents != null) {

@@ -12,6 +12,9 @@ import org.eclipse.lsp4j.services.WorkspaceService
  */
 interface RequestManager : LanguageServer, TextDocumentService, WorkspaceService, LanguageClient {
 
+    /**
+     * Cancel the request specified by the given [params]
+     */
     fun cancelRequest(params: CancelParams): Unit
 
 }

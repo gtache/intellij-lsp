@@ -6,6 +6,9 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 
+/**
+ * Implementation of EditorProjectService
+ */
 class EditorProjectServiceImpl(private val project: Project) : EditorProjectService {
 
     companion object {

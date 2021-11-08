@@ -12,7 +12,7 @@ import com.intellij.openapi.fileEditor.FileDocumentSynchronizationVetoer
 //TODO check called before willSave
 class LSPFileDocumentSynchronizationVetoer : FileDocumentSynchronizationVetoer() {
     override fun maySaveDocument(document: Document, isSaveExplicit: Boolean): Boolean {
-        val manager = service<EditorApplicationService>().forDocument(document)
+        val manager = service<EditorApplicationService>().managerForDocument(document)
         return if (manager != null) {
             if (manager.needSave) {
                 val ret = super.maySaveDocument(document, isSaveExplicit)

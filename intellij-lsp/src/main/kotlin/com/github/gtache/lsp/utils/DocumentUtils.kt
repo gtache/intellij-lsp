@@ -17,12 +17,7 @@ object DocumentUtils {
     private val logger: Logger = Logger.getInstance(this.javaClass)
 
     /**
-     * Gets the line at the given offset given an editor and bolds the text between the given offsets
-     *
-     * @param editor      The editor
-     * @param startOffset The starting offset
-     * @param endOffset   The ending offset
-     * @return The document line
+     * Returns the line at the given [startOffset] given an [editor] with the text between [startOffset] and [endOffset] in bold
      */
     fun getLineText(editor: Editor, startOffset: Int, endOffset: Int): String {
         return computableReadAction {
@@ -38,24 +33,16 @@ object DocumentUtils {
     }
 
     /**
-     * Transforms a LogicalPosition (IntelliJ) to an LSP Position
-     *
-     * @param position the LogicalPosition
-     * @param editor   The editor
-     * @return the Position
+     * Transforms a logical [position] (IntelliJ) in an [editor] to an LSP Position
      */
-    fun logicalToLSPPos(position: LogicalPosition, editor: Editor): Position {
-        return computableReadAction { offsetToLSPPos(editor, editor.logicalPositionToOffset(position)) }
+    fun logicalPositionToLSPPosition(position: LogicalPosition, editor: Editor): Position {
+        return computableReadAction { offsetToLSPPosition(editor, editor.logicalPositionToOffset(position)) }
     }
 
     /**
-     * Calculates a Position given an editor and an offset
-     *
-     * @param editor The editor
-     * @param offset The offset
-     * @return an LSP position
+     * Calculates an LSP Position given an [editor] and an [offset]
      */
-    fun offsetToLSPPos(editor: Editor, offset: Int): Position {
+    fun offsetToLSPPosition(editor: Editor, offset: Int): Position {
         return computableReadAction {
             val doc = editor.document
             val line = doc.getLineNumber(offset)
@@ -67,18 +54,14 @@ object DocumentUtils {
     }
 
     /**
-     * Transforms an LSP position to an editor offset
-     *
-     * @param editor The editor
-     * @param pos    The LSPPos
-     * @return The offset
+     * Transforms an LSP [position] to an [editor] offset
      */
-    fun LSPPosToOffset(editor: Editor, pos: Position): Int {
+    fun lspPositionToOffset(editor: Editor, position: Position): Int {
         return computableReadAction {
             val doc = editor.document
-            val line = 0.coerceAtLeast(pos.line.coerceAtMost(doc.lineCount - 1))
+            val line = 0.coerceAtLeast(position.line.coerceAtMost(doc.lineCount - 1))
             val docLength = doc.textLength
-            val offset = doc.getLineStartOffset(line) + pos.character
+            val offset = doc.getLineStartOffset(line) + position.character
             if (!DocumentUtil.isValidOffset(offset, doc)) {
                 logger.debug("Invalid offset : $offset, doclength $docLength")
             }
@@ -86,10 +69,16 @@ object DocumentUtils {
         }
     }
 
-    fun LSPRangeToTextRange(editor: Editor, range: org.eclipse.lsp4j.Range): TextRange {
-        return TextRange(LSPPosToOffset(editor, range.start), LSPPosToOffset(editor, range.end))
+    /**
+     * Transforms an LSP [range] to an [editor] range
+     */
+    fun lspRangeToTextRange(editor: Editor, range: org.eclipse.lsp4j.Range): TextRange {
+        return TextRange(lspPositionToOffset(editor, range.start), lspPositionToOffset(editor, range.end))
     }
 
+    /**
+     * Expands the given [offset] in an [editor] to its whole token
+     */
     fun expandOffsetToToken(editor: Editor, offset: Int): TextRange {
         return computableReadAction {
             val text = editor.document.text
@@ -99,11 +88,17 @@ object DocumentUtils {
         }
     }
 
+    /**
+     * Clamps the text from max(0, [start]) to min(document length, [end])
+     */
     fun Document.getTextClamped(start: Int, end: Int): String {
         val textRange = TextRange(0.coerceAtLeast(start), (textLength - 1).coerceAtMost(end))
         return getText(textRange)
     }
 
+    /**
+     * Clamps the text from max(0, [textRange] start) to min(document length, [textRange] end)
+     */
     fun Document.getTextClamped(textRange: TextRange): String {
         return getTextClamped(0.coerceAtLeast(textRange.startOffset), (textLength - 1).coerceAtMost(textRange.endOffset))
     }

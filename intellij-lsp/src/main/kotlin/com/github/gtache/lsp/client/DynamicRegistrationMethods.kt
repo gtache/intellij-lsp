@@ -25,11 +25,17 @@ enum class DynamicRegistrationMethods(private val methodName: String) {
     RENAME("textDocument/rename");
 
     companion object {
+        /**
+         * Returns the method for the given [methodName]
+         */
         fun forName(methodName: String): DynamicRegistrationMethods? {
             return values().firstOrNull { n -> n.methodName == methodName }
         }
     }
 
+    /**
+     * Returns the name of the method
+     */
     fun getName(): String {
         return methodName
     }

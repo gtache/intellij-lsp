@@ -12,10 +12,24 @@ import java.net.URI
  */
 interface StreamConnectionProvider {
 
+    /**
+     * The connection input stream
+     */
     val inputStream: InputStream?
+
+    /**
+     * The connection output stream
+     */
     val outputStream: OutputStream?
+
+    /**
+     * The connection error stream
+     */
     val errorStream: InputStream?
 
+    /**
+     * Starts the connection
+     */
     fun start(): Unit
 
     /**
@@ -23,14 +37,13 @@ interface StreamConnectionProvider {
      */
     fun getInitializationOptions(rootUri: URI): Any? = null
 
+    /**
+     * Stops the connection
+     */
     fun stop(): Unit
 
     /**
-     * Allows to hook custom behavior on messages.
-     *
-     * @param message        a message
-     * @param languageServer the language server receiving/sending the message.
-     * @param rootURI
+     * Handles the given [message] sent/received by the given [languageServer] at the [rootURI]
      */
     fun handleMessage(message: Message, languageServer: LanguageServer, rootURI: URI): Unit {
     }

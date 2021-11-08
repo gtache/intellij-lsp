@@ -11,7 +11,7 @@ import com.intellij.openapi.project.Project
 import org.eclipse.lsp4j.CodeAction
 
 /**
- * The Quickfix for LSP
+ * A quickfix using a code action
  *
  * @param uri        The file in which the commands will be applied
  * @param codeAction The action to execute
@@ -22,7 +22,7 @@ class CodeActionFix(private val uri: String, private val codeAction: CodeAction)
         val psiElement = descriptor.psiElement
         if (psiElement is LSPPsiElement) {
             if (codeAction.edit != null) WorkspaceEditHandler.applyEdit(codeAction.edit, project, codeAction.title)
-            service<EditorApplicationService>().forEditor(psiElement.editor)?.executeCommands(listOf(codeAction.command))
+            service<EditorApplicationService>().managerForEditor(psiElement.editor)?.executeCommands(listOf(codeAction.command))
         }
     }
 
@@ -31,9 +31,6 @@ class CodeActionFix(private val uri: String, private val codeAction: CodeAction)
     override fun getName(): String {
         return codeAction.title
     }
-
-    companion object LSPCodeActionFix {
-        private val logger: Logger = Logger.getInstance(CodeActionFix::class.java)
-    }
+    
 }
 

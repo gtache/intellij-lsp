@@ -1,5 +1,8 @@
 package com.github.gtache.lsp.client.languageserver.serverdefinition
 
+/**
+ * List of default extensions for the common files
+ */
 enum class LanguageIdentifier constructor(
     private val id: String,
     private val exts: Array<String> = arrayOf(id)
@@ -61,15 +64,19 @@ enum class LanguageIdentifier constructor(
     YAML("yaml");
 
     companion object {
-        private val extToId: MutableMap<String, String?> = HashMap(60)
-        fun extToLanguageId(ext: String): String? {
-            return extToId.getOrDefault(ext, null)
+        private val extensionToId: MutableMap<String, String?> = HashMap(60)
+
+        /**
+         * Returns the Language ID for the given [extension]
+         */
+        fun extToLanguageId(extension: String): String? {
+            return extensionToId.getOrDefault(extension, null)
         }
 
         init {
             for (li in values()) {
                 for (ext in li.exts) {
-                    extToId[ext] = li.id
+                    extensionToId[ext] = li.id
                 }
             }
         }

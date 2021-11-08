@@ -1,8 +1,8 @@
 package com.github.gtache.lsp.services.project
 
-import com.github.gtache.lsp.client.languageserver.status.ServerStatus
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
 import com.github.gtache.lsp.client.languageserver.serverdefinition.UserConfigurableServerDefinition
+import com.github.gtache.lsp.client.languageserver.status.ServerStatus
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapperImpl
 import com.github.gtache.lsp.contributors.LSPNavigationItem
@@ -29,13 +29,16 @@ import org.eclipse.lsp4j.WorkspaceSymbolParams
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
+/**
+ * Implementation of LSPProjectService
+ */
 class LSPProjectServiceImpl(private val project: Project) : LSPProjectService {
 
     private val extToServerWrapper: MutableMap<String, LanguageServerWrapper> = HashMap()
 
     private val projectSettings = project.service<LSPProjectSettings>()
 
-    override var extToServerDefinition: Map<String, LanguageServerDefinition> = emptyMap()
+    override var extensionsToServerDefinitions: Map<String, LanguageServerDefinition> = emptyMap()
         get() {
             return field.toMap()
         }
@@ -105,7 +108,7 @@ class LSPProjectServiceImpl(private val project: Project) : LSPProjectService {
                         if (forced == null) {
                             val forcedDef = forcedAssociations[uri]
                             if (forcedDef == null) {
-                                val serverDefinition = extToServerDefinition[ext]
+                                val serverDefinition = extensionsToServerDefinitions[ext]
                                 serverDefinition?.let {
                                     val wrapper = getWrapperFor(ext, editor, it)
                                     wrapper?.let { w ->
@@ -132,7 +135,7 @@ class LSPProjectServiceImpl(private val project: Project) : LSPProjectService {
     }
 
 
-    override fun forceEditorOpened(editor: Editor, serverDefinition: LanguageServerDefinition, project: Project): Unit {
+    override fun forceEditorLink(editor: Editor, serverDefinition: LanguageServerDefinition, project: Project): Unit {
         addExtensions()
         val file: VirtualFile? = FileDocumentManager.getInstance().getFile(editor.document)
         if (file != null) {
@@ -173,43 +176,38 @@ class LSPProjectServiceImpl(private val project: Project) : LSPProjectService {
                 Messages.showErrorDialog(project, "Can't infer project directory from project\nThe plugin won't work for $docName", "LSP error")
                 return null
             } else {
-                val rootPath = FileUtils.VFSToPath(rootVFS)
+                val rootPath = FileUtils.vfsToPath(rootVFS)
                 val rootUri = FileUtils.pathToUri(rootPath)
-                if (rootUri != null) {
-                    synchronized(forcedAssociationsInstances) {
-                        var wrapper = forcedAssociationsInstances[FileUtils.editorToURIString(editor)]
-                        if (wrapper == null || wrapper.serverDefinition != serverDefinition) {
-                            synchronized(extToServerWrapper) {
-                                wrapper = extToServerWrapper[ext]
-                                if (wrapper == null) {
-                                    logger.info("Instantiating wrapper for $ext : $rootUri")
-                                    wrapper = LanguageServerWrapperImpl(serverDefinition, project)
-                                    val exts = serverDefinition.ext.split(LanguageServerDefinition.SPLIT_CHAR)
-                                    exts.forEach { ext -> extToServerWrapper[ext] = wrapper!! }
-                                    extToServerWrapper[serverDefinition.ext] = wrapper!!
-                                } else {
-                                    logger.info("Wrapper already existing for $ext , $rootUri")
+                synchronized(forcedAssociationsInstances) {
+                    var wrapper = forcedAssociationsInstances[FileUtils.editorToURIString(editor)]
+                    if (wrapper == null || wrapper.serverDefinition != serverDefinition) {
+                        synchronized(extToServerWrapper) {
+                            wrapper = extToServerWrapper[ext]
+                            if (wrapper == null) {
+                                logger.info("Instantiating wrapper for $ext : $rootUri")
+                                wrapper = LanguageServerWrapperImpl(serverDefinition, project)
+                                val exts = serverDefinition.ext.split(LanguageServerDefinition.SPLIT_CHAR)
+                                exts.forEach { ext -> extToServerWrapper[ext] = wrapper!! }
+                                extToServerWrapper[serverDefinition.ext] = wrapper!!
+                            } else {
+                                logger.info("Wrapper already existing for $ext , $rootUri")
+                            }
+                        }
+                        synchronized(forcedAssociations) {
+                            forcedAssociations.forEach { t ->
+                                if (t.value == serverDefinition && t.key == rootUri) {
+                                    forcedAssociationsInstances[t.key] = wrapper!!
                                 }
                             }
-                            synchronized(forcedAssociations) {
-                                forcedAssociations.forEach { t ->
-                                    if (t.value == serverDefinition && t.key == rootUri) {
-                                        forcedAssociationsInstances[t.key] = wrapper!!
-                                    }
-                                }
-                                val uri = FileUtils.editorToURIString(editor)
-                                if (uri != null) {
-                                    forcedAssociationsInstances[uri] = wrapper!!
-                                } else {
-                                    logger.warn("Null uri for $editor")
-                                }
+                            val uri = FileUtils.editorToURIString(editor)
+                            if (uri != null) {
+                                forcedAssociationsInstances[uri] = wrapper!!
+                            } else {
+                                logger.warn("Null uri for $editor")
                             }
-                            return wrapper
-                        } else return wrapper
-                    }
-                } else {
-                    logger.warn("rootURI is null for $rootPath")
-                    return null
+                        }
+                        return wrapper
+                    } else return wrapper
                 }
             }
         } else {
@@ -248,7 +246,7 @@ class LSPProjectServiceImpl(private val project: Project) : LSPProjectService {
             val symbols = res.second!!
             symbols.mapNotNull { symb ->
                 val start = symb.location.range.start
-                val uri = FileUtils.URIToVFS(symb.location.uri)
+                val uri = FileUtils.uriToVFS(symb.location.uri)
                 if (uri != null) {
                     val iconProvider = GUIUtils.getIconProviderFor(definition.serverDefinition)
                     LSPNavigationItem(
@@ -267,7 +265,7 @@ class LSPProjectServiceImpl(private val project: Project) : LSPProjectService {
 
     override fun notifyStateLoaded() {
         val state = project.service<LSPProjectSettings>().projectState
-        extToServerDefinition = state.extToServ.mapValues { e -> UserConfigurableServerDefinition.fromArray(e.value) }
+        extensionsToServerDefinitions = state.extensionsToServers.mapValues { e -> UserConfigurableServerDefinition.fromArray(e.value) }
             .filterValues { e -> e != null }.mapValues { e -> e.value!! }
         forcedAssociations.clear()
         forcedAssociations.putAll(state.forcedAssociations.mapValues { e -> UserConfigurableServerDefinition.fromArray(e.value) }
@@ -276,10 +274,10 @@ class LSPProjectServiceImpl(private val project: Project) : LSPProjectService {
 
     private fun addExtensions(): Unit {
         if (!loadedExtensions) {
-            val extensions = LanguageServerDefinition.allDefinitions.filter { s -> !extToServerDefinition.contains(s.ext) }
+            val extensions = LanguageServerDefinition.ALL_DEFINITIONS.filter { s -> !extensionsToServerDefinitions.contains(s.ext) }
             logger.info("Added serverDefinitions $extensions from plugins")
-            extToServerDefinition = extToServerDefinition + extensions.map { s -> Pair(s.ext, s) }
-            extToServerDefinition = flattenExt(extToServerDefinition)
+            extensionsToServerDefinitions = extensionsToServerDefinitions + extensions.map { s -> Pair(s.ext, s) }
+            extensionsToServerDefinitions = flattenExt(extensionsToServerDefinitions)
             loadedExtensions = true
         }
     }

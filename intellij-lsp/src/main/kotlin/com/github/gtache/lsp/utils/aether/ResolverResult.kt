@@ -21,4 +21,7 @@ import java.io.File
 * specific language governing permissions and limitations
 * under the License.
 */
+/**
+ * Resolve result
+ */
 data class ResolverResult(val root: DependencyNode, val resolvedFiles: List<File>, val resolvedClassPath: String)

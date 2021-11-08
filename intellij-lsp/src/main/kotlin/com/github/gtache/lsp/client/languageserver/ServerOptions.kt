@@ -12,6 +12,8 @@ import org.eclipse.lsp4j.*
  * @param documentOnTypeFormattingOptions The onTypeFormatting options
  * @param documentLinkOptions             The link options
  * @param executeCommandOptions           The execute options
+ * @param semanticHighlightingOptions     The semantic highlight options
+ * @param renameOptions                   The rename options
  */
 data class ServerOptions(
     val syncKind: TextDocumentSyncKind,

@@ -22,7 +22,6 @@ import com.intellij.psi.PsiDocumentManager
 class ShowReformatDialogAction : ShowReformatFileDialog(), DumbAware {
     companion object {
         private const val HELP_ID = "editing.codeReformatting"
-        private val logger: Logger = Logger.getInstance(ShowReformatDialogAction::class.java)
     }
 
     override fun actionPerformed(e: AnActionEvent): Unit {
@@ -43,7 +42,7 @@ class ShowReformatDialogAction : ShowReformatFileDialog(), DumbAware {
 
                 if (dialog.isOK) {
                     val options = dialog.runOptions
-                    service<EditorApplicationService>().forEditor(editor)
+                    service<EditorApplicationService>().managerForEditor(editor)
                         ?.let { manager -> if (options.textRangeType == TextRangeType.SELECTED_TEXT) manager.reformatSelection() else manager.reformat() }
                 }
             } else {

@@ -24,35 +24,58 @@ import java.net.URL
  * Various file / uri related methods
  */
 object FileUtils {
-    val os = if (System.getProperty("os.name").lowercase().contains("win")) OS.WINDOWS else OS.UNIX
-    const val COLON_ENCODED: String = "%3A"
-    const val SPACE_ENCODED: String = "%20"
-    const val URI_FILE_BEGIN: String = "file:"
-    const val URI_VALID_FILE_BEGIN: String = "$URI_FILE_BEGIN///"
-    const val URI_PATH_SEP: Char = '/'
+    private val os = if (System.getProperty("os.name").lowercase().contains("win")) OS.WINDOWS else OS.UNIX
 
-    const val LSP_ROOT_DIR: String = "lsp/"
+    /**
+     * Object representing the OS type (Windows or Unix)
+     */
+    private enum class OS {
+        WINDOWS, UNIX
+    }
+
+    const val SPACE_ENCODED: String = "%20"
+    private const val COLON_ENCODED: String = "%3A"
+    private const val URI_FILE_BEGIN: String = "file:"
+    private const val URI_VALID_FILE_BEGIN: String = "$URI_FILE_BEGIN///"
+    private const val URI_PATH_SEP: Char = '/'
+
+    private const val LSP_ROOT_DIR: String = "lsp/"
     const val LSP_LOG_DIR: String = LSP_ROOT_DIR + "log/"
     const val LSP_CONFIG_DIR: String = LSP_ROOT_DIR + "conf/"
 
     private val logger: Logger = Logger.getInstance(FileUtils::class.java)
 
+    /**
+     * Returns the extension of a [psiFile]
+     */
     fun extFromPsiFile(psiFile: PsiFile): String? {
         return psiFile.virtualFile.extension
     }
 
+    /**
+     * Returns the editor of a [psiFile]
+     */
     fun editorFromPsiFile(psiFile: PsiFile): Editor? {
         return editorFromVirtualFile(psiFile.virtualFile, psiFile.project)
     }
 
+    /**
+     * Returns the editor given an [uri] and a [project]
+     */
     fun editorFromUri(uri: String, project: Project): Editor? {
-        return URIToVFS(uri)?.let { editorFromVirtualFile(it, project) }
+        return uriToVFS(uri)?.let { editorFromVirtualFile(it, project) }
     }
 
+    /**
+     * Returns the editor given a virtual [file] and a [project]
+     */
     fun editorFromVirtualFile(file: VirtualFile, project: Project): Editor? {
         return FileEditorManager.getInstance(project).getAllEditors(file).filterIsInstance<TextEditor>().map { t -> t.editor }.firstOrNull()
     }
 
+    /**
+     * Opens an editor given an [uri] and a [project] and returns a pair of (virtualFile, editor)
+     */
     fun openClosedEditor(uri: String, project: Project): Pair<VirtualFile, Editor>? {
         val file = LocalFileSystem.getInstance().findFileByIoFile(File(URI(sanitizeURI(uri))))
         return if (file != null) {
@@ -68,51 +91,42 @@ object FileUtils {
     }
 
     /**
-     * Returns a file type given an editor
-     *
-     * @param editor The editor
-     * @return The FileType
+     * Returns a file type given an [editor]
      */
     fun fileTypeFromEditor(editor: Editor): FileType? {
         return FileDocumentManager.getInstance().getFile(editor.document)?.fileType
     }
 
+    /**
+     * Returns the extension of a file opened in an [editor]
+     */
     fun extFromEditor(editor: Editor): String? {
         return FileDocumentManager.getInstance().getFile(editor.document)?.extension
     }
 
     /**
-     * Transforms an editor (Document) identifier to an LSP identifier
-     *
-     * @param editor The editor
-     * @return The TextDocumentIdentifier
+     * Transforms an [editor] identifier to an LSP identifier
      */
     fun editorToLSPIdentifier(editor: Editor): TextDocumentIdentifier {
         return TextDocumentIdentifier(editorToURIString(editor))
     }
 
     /**
-     * Returns the URI string corresponding to an Editor (Document)
-     *
-     * @param editor The Editor
-     * @return The URI
+     * Returns the URI string corresponding to an [editor]
      */
     fun editorToURIString(editor: Editor): String? {
         val file = FileDocumentManager.getInstance().getFile(editor.document)
         return file?.let {
-            VFSToURI(it)?.let { uri ->
+            vfsToURI(it)?.let { uri ->
                 sanitizeURI(uri)
             }
         }
     }
 
     /**
-     * Returns the URI string corresponding to a VirtualFileSystem file
-     *
-     * @param file The file
-     * @return the URI
+     * Returns the URI string corresponding to a virtual [file]
      */
-    fun VFSToURI(file: VirtualFile): String? {
+    fun vfsToURI(file: VirtualFile): String? {
         return if (!file.url.startsWith("mock") && !file.url.startsWith("dbSrc")) {
             try {
                 sanitizeURI(URL(file.url.replace(" ", SPACE_ENCODED)).toURI().toString())
@@ -125,10 +139,7 @@ object FileUtils {
     }
 
     /**
-     * Fixes common problems in uri, mainly related to Windows
-     *
-     * @param uri The uri to sanitize
-     * @return The sanitized uri
+     * Returns a sanitized uri by fixing common problems in a [uri], mainly related to Windows
      */
     fun sanitizeURI(uri: String): String {
         val reconstructed = StringBuilder()
@@ -160,20 +171,14 @@ object FileUtils {
     }
 
     /**
-     * Transforms an URI string into a VFS file
-     *
-     * @param uri The uri
-     * @return The virtual file
+     * Transforms an [uri] string into a VFS file
      */
-    fun URIToVFS(uri: String): VirtualFile? {
+    fun uriToVFS(uri: String): VirtualFile? {
         return LocalFileSystem.getInstance().findFileByIoFile(File(URI(sanitizeURI(uri))))
     }
 
     /**
-     * Returns the project base dir uri given an editor
-     *
-     * @param editor The editor
-     * @return The project whose the editor belongs
+     * Returns the project base dir uri given an [editor]
      */
     fun editorToProjectFolderUri(editor: Editor): String? {
         return editorToProjectFolderPath(editor)?.let {
@@ -181,57 +186,66 @@ object FileUtils {
         }
     }
 
+    /**
+     * Returns the project base dir path given an [editor]
+     */
     fun editorToProjectFolderPath(editor: Editor): String? {
         val project = editor.project
         return if (project != null && !project.isDefault) {
             project.guessProjectDir()?.let {
-                VFSToPath(it)
+                vfsToPath(it)
             }
         } else null
     }
 
-    fun VFSToPath(file: VirtualFile): String {
+    /**
+     * Transform a virtual [file] to a path
+     */
+    fun vfsToPath(file: VirtualFile): String {
         return File(file.path).absolutePath
     }
 
     /**
-     * Transforms a path into an URI string
-     *
-     * @param path The path
-     * @return The uri
+     * Transforms a [path] into an URI string
      */
-    fun pathToUri(path: String): String? {
+    fun pathToUri(path: String): String {
         return sanitizeURI(File(path.replace(" ", SPACE_ENCODED)).toURI().toString())
     }
 
+    /**
+     * Transforms an [uri] string to a path
+     */
     fun uriToPath(uri: String): String {
         return File(URI(uri)).absolutePath
     }
 
+    /**
+     * Gets the uri of a [project]
+     */
     fun projectToUri(project: Project): String? {
         return project.basePath?.let {
             pathToUri(File(it).absolutePath)
         }
     }
 
+    /**
+     * Gets the uri of a [document]
+     */
     fun documentToUri(document: Document): String? {
         val file = FileDocumentManager.getInstance().getFile(document)
         return if (file != null) {
-            VFSToURI(file)?.let {
+            vfsToURI(file)?.let {
                 sanitizeURI(it)
             }
         } else null
     }
 
+    /**
+     * Retrieves all the currently opened editors for a [project]
+     */
     fun getAllOpenedEditors(project: Project): List<Editor> {
         return ApplicationUtils.computableReadAction { FileEditorManager.getInstance(project).allEditors.filterIsInstance<TextEditor>().map { it.editor } }
     }
 
-    /**
-     * Object representing the OS type (Windows or Unix)
-     */
-    enum class OS {
-        WINDOWS, UNIX
-    }
 
 }

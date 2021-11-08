@@ -5,12 +5,11 @@ import com.github.gtache.lsp.editor.services.application.EditorApplicationServic
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.openapi.components.service
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import org.eclipse.lsp4j.Command
 
 /**
- * The Quickfix for LSP
+ * A Quickfix using a command
  *
  * @param uri     The file in which the commands will be applied
  * @param command The command to run
@@ -20,7 +19,7 @@ class CommandFix(private val uri: String, private val command: Command) : LocalQ
     override fun applyFix(project: Project, descriptor: ProblemDescriptor): Unit {
         val psiElement = descriptor.psiElement
         if (psiElement is LSPPsiElement) {
-            service<EditorApplicationService>().forEditor(psiElement.editor)?.executeCommands(listOf(command))
+            service<EditorApplicationService>().managerForEditor(psiElement.editor)?.executeCommands(listOf(command))
         }
     }
 
@@ -28,9 +27,5 @@ class CommandFix(private val uri: String, private val command: Command) : LocalQ
 
     override fun getName(): String {
         return command.title
-    }
-
-    companion object {
-        private val logger: Logger = Logger.getInstance(CommandFix::class.java)
     }
 }

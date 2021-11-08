@@ -18,10 +18,13 @@ import java.util.Collections;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 
+/**
+ * GUI for the artifact settings
+ */
 public final class ArtifactGUI implements LSPGUI {
     private static final Logger logger = Logger.getInstance(ArtifactGUI.class);
 
-    private static final String placeholder = Utils.getBundle().getString("coursier.settings.textarea.basetext");
+    private static final String placeholder = Utils.getBUNDLE().getString("artifact.settings.textarea.basetext");
     private JPanel rootPanel;
     private JTextArea repositoriesTextArea;
     private JLabel repositoriesLabel;
@@ -51,7 +54,7 @@ public final class ArtifactGUI implements LSPGUI {
             if (text.trim().isEmpty() || text.equals(placeholder)) {
                 settings.setAppState(settings.getAppState().withAdditionalRepositories(Collections.emptyList()));
             } else if (AetherImpl.checkRepositories(text, true)) {
-                settings.setAppState(settings.getAppState().withAdditionalRepositories(Arrays.stream(text.split(Utils.getLineSeparator())).collect(Collectors.toList())));
+                settings.setAppState(settings.getAppState().withAdditionalRepositories(Arrays.stream(text.split(Utils.getLINE_SEPARATOR())).collect(Collectors.toList())));
             }
         } else {
             logger.warn("Null state");
@@ -64,7 +67,7 @@ public final class ArtifactGUI implements LSPGUI {
     }
 
     private String getStateString() {
-        return settings != null ? String.join(Utils.getLineSeparator(), settings.getAppState().getAdditionalRepositories()) : "";
+        return settings != null ? String.join(Utils.getLINE_SEPARATOR(), settings.getAppState().getAdditionalRepositories()) : "";
     }
 
     {
@@ -97,7 +100,7 @@ public final class ArtifactGUI implements LSPGUI {
         repositoriesTextArea.setMaximumSize(new Dimension(420, 2147483647));
         repositoriesTextArea.setMinimumSize(new Dimension(300, 10));
         repositoriesTextArea.setPreferredSize(new Dimension(300, 50));
-        repositoriesTextArea.setText(ResourceBundle.getBundle("com/github/gtache/lsp/LSPBundle").getString("coursier.settings.textarea.basetext"));
+        repositoriesTextArea.setText(ResourceBundle.getBundle("com/github/gtache/lsp/LSPBundle").getString("artifact.settings.textarea.basetext"));
         repositoriesTextArea.setToolTipText("Insert one resolver by line");
         scrollPane1.setViewportView(repositoriesTextArea);
     }

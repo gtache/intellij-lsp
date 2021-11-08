@@ -7,18 +7,18 @@ interface UserConfigurableServerDefinitionObject {
     /**
      * The type of the server definition
      */
-    val typ: String
+    val type: String
 
     /**
-     * The type of the server definition in a nicer way
+     * The type of the server definition in a nicer, human-readable way
      */
-    val presentableTyp: String
+    val presentableType: String
 
     /**
      * Transforms an array of string into the corresponding UserConfigurableServerDefinition
      *
      * @param arr The array
-     * @return The server definition
+     * Returns The server definition
      */
     fun fromArray(arr: Array<String>): UserConfigurableServerDefinition?
 }

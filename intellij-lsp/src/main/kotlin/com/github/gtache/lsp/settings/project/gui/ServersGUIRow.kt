@@ -2,23 +2,23 @@ package com.github.gtache.lsp.settings.project.gui
 
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
-import javax.swing.*
+import javax.swing.JComboBox
+import javax.swing.JComponent
+import javax.swing.JTextArea
+import javax.swing.JTextField
 
 /**
  * Class representing a row in the server settings window
  *
- * @param panel  The row as a JPanel
- * @param typ    The typ of the row
- * @param fields The fields of the row
+ * @constructor The [type] of server definition along with its [fields]
  */
-data class ServersGUIRow(private val panel: JPanel, val typ: String, private val fields: LinkedHashMap<String, JComponent>) {
+data class ServersGUIRow(val type: String, private val fields: Map<String, JComponent>) {
     companion object {
         private val logger: Logger = Logger.getInstance(ServersGUIRow::class.java)
     }
 
     /**
-     * @param label The label corresponding to the text field
-     * @return The content of the text field
+     * Returns the text value for the given field key/[label]
      */
     fun getText(label: String): String {
         return when (val component = fields[label]) {
@@ -34,10 +34,10 @@ data class ServersGUIRow(private val panel: JPanel, val typ: String, private val
     }
 
     /**
-     * @return A string array representing this row
+     * Returns a string array representing this row
      */
     fun toStringArray(): Array<String> {
-        return arrayOf(typ) + fields.values.map {
+        return arrayOf(type) + fields.values.map {
             when (it) {
                 is JTextField -> it.text.trim()
                 is JTextArea -> it.text.trim()

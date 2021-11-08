@@ -80,7 +80,7 @@ class ServersGUI(private val project: Project) : LSPGUI {
         val distinct = extensions.distinct().toSet()
         distinct.forEach(Consumer { o -> extensions.remove(o) })
         if (extensions.isNotEmpty()) {
-            Messages.showWarningDialog(extensions.reduce { f, s -> "Duplicate : " + f + Utils.lineSeparator + s }, "Duplicate Extensions")
+            Messages.showWarningDialog(extensions.reduce { f, s -> "Duplicate : " + f + Utils.LINE_SEPARATOR + s }, "Duplicate Extensions")
         }
         serverDefinitions.clear()
         for (row in rows) {
@@ -92,7 +92,7 @@ class ServersGUI(private val project: Project) : LSPGUI {
             }
         }
         projectSettings.projectState = projectSettings.projectState.withExtToServ(serverDefinitions.mapValues { it.value.toArray() })
-        project.service<LSPProjectService>().extToServerDefinition = serverDefinitions
+        project.service<LSPProjectService>().extensionsToServerDefinitions = serverDefinitions
     }
 
     override fun isModified(): Boolean {
@@ -115,8 +115,8 @@ class ServersGUI(private val project: Project) : LSPGUI {
     override fun reset() {
         this.clear()
         val state = project.service<LSPProjectSettings>().projectState
-        if (state.extToServ.isNotEmpty()) {
-            for (serverDefinition in state.extToServ.values) {
+        if (state.extensionsToServers.isNotEmpty()) {
+            for (serverDefinition in state.extensionsToServers.values) {
                 addServerDefinition(UserConfigurableServerDefinition.fromArray(serverDefinition))
             }
         } else {
@@ -128,24 +128,24 @@ class ServersGUI(private val project: Project) : LSPGUI {
         val typeBox: JComboBox<String> = ComboBox()
         val types = ConfigurableTypes.values()
         for (type in types) {
-            typeBox.addItem(type.typ)
+            typeBox.addItem(type.type)
         }
         typeBox.selectedItem = selected
         typeBox.addItemListener { e: ItemEvent ->
             if (e.stateChange == ItemEvent.SELECTED) {
                 val idx = getComponentIndex(panel)
                 when (e.item) {
-                    ConfigurableTypes.ARTIFACT.typ -> {
+                    ConfigurableTypes.ARTIFACT.type -> {
                         rootPanel.add(createArtifactRow("", "", "", ""), idx)
                         rootPanel.remove(panel)
                         rows.removeAt(idx)
                     }
-                    ConfigurableTypes.RAWCOMMAND.typ -> {
+                    ConfigurableTypes.RAWCOMMAND.type -> {
                         rootPanel.add(createCommandRow("", ""), idx)
                         rootPanel.remove(panel)
                         rows.removeAt(idx)
                     }
-                    ConfigurableTypes.EXE.typ -> {
+                    ConfigurableTypes.EXE.type -> {
                         rootPanel.add(createExeRow("", "", ""), idx)
                         rootPanel.remove(panel)
                         rows.removeAt(idx)
@@ -378,13 +378,13 @@ class ServersGUI(private val project: Project) : LSPGUI {
         argsField.toolTipText = "e.g. -stdio"
         argsField.text = args
         val components = listOf<JComponent>(extLabel, extField, packgeLabel, packgeField, mainClassLabel, mainClassField, argsLabel, argsField)
-        val panel = createRow(components, ArtifactLanguageServerDefinition.presentableTyp)
+        val panel = createRow(components, ArtifactLanguageServerDefinition.presentableType)
         val map = LinkedHashMap<String, JComponent>()
-        map.put(EXT, extField)
-        map.put(PACKGE, packgeField)
-        map.put(MAINCLASS, mainClassField)
-        map.put(ARGS, argsField)
-        rows.add(ServersGUIRow(panel, ArtifactLanguageServerDefinition.typ, map))
+        map[EXT] = extField
+        map[PACKGE] = packgeField
+        map[MAINCLASS] = mainClassField
+        map[ARGS] = argsField
+        rows.add(ServersGUIRow(ArtifactLanguageServerDefinition.type, map))
         return panel
     }
 
@@ -404,12 +404,12 @@ class ServersGUI(private val project: Project) : LSPGUI {
         argsField.toolTipText = "e.g. -stdio"
         argsField.text = args
         val components = listOf<JComponent>(extLabel, extField, pathLabel, pathField, argsLabel, argsField)
-        val panel = createRow(components, ExeLanguageServerDefinition.presentableTyp)
+        val panel = createRow(components, ExeLanguageServerDefinition.presentableType)
         val map = LinkedHashMap<String, JComponent>()
-        map.put(EXT, extField)
-        map.put(PATH, pathField)
-        map.put(ARGS, argsField)
-        rows.add(ServersGUIRow(panel, ExeLanguageServerDefinition.typ, map))
+        map[EXT] = extField
+        map[PATH] = pathField
+        map[ARGS] = argsField
+        rows.add(ServersGUIRow(ExeLanguageServerDefinition.type, map))
         return panel
     }
 
@@ -424,11 +424,11 @@ class ServersGUI(private val project: Project) : LSPGUI {
         argsField.text = command
         argsField.toolTipText = "e.g. python.exe -m C:\\python-ls\\pyls"
         val components = listOf<JComponent>(extLabel, extField, commandLabel, argsField)
-        val panel = createRow(components, RawCommandServerDefinition.presentableTyp)
+        val panel = createRow(components, RawCommandServerDefinition.presentableType)
         val map = LinkedHashMap<String, JComponent>()
-        map.put(EXT, extField)
-        map.put(COMMAND, argsField)
-        rows.add(ServersGUIRow(panel, RawCommandServerDefinition.typ, map))
+        map[EXT] = extField
+        map[COMMAND] = argsField
+        rows.add(ServersGUIRow(RawCommandServerDefinition.type, map))
         return panel
     }
 

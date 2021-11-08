@@ -5,7 +5,6 @@ import com.github.gtache.lsp.client.languageserver.serverdefinition.UserConfigur
 import com.github.gtache.lsp.services.project.LSPProjectService
 import com.github.gtache.lsp.settings.project.gui.ServersGUI
 import com.intellij.openapi.components.service
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.project.Project
 import org.jetbrains.annotations.Nls
@@ -15,17 +14,27 @@ import javax.swing.JComponent
  * Class used to manage the settings related to the LSP
  */
 class ServersSettings(private val project: Project) : Configurable {
+
+    /**
+     * Returns the display name of the settings group
+     */
     override fun getDisplayName(): @Nls String {
         return "Language Server Protocol"
     }
 
+    /**
+     * Returns the help topic of the settings group
+     */
     override fun getHelpTopic(): String {
         return "com.github.gtache.lsp.settings.project.ServersSettings"
     }
 
+    /**
+     * Creates the settings component
+     */
     override fun createComponent(): JComponent {
         lspGUI = ServersGUI(project)
-        setGUIFields(project.service<LSPProjectService>().extToServerDefinition)
+        setGUIFields(project.service<LSPProjectService>().extensionsToServerDefinitions)
         return lspGUI!!.getRootPanel()
     }
 
@@ -56,7 +65,6 @@ class ServersSettings(private val project: Project) : Configurable {
     }
 
     companion object {
-        private val logger = Logger.getInstance(ServersSettings::class.java)
         private var lspGUI: ServersGUI? = null
     }
 }

@@ -1,7 +1,7 @@
 package com.github.gtache.lsp.actions
 
-import com.github.gtache.lsp.editor.services.application.EditorApplicationService
 import com.github.gtache.lsp.editor.EditorEventManager
+import com.github.gtache.lsp.editor.services.application.EditorApplicationService
 import com.github.gtache.lsp.head
 import com.intellij.codeInsight.hint.HintManager
 import com.intellij.codeInsight.hint.HintManagerImpl
@@ -33,7 +33,7 @@ class ReferencesAction : DumbAwareAction() {
     override fun actionPerformed(e: AnActionEvent): Unit {
         val editor = e.getData(CommonDataKeys.EDITOR)
         if (editor != null) {
-            val targets = (service<EditorApplicationService>().forEditor(editor)
+            val targets = (service<EditorApplicationService>().managerForEditor(editor)
                 ?.references(editor.caretModel.currentCaret.offset, getOriginalElement = true, close = true)?.first
                 ?: emptyList())
                 .map { r -> PsiElement2UsageTargetAdapter(r, true) }
@@ -42,13 +42,16 @@ class ReferencesAction : DumbAwareAction() {
         }
     }
 
-    fun forManagerAndOffset(manager: EditorEventManager, offset: Int): Unit {
+    /**
+     * Show references for the given [manager] and [offset]
+     */
+    fun showReferences(manager: EditorEventManager, offset: Int): Unit {
         val targets = manager.references(offset, getOriginalElement = true, close = true).first.map { r -> PsiElement2UsageTargetAdapter(r, true) }
         val editor = manager.editor
         showReferences(editor, targets, editor.offsetToLogicalPosition(offset))
     }
 
-    fun showReferences(editor: Editor, targets: List<PsiElement2UsageTargetAdapter>, logicalPosition: LogicalPosition): Unit {
+    private fun showReferences(editor: Editor, targets: List<PsiElement2UsageTargetAdapter>, logicalPosition: LogicalPosition): Unit {
         if (targets.isEmpty()) {
             val constraint: Short = HintManager.ABOVE
             val flags: Int = HintManager.HIDE_BY_ANY_KEY or HintManager.HIDE_BY_TEXT_CHANGE or HintManager.HIDE_BY_SCROLLING

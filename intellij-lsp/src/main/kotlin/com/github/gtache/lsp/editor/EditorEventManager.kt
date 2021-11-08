@@ -1,7 +1,7 @@
 package com.github.gtache.lsp.editor
 
 import com.github.gtache.lsp.actions.ReferencesAction
-import com.github.gtache.lsp.client.languageserver.DummyServerOptions
+import com.github.gtache.lsp.client.languageserver.DefaultServerOptions
 import com.github.gtache.lsp.client.languageserver.ServerOptions
 import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapperImpl
@@ -34,16 +34,16 @@ import com.github.gtache.lsp.utils.ApplicationUtils.invokeLater
 import com.github.gtache.lsp.utils.ApplicationUtils.pool
 import com.github.gtache.lsp.utils.ApplicationUtils.writeAction
 import com.github.gtache.lsp.utils.DocumentUtils
-import com.github.gtache.lsp.utils.DocumentUtils.LSPPosToOffset
-import com.github.gtache.lsp.utils.DocumentUtils.LSPRangeToTextRange
+import com.github.gtache.lsp.utils.DocumentUtils.lspPositionToOffset
+import com.github.gtache.lsp.utils.DocumentUtils.lspRangeToTextRange
 import com.github.gtache.lsp.utils.DocumentUtils.expandOffsetToToken
 import com.github.gtache.lsp.utils.DocumentUtils.getTextClamped
-import com.github.gtache.lsp.utils.DocumentUtils.offsetToLSPPos
+import com.github.gtache.lsp.utils.DocumentUtils.offsetToLSPPosition
 import com.github.gtache.lsp.utils.FileUtils
 import com.github.gtache.lsp.utils.GUIUtils
-import com.github.gtache.lsp.utils.GUIUtils.createAndShowEditorHint
 import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.codeInsight.hint.HintManager
+import com.intellij.codeInsight.hint.HintManagerImpl
 import com.intellij.codeInsight.lookup.AutoCompletionPolicy
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
@@ -78,6 +78,8 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.ui.Hint
+import com.intellij.ui.LightweightHint
+import com.intellij.ui.awt.RelativePoint
 import com.intellij.uiDesigner.core.GridConstraints
 import com.intellij.uiDesigner.core.GridLayoutManager
 import com.intellij.uiDesigner.core.Spacer
@@ -97,6 +99,7 @@ import java.util.*
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import javax.swing.JComponent
 import javax.swing.JFrame
 import javax.swing.JLabel
 import javax.swing.JPanel
@@ -165,6 +168,52 @@ class EditorEventManager(
         fun willSaveAll(): Unit {
             service<EditorApplicationService>().willSaveAll()
         }
+
+
+        /**
+         * Shows a hint in the editor
+         *
+         * @param editor     The editor
+         * @param string     The message / text of the hint
+         * @param point      The position of the hint
+         * @param constraint The constraint (under/above)
+         * @param flags      The flags (when the hint will disappear)
+         * Returns The hint
+         */
+        fun createAndShowEditorHint(
+            editor: Editor, string: String, point: Point, constraint: Short = HintManager.ABOVE,
+            flags: Int = HintManager.HIDE_BY_ANY_KEY or HintManager.HIDE_BY_TEXT_CHANGE or HintManager.HIDE_BY_SCROLLING
+        ): Hint? {
+            val (hint, p) = createHint(editor, string, point, constraint)
+            return if (p != null) {
+                HintManagerImpl.getInstanceImpl().showEditorHint(
+                    hint,
+                    editor,
+                    p,
+                    flags,
+                    0,
+                    false,
+                    HintManagerImpl.createHintHint(editor, p, hint, constraint).setContentActive(false)
+                )
+                hint
+            } else {
+                null
+            }
+        }
+
+        private fun createHint(editor: Editor, string: String, point: Point, constraint: Short): Pair<LightweightHint, Point?> {
+            val hint = LightweightHint(JLabel(string))
+            val p = if (!editor.isDisposed) HintManagerImpl.getHintPosition(hint, editor, editor.xyToLogicalPosition(point), constraint) else null
+            return Pair(hint, p)
+        }
+
+        fun createAndShowHint(
+            component: JComponent, string: String, point: RelativePoint,
+            flags: Int = HintManager.HIDE_BY_ANY_KEY or HintManager.HIDE_BY_TEXT_CHANGE or HintManager.HIDE_BY_OTHER_HINT or HintManager.HIDE_BY_SCROLLING
+        ): Unit {
+            return HintManagerImpl.getInstanceImpl().showHint(component, point, flags, 0)
+        }
+
     }
 
     private val identifier: TextDocumentIdentifier = TextDocumentIdentifier(FileUtils.editorToURIString(editor))
@@ -174,21 +223,21 @@ class EditorEventManager(
     private val semanticHighlights: MutableMap<Int, List<RangeHighlighter>> = HashMap()
     private val syncKind = serverOptions.syncKind
 
-    private val completionTriggers = if (serverOptions.completionOptions !== DummyServerOptions.RENAME && serverOptions.completionOptions.triggerCharacters != null)
+    private val completionTriggers = if (serverOptions.completionOptions !== DefaultServerOptions.RENAME && serverOptions.completionOptions.triggerCharacters != null)
         serverOptions.completionOptions.triggerCharacters.toSet().filter { s -> s != "." } else emptySet()
 
-    private val signatureTriggers = if (serverOptions.signatureHelpOptions !== DummyServerOptions.SIGNATURE_HELP && serverOptions.signatureHelpOptions.triggerCharacters != null)
+    private val signatureTriggers = if (serverOptions.signatureHelpOptions !== DefaultServerOptions.SIGNATURE_HELP && serverOptions.signatureHelpOptions.triggerCharacters != null)
         serverOptions.signatureHelpOptions.triggerCharacters.toSet() else emptySet()
 
     private val documentOnTypeFormattingOptions = serverOptions.documentOnTypeFormattingOptions
-    private val onTypeFormattingTriggers = if (documentOnTypeFormattingOptions !== DummyServerOptions.DOCUMENT_ON_TYPE_FORMATTING && documentOnTypeFormattingOptions.moreTriggerCharacter != null)
+    private val onTypeFormattingTriggers = if (documentOnTypeFormattingOptions !== DefaultServerOptions.DOCUMENT_ON_TYPE_FORMATTING && documentOnTypeFormattingOptions.moreTriggerCharacter != null)
         (documentOnTypeFormattingOptions.moreTriggerCharacter + documentOnTypeFormattingOptions.firstTriggerCharacter).toSet()
-    else if (documentOnTypeFormattingOptions !== DummyServerOptions.DOCUMENT_ON_TYPE_FORMATTING)
+    else if (documentOnTypeFormattingOptions !== DefaultServerOptions.DOCUMENT_ON_TYPE_FORMATTING)
         setOf(documentOnTypeFormattingOptions.firstTriggerCharacter)
     else
         emptySet()
 
-    private val semanticHighlightingScopes: List<List<String>> = if (serverOptions.semanticHighlightingOptions !== DummyServerOptions.SEMANTIC_HIGHLIGHTING && serverOptions.semanticHighlightingOptions.scopes != null)
+    private val semanticHighlightingScopes: List<List<String>> = if (serverOptions.semanticHighlightingOptions !== DefaultServerOptions.SEMANTIC_HIGHLIGHTING && serverOptions.semanticHighlightingOptions.scopes != null)
         serverOptions.semanticHighlightingOptions.scopes.toList().map { l -> l.toList() } else emptyList()
 
     private val project: Project = editor.project!!
@@ -220,7 +269,7 @@ class EditorEventManager(
      */
     fun characterTyped(c: Char): Unit {
         if (completionTriggers.contains(c.toString())) {
-            completion(offsetToLSPPos(editor, editor.caretModel.currentCaret.offset))
+            completion(offsetToLSPPosition(editor, editor.caretModel.currentCaret.offset))
         } else if (signatureTriggers.contains(c.toString())) {
             signatureHelp()
         } else if (onTypeFormattingTriggers.contains(c.toString())) {
@@ -234,7 +283,7 @@ class EditorEventManager(
     fun signatureHelp(): Unit {
         val lPos = editor.caretModel.currentCaret.logicalPosition
         val point = editor.logicalPositionToXY(lPos)
-        val params = TextDocumentPositionParams(identifier, DocumentUtils.logicalToLSPPos(lPos, editor))
+        val params = TextDocumentPositionParams(identifier, DocumentUtils.logicalPositionToLSPPosition(lPos, editor))
         pool {
             if (!editor.isDisposed) {
                 val future = requestManager.signatureHelp(params)
@@ -284,12 +333,12 @@ class EditorEventManager(
      * Retrieves the commands needed to apply a CodeAction
      *
      * @param element The element which needs the CodeAction
-     * @return The list of commands, or null if none are given / the request times out
+     * Returns The list of commands, or null if none are given / the request times out
      */
     fun codeAction(element: LSPPsiElement): Iterable<Either<Command, CodeAction>>? {
         val params = CodeActionParams()
         params.textDocument = identifier
-        val range = Range(offsetToLSPPos(editor, element.start), offsetToLSPPos(editor, element.end))
+        val range = Range(offsetToLSPPosition(editor, element.start), offsetToLSPPosition(editor, element.end))
         params.range = range
         val context = CodeActionContext(diagnosticsHighlights.map { it.diagnostic })
         params.context = context
@@ -321,7 +370,7 @@ class EditorEventManager(
      * Returns the completion suggestions given a position
      *
      * @param pos The LSP position
-     * @return The suggestions
+     * Returns The suggestions
      */
     fun completion(pos: Position): Iterable<LookupElement> {
         val request = requestManager.completion(CompletionParams(identifier, pos))
@@ -336,7 +385,7 @@ class EditorEventManager(
                      * Creates a LookupElement given a CompletionItem
                      *
                      * @param item The CompletionItem
-                     * @return The corresponding LookupElement
+                     * Returns The corresponding LookupElement
                      */
                     fun createLookupItem(item: CompletionItem): LookupElement {
                         fun execCommand(command: Command): Unit {
@@ -562,7 +611,7 @@ class EditorEventManager(
      */
     fun diagnostics(diagnostics: Iterable<Diagnostic>): Unit {
         fun rangeToOffsets(range: Range): TextRange {
-            val (start, end) = Pair(LSPPosToOffset(editor, range.start), LSPPosToOffset(editor, range.end))
+            val (start, end) = Pair(lspPositionToOffset(editor, range.start), lspPositionToOffset(editor, range.end))
             return if (start == end) {
                 expandOffsetToToken(editor, start)
             } else {
@@ -643,7 +692,7 @@ class EditorEventManager(
                                 val newText = event.newFragment
                                 val offset = event.offset
                                 val newTextLength = event.newLength
-                                val lspPosition: Position = offsetToLSPPos(editor, offset)
+                                val lspPosition: Position = offsetToLSPPosition(editor, offset)
                                 val startLine = lspPosition.line
                                 val startColumn = lspPosition.character
                                 val oldText = event.oldFragment
@@ -706,7 +755,7 @@ class EditorEventManager(
                                 val newText = event.newFragment
                                 val offset = event.offset
                                 val newTextLength = event.newLength
-                                val lspPosition = offsetToLSPPos(editor, offset)
+                                val lspPosition = offsetToLSPPosition(editor, offset)
                                 val startLine = lspPosition.line
                                 val startColumn = lspPosition.character
                                 val oldText = event.oldFragment.toString()
@@ -720,7 +769,7 @@ class EditorEventManager(
                                 } else Pair(startLine, startColumn) //if insert or no text change, the end position is the same
                                 val range = Range(Position(startLine, startColumn), Position(endLine, endColumn))
                                 changeEvent.range = (range)
-                                changeEvent.rangeLength = LSPPosToOffset(editor, range.end) - LSPPosToOffset(editor, range.start)
+                                changeEvent.rangeLength = lspPositionToOffset(editor, range.end) - lspPositionToOffset(editor, range.start)
                                 changeEvent.text = newText.toString()
                                 changesParams.contentChanges.add(changeEvent)
                             }
@@ -845,14 +894,14 @@ class EditorEventManager(
      * Gets references, synchronously
      *
      * @param offset The offset of the element
-     * @return A list of start/end offset
+     * Returns A list of start/end offset
      */
     fun documentReferences(offset: Int): Iterable<Pair<Int, Int>>? {
         val params = ReferenceParams()
         val context = ReferenceContext()
         context.isIncludeDeclaration = true
         params.context = (context)
-        params.position = (offsetToLSPPos(editor, offset))
+        params.position = (offsetToLSPPosition(editor, offset))
         params.textDocument = (identifier)
         val future = requestManager.references(params)
         return if (future != null) {
@@ -860,7 +909,7 @@ class EditorEventManager(
                 val references = future.get(REFERENCES_TIMEOUT(), TimeUnit.MILLISECONDS)
                 wrapper.notifySuccess(Timeouts.REFERENCES)
                 references?.filterIsInstance<Location>()?.filter { FileUtils.sanitizeURI(it.uri) == identifier.uri }
-                    ?.map { Pair(LSPPosToOffset(editor, it.range.start), LSPPosToOffset(editor, it.range.end)) }
+                    ?.map { Pair(lspPositionToOffset(editor, it.range.start), lspPositionToOffset(editor, it.range.end)) }
             } catch (e: TimeoutException) {
                 logger.warn(e)
                 wrapper.notifyFailure(Timeouts.REFERENCES)
@@ -878,7 +927,7 @@ class EditorEventManager(
     }
 
     /**
-     * @return The current diagnostics highlights
+     * Returns The current diagnostics highlights
      */
     fun getDiagnostics(): Set<DiagnosticRangeHighlighter> {
         return diagnosticsHighlights.toSet()
@@ -887,7 +936,7 @@ class EditorEventManager(
     fun getElementAtOffset(offset: Int): LSPPsiElement? {
         return computableReadAction(Computable {
             if (!editor.isDisposed) {
-                val params = TextDocumentPositionParams(identifier, offsetToLSPPos(editor, offset))
+                val params = TextDocumentPositionParams(identifier, offsetToLSPPosition(editor, offset))
                 val future = requestManager.documentHighlight(params)
                 if (future != null) {
                     try {
@@ -896,8 +945,8 @@ class EditorEventManager(
                         if (res != null && !editor.isDisposed) {
                             val range = res.map { dh ->
                                 TextRange(
-                                    LSPPosToOffset(editor, dh.range.start),
-                                    LSPPosToOffset(editor, dh.range.end)
+                                    lspPositionToOffset(editor, dh.range.start),
+                                    lspPositionToOffset(editor, dh.range.end)
                                 )
                             }.find { range -> range.startOffset <= offset && offset <= range.endOffset }
                             if (range != null) {
@@ -945,12 +994,12 @@ class EditorEventManager(
             val locUri = FileUtils.sanitizeURI(loc.targetUri)
             if (identifier.uri == locUri) {
                 if (docRange!!.definitionContainsOffset(offset)) {
-                    (ActionManager.getInstance().getAction("LSPFindUsages") as ReferencesAction).forManagerAndOffset(this, offset)
+                    (ActionManager.getInstance().getAction("LSPFindUsages") as ReferencesAction).showReferences(this, offset)
                 } else {
-                    val startOffset = LSPPosToOffset(editor, loc.targetRange.start)
+                    val startOffset = lspPositionToOffset(editor, loc.targetRange.start)
                     writeAction {
                         editor.caretModel.moveToOffset(startOffset)
-                        editor.selectionModel.setSelection(startOffset, LSPPosToOffset(editor, loc.targetRange.end))
+                        editor.selectionModel.setSelection(startOffset, lspPositionToOffset(editor, loc.targetRange.end))
                         editor.scrollingModel.scrollToCaret(ScrollType.CENTER)
                     }
                 }
@@ -961,9 +1010,9 @@ class EditorEventManager(
                     writeAction {
                         val newEditor = FileEditorManager.getInstance(project).openTextEditor(descriptor, true)
                         if (newEditor != null) {
-                            val startOffset = LSPPosToOffset(newEditor, loc.targetRange.start)
+                            val startOffset = lspPositionToOffset(newEditor, loc.targetRange.start)
                             newEditor.caretModel.currentCaret.moveToOffset(startOffset)
-                            newEditor.selectionModel.setSelection(startOffset, LSPPosToOffset(newEditor, loc.targetRange.end))
+                            newEditor.selectionModel.setSelection(startOffset, lspPositionToOffset(newEditor, loc.targetRange.end))
                             newEditor.scrollingModel.scrollToCaret(ScrollType.CENTER)
                         }
                     }
@@ -999,7 +1048,7 @@ class EditorEventManager(
                 val params = ReferenceParams(context)
                 params.textDocument = (identifier)
                 val serverPos = computableReadAction {
-                    DocumentUtils.logicalToLSPPos(editor.caretModel.currentCaret.logicalPosition, editor)
+                    DocumentUtils.logicalPositionToLSPPosition(editor.caretModel.currentCaret.logicalPosition, editor)
                 }
                 params.position = (serverPos)
                 val future = requestManager.references(params)
@@ -1039,7 +1088,7 @@ class EditorEventManager(
          * @param fileEditorManager The fileEditorManager
          * @param start             The starting position
          * @param end               The ending position
-         * @return (StartOffset, EndOffset, Name (of the symbol), line (containing the symbol))
+         * Returns (StartOffset, EndOffset, Name (of the symbol), line (containing the symbol))
          */
         fun openEditorAndGetOffsetsAndName(
             file: VirtualFile,
@@ -1051,8 +1100,8 @@ class EditorEventManager(
             return computableWriteAction(Computable {
                 val newEditor = fileEditorManager.openTextEditor(descriptor, false)
                 if (newEditor != null) {
-                    val startOffset = LSPPosToOffset(newEditor, start)
-                    val endOffset = LSPPosToOffset(newEditor, end)
+                    val startOffset = lspPositionToOffset(newEditor, start)
+                    val endOffset = lspPositionToOffset(newEditor, end)
                     val doc = newEditor.document
                     val docText = doc.getTextClamped(TextRange(startOffset, endOffset))
                     fileEditorManager.closeFile(file)
@@ -1085,8 +1134,8 @@ class EditorEventManager(
                             name = n
                             sample = sa
                         } else {
-                            startOffset = LSPPosToOffset(editors.head, start)
-                            endOffset = LSPPosToOffset(editors.head, end)
+                            startOffset = lspPositionToOffset(editors.head, start)
+                            endOffset = lspPositionToOffset(editors.head, end)
                         }
                     } else {
                         val (s, e, n, sa) = openEditorAndGetOffsetsAndName(file, fileEditorManager, start, end)
@@ -1101,8 +1150,8 @@ class EditorEventManager(
             val manager = project.service<EditorProjectService>().forUri(uri)
             if (manager != null) {
                 try {
-                    startOffset = LSPPosToOffset(manager.editor, start)
-                    endOffset = LSPPosToOffset(manager.editor, end)
+                    startOffset = lspPositionToOffset(manager.editor, start)
+                    endOffset = lspPositionToOffset(manager.editor, end)
                     name = manager.editor.document.getTextClamped(TextRange(startOffset, endOffset))
                     sample = DocumentUtils.getLineText(manager.editor, startOffset, endOffset)
                 } catch (e: RuntimeException) {
@@ -1256,8 +1305,8 @@ class EditorEventManager(
     }
 
     private fun createRange(startOffset: Int, endOffset: Int, getDefinition: Boolean = false, visible: Boolean = true): Unit {
-        val loc = if (getDefinition) requestDefinition(offsetToLSPPos(editor, (endOffset + startOffset) / 2)) else null
-        val isDefinition = loc != null && LSPPosToOffset(editor, loc.targetRange.start) == startOffset
+        val loc = if (getDefinition) requestDefinition(offsetToLSPPosition(editor, (endOffset + startOffset) / 2)) else null
+        val isDefinition = loc != null && lspPositionToOffset(editor, loc.targetRange.start) == startOffset
         invokeLater {
             docRange?.dispose()
             if (!editor.isDisposed) {
@@ -1277,7 +1326,7 @@ class EditorEventManager(
      * Returns the position of the definition given a position in the editor
      *
      * @param position The position
-     * @return The location of the definition
+     * Returns The location of the definition
      */
     private fun requestDefinition(position: Position): LocationLink? {
         val params = TextDocumentPositionParams(identifier, position)
@@ -1337,7 +1386,7 @@ class EditorEventManager(
                         docRange?.let { range ->
                             if (!range.highlightContainsOffset(offset)) {
                                 cancelDoc()
-                                scheduleCreateRange(offsetToLSPPos(editor, offset), e.mouseEvent.point, getDefinition = ctrlDown, visible = ctrlDown)
+                                scheduleCreateRange(offsetToLSPPosition(editor, offset), e.mouseEvent.point, getDefinition = ctrlDown, visible = ctrlDown)
                             } else {
                                 if (!ctrlDown) {
                                     currentDoc?.let {
@@ -1348,7 +1397,7 @@ class EditorEventManager(
                                     editor.contentComponent.cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
                                     if (range.loc == null) {
                                         cancelDoc()
-                                        scheduleCreateRange(offsetToLSPPos(editor, offset), e.mouseEvent.point, getDefinition = true, visible = true)
+                                        scheduleCreateRange(offsetToLSPPosition(editor, offset), e.mouseEvent.point, getDefinition = true, visible = true)
                                     } else Unit
                                 }
                             }
@@ -1368,12 +1417,12 @@ class EditorEventManager(
             prepareDocTask?.cancel()
             prepareDocThread.purge()
             prepareDocTask = timerTask {
-                val offset = LSPPosToOffset(editor, serverPos)
+                val offset = lspPositionToOffset(editor, serverPos)
                 val hover = requestHover(editor, offset)
                 if (hover != null) {
                     val doc = HoverHandler.getHoverString(hover)
                     currentDoc = doc
-                    val range = if (hover.range == null) rangeForOffset(offset) else LSPRangeToTextRange(editor, hover.range)
+                    val range = if (hover.range == null) rangeForOffset(offset) else lspRangeToTextRange(editor, hover.range)
                     createRange(range.startOffset, range.endOffset, getDefinition = getDefinition, visible = visible)
                     invokeLater {
                         docRange?.let {
@@ -1407,7 +1456,7 @@ class EditorEventManager(
     fun canRename(offset: Int = editor.caretModel.currentCaret.offset): Boolean {
         return if (serverOptions.renameOptions.prepareProvider) {
             try {
-                val request = requestManager.prepareRename(TextDocumentPositionParams(identifier, offsetToLSPPos(editor, offset)))
+                val request = requestManager.prepareRename(TextDocumentPositionParams(identifier, offsetToLSPPosition(editor, offset)))
                 if (request != null) {
                     val result = request.get(PREPARE_RENAME_TIMEOUT(), TimeUnit.MILLISECONDS)
                     if (result != null) {
@@ -1429,12 +1478,12 @@ class EditorEventManager(
 
     private fun rangeForOffset(offset: Int): TextRange {
         return try {
-            val request = requestManager.documentHighlight(TextDocumentPositionParams(identifier, offsetToLSPPos(editor, offset)))
+            val request = requestManager.documentHighlight(TextDocumentPositionParams(identifier, offsetToLSPPosition(editor, offset)))
             if (request != null) {
                 val result = request.get(DOC_HIGHLIGHT_TIMEOUT(), TimeUnit.MILLISECONDS)
                 if (result != null) {
-                    val docH = result.find { dh -> LSPPosToOffset(editor, dh.range.start) <= offset && LSPPosToOffset(editor, dh.range.end) >= offset }
-                    if (docH != null) LSPRangeToTextRange(editor, docH.range) else expandOffsetToToken(editor, offset)
+                    val docH = result.find { dh -> lspPositionToOffset(editor, dh.range.start) <= offset && lspPositionToOffset(editor, dh.range.end) >= offset }
+                    if (docH != null) lspRangeToTextRange(editor, docH.range) else expandOffsetToToken(editor, offset)
                 } else expandOffsetToToken(editor, offset)
             } else expandOffsetToToken(editor, offset)
         } catch (e: TimeoutException) {
@@ -1482,7 +1531,7 @@ class EditorEventManager(
      * @param point     The point at which to show the hint
      */
     private fun requestAndShowDoc(editorPos: LogicalPosition, point: Point): Unit {
-        val serverPos = computableReadAction { DocumentUtils.logicalToLSPPos(editorPos, editor) }
+        val serverPos = computableReadAction { DocumentUtils.logicalPositionToLSPPosition(editorPos, editor) }
         val request = requestManager.hover(TextDocumentPositionParams(identifier, serverPos))
         if (request != null) {
             try {
@@ -1519,10 +1568,10 @@ class EditorEventManager(
      * Must be called from main thread
      *
      * @param offset The offset in the editor
-     * @return An array of PsiElement
+     * Returns An array of PsiElement
      */
     fun references(offset: Int, getOriginalElement: Boolean = false, close: Boolean = false): Pair<Iterable<PsiElement>, Iterable<VirtualFile>> {
-        val lspPos = offsetToLSPPos(editor, offset)
+        val lspPos = offsetToLSPPosition(editor, offset)
         val params = ReferenceParams(ReferenceContext(getOriginalElement))
         params.position = lspPos
         params.textDocument = identifier
@@ -1537,7 +1586,7 @@ class EditorEventManager(
                         val start = l.range.start
                         val end = l.range.end
                         val uri = FileUtils.sanitizeURI(l.uri)
-                        val file = FileUtils.URIToVFS(uri)
+                        val file = FileUtils.uriToVFS(uri)
                         var curEditor: Editor? = FileUtils.editorFromUri(uri, project)
                         if (curEditor == null && file != null) {
                             val descriptor = OpenFileDescriptor(project, file)
@@ -1545,8 +1594,8 @@ class EditorEventManager(
                             openedEditors += file
                         }
                         if (curEditor != null) {
-                            val logicalStart = LSPPosToOffset(curEditor, start)
-                            val logicalEnd = LSPPosToOffset(curEditor, end)
+                            val logicalStart = lspPositionToOffset(curEditor, start)
+                            val logicalEnd = lspPositionToOffset(curEditor, end)
                             val name = curEditor.document.getTextClamped(TextRange(logicalStart, logicalEnd))
                             LSPPsiElement(
                                 name,
@@ -1611,7 +1660,7 @@ class EditorEventManager(
      * @param edits      The edits to apply
      * @param name       The name of the edits (Rename, for example)
      * @param closeAfter will close the file after edits if set to true
-     * @return True if the edits were applied, false otherwise
+     * Returns True if the edits were applied, false otherwise
      */
     fun applyEdit(version: Int = Int.MAX_VALUE, edits: Iterable<TextEdit>, name: String = "Apply LSP edits", closeAfter: Boolean = false): Boolean {
         val runnable = getEditsRunnable(version, edits, name)
@@ -1641,7 +1690,7 @@ class EditorEventManager(
      * @param version The edit version
      * @param edits   The edits
      * @param name    The name of the edit
-     * @return The runnable
+     * Returns The runnable
      */
     fun getEditsRunnable(version: Int = Int.MAX_VALUE, edits: Iterable<TextEdit>, name: String = "Apply LSP edits"): Runnable? {
         return if (version >= this.version) {
@@ -1651,8 +1700,8 @@ class EditorEventManager(
                     edits.map { te ->
                         Pair(
                             document.createRangeMarker(
-                                LSPPosToOffset(editor, te.range.start),
-                                LSPPosToOffset(editor, te.range.end)
+                                lspPositionToOffset(editor, te.range.start),
+                                lspPositionToOffset(editor, te.range.end)
                             ),
                             te.newText
                         )
@@ -1695,8 +1744,8 @@ class EditorEventManager(
                 val selectionModel = editor.selectionModel
                 val start = computableReadAction { selectionModel.selectionStart }
                 val end = computableReadAction { selectionModel.selectionEnd }
-                val startingPos = offsetToLSPPos(editor, start)
-                val endPos = offsetToLSPPos(editor, end)
+                val startingPos = offsetToLSPPosition(editor, start)
+                val endPos = offsetToLSPPosition(editor, end)
                 params.range = Range(startingPos, endPos)
                 val options = FormattingOptions() //TODO
                 params.options = options
@@ -1739,13 +1788,13 @@ class EditorEventManager(
      */
     fun rename(renameTo: String, offset: Int = editor.caretModel.currentCaret.offset): Unit {
         pool {
-            val servPos = offsetToLSPPos(editor, offset)
+            val servPos = offsetToLSPPosition(editor, offset)
             if (!editor.isDisposed) {
                 val params = RenameParams(identifier, servPos, renameTo)
                 val request = requestManager.rename(params)
                 if (request != null) request.thenAccept { res ->
-                    WorkspaceEditHandler.applyEdit(res, project, "Rename to $renameTo", LSPRenameProcessor.getEditors())
-                    LSPRenameProcessor.clearEditors()
+                    WorkspaceEditHandler.applyEdit(res, project, "Rename to $renameTo", LSPRenameProcessor.getFiles())
+                    LSPRenameProcessor.clearFiles()
                 }
             }
         }
@@ -1754,7 +1803,7 @@ class EditorEventManager(
     fun requestHover(editor: Editor, offset: Int): Hover? {
         return if (editor == this.editor) {
             if (offset != -1) {
-                val serverPos = offsetToLSPPos(editor, offset)
+                val serverPos = offsetToLSPPosition(editor, offset)
                 val request = requestManager.hover(TextDocumentPositionParams(identifier, serverPos))
                 if (request != null) {
                     try {
@@ -1790,7 +1839,7 @@ class EditorEventManager(
      *
      * @param editor The editor
      * @param offset The offset in the editor
-     * @return The information
+     * Returns The information
      */
     fun requestDoc(editor: Editor, offset: Int): String {
         val hover = requestHover(editor, offset)
@@ -1809,7 +1858,7 @@ class EditorEventManager(
                 selectedSymbHighlights.clear()
                 if (editor.selectionModel.hasSelection()) {
                     val ideRange = e.newRange
-                    val LSPPos = offsetToLSPPos(editor, (ideRange.endOffset + ideRange.startOffset) / 2)
+                    val LSPPos = offsetToLSPPosition(editor, (ideRange.endOffset + ideRange.startOffset) / 2)
                     val request = requestManager.documentHighlight(TextDocumentPositionParams(identifier, LSPPos))
                     if (request != null) {
                         pool {
@@ -1823,8 +1872,8 @@ class EditorEventManager(
                                                 if (!editor.isDisposed) {
                                                     val range = dh.range
                                                     val kind = dh.kind
-                                                    val startOffset = LSPPosToOffset(editor, range.start)
-                                                    val endOffset = LSPPosToOffset(editor, range.end)
+                                                    val startOffset = lspPositionToOffset(editor, range.start)
+                                                    val endOffset = lspPositionToOffset(editor, range.end)
                                                     val colorScheme = editor.colorsScheme
                                                     val highlight = editor.markupModel.addRangeHighlighter(
                                                         startOffset,
@@ -1888,8 +1937,8 @@ class EditorEventManager(
                 val scopes = semanticHighlightingScopes[t.scope] //TODO not sure
                 val attributes = scopes.map { scope -> SemanticHighlightingHandler.scopeToTextAttributes(scope, editor) }.head //TODO multiple scopes
                 val rh = editor.markupModel.addRangeHighlighter(
-                    LSPPosToOffset(editor, Position(line, offset)),
-                    LSPPosToOffset(editor, Position(line, offset + length)), HighlighterLayer.SYNTAX,
+                    lspPositionToOffset(editor, Position(line, offset)),
+                    lspPositionToOffset(editor, Position(line, offset + length)), HighlighterLayer.SYNTAX,
                     attributes, HighlighterTargetArea.EXACT_RANGE
                 )
                 rh
@@ -1908,7 +1957,7 @@ class EditorEventManager(
             if (!editor.isDisposed) {
                 val params = DocumentOnTypeFormattingParams()
                 params.ch = c
-                params.position = DocumentUtils.logicalToLSPPos(editor.caretModel.currentCaret.logicalPosition, editor)
+                params.position = DocumentUtils.logicalPositionToLSPPosition(editor.caretModel.currentCaret.logicalPosition, editor)
                 params.textDocument = identifier
                 params.options = FormattingOptions()
                 val future = requestManager.onTypeFormatting(params)
@@ -1935,7 +1984,7 @@ class EditorEventManager(
      * Returns the logical position given a mouse event
      *
      * @param e The event
-     * @return The position (or null if out of bounds)
+     * Returns The position (or null if out of bounds)
      */
     private fun getPos(e: EditorMouseEvent): LogicalPosition? {
         val mousePos = e.mouseEvent.point

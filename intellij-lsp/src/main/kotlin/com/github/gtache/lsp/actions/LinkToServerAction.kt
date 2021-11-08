@@ -43,7 +43,7 @@ class LinkToServerAction : DumbAwareAction() {
                 ActionPlaces.PROJECT_VIEW_POPUP -> {
                     val virtualFiles = anActionEvent.dataContext.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
                     if (virtualFiles != null) {
-                        editors = openClosedEditors(virtualFiles.mapNotNull { v -> FileUtils.VFSToURI(v) }, project)
+                        editors = openClosedEditors(virtualFiles.mapNotNull { v -> FileUtils.vfsToURI(v) }, project)
                     }
                 }
                 else -> {
@@ -76,7 +76,7 @@ class LinkToServerAction : DumbAwareAction() {
                 }
                 if (editors.isNotEmpty()) {
                     val projectService = project.service<LSPProjectService>()
-                    val allDefinitions = projectService.extToServerDefinition.values.distinct()
+                    val allDefinitions = projectService.extensionsToServerDefinitions.values.distinct()
                     val allDefinitionNames = allDefinitions.map { d -> d.ext }
                     val allWrappers = projectService.getAllWrappers()
                     val allWrapperNames = allWrappers.map { w -> w.serverDefinition.ext + " : " + w.project.name }
@@ -98,9 +98,9 @@ class LinkToServerAction : DumbAwareAction() {
                                     "Known extension", "Ok", "Cancel", Messages.getWarningIcon()
                                 )
                                 if (ret == Messages.OK) {
-                                    projectService.forceEditorOpened(editor, allDefinitions[exitCode], project)
+                                    projectService.forceEditorLink(editor, allDefinitions[exitCode], project)
                                 }
-                            } else projectService.forceEditorOpened(editor, allDefinitions[exitCode], project)
+                            } else projectService.forceEditorLink(editor, allDefinitions[exitCode], project)
                         }
                     }
                 }

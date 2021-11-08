@@ -4,7 +4,6 @@ import com.github.gtache.lsp.client.connection.ProcessStreamConnectionProvider
 import com.github.gtache.lsp.client.connection.StreamConnectionProvider
 import com.github.gtache.lsp.head
 import com.github.gtache.lsp.tail
-import com.github.gtache.lsp.utils.Utils
 import com.github.gtache.lsp.utils.aether.Aether
 import com.github.gtache.lsp.utils.aether.AetherException
 import com.intellij.openapi.components.service
@@ -25,18 +24,18 @@ data class ArtifactLanguageServerDefinition(
     val mainClass: String,
     val args: Array<String>
 ) :
-    BaseServerDefinition(), UserConfigurableServerDefinition {
+    AbstractServerDefinition(), UserConfigurableServerDefinition {
 
     companion object : UserConfigurableServerDefinitionObject {
         private val logger: Logger = Logger.getInstance(ArtifactLanguageServerDefinition::class.java)
 
-        override val typ: String = "artifact"
+        override val type: String = "artifact"
 
         @JvmStatic
-        override val presentableTyp: String = "Artifact"
+        override val presentableType: String = "Artifact"
 
         override fun fromArray(arr: Array<String>): ArtifactLanguageServerDefinition? {
-            return if (arr.head == typ) {
+            return if (arr.head == type) {
                 val arrTail = arr.tail
                 if (arrTail.size < 3) {
                     logger.warn("Not enough elements to translate into a ServerDefinition : " + arr.joinToString(" ; "))
@@ -46,7 +45,7 @@ data class ArtifactLanguageServerDefinition(
                         arrTail.head,
                         arrTail.tail.head,
                         arrTail.drop(2).head,
-                        if (arrTail.size > 3) Utils.parseArgs(arrTail.drop(3)) else emptyArray()
+                        if (arrTail.size > 3) parseArgs(arrTail.drop(3)) else emptyArray()
                     )
                 }
             } else {
@@ -55,22 +54,22 @@ data class ArtifactLanguageServerDefinition(
         }
     }
 
-    override fun createConnectionProvider(workingDir: String): StreamConnectionProvider {
+    override fun createConnectionProvider(directory: String): StreamConnectionProvider {
         val classpath = service<Aether>().resolveClasspath(packge)
         if (classpath != null) {
             val argList = mutableListOf("java", "-cp", classpath, mainClass)
             argList.addAll(args)
-            return ProcessStreamConnectionProvider(argList.toTypedArray(), workingDir)
+            return ProcessStreamConnectionProvider(argList.toTypedArray(), directory)
         } else {
             throw AetherException("Couldn't resolve artifact $packge")
         }
     }
 
-    override fun toString(): String = super.toString() + " " + typ + " : " + packge + " mainClass : " + mainClass +
+    override fun toString(): String = super.toString() + " " + type + " : " + packge + " mainClass : " + mainClass +
             " args : " + args.joinToString(" ")
 
     override fun toArray(): Array<String> {
-        val tmp = mutableListOf(typ, ext, packge, mainClass)
+        val tmp = mutableListOf(type, ext, packge, mainClass)
         tmp.addAll(args)
         return tmp.toTypedArray()
     }

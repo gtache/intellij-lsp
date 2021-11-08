@@ -11,7 +11,14 @@ interface LSPListener {
         private val logger: Logger = Logger.getInstance(LSPListener::class.java)
     }
 
+    /**
+     * The manager for this listener
+     */
     var manager: EditorEventManager?
+
+    /**
+     * Whether the listener is enabled or not
+     */
     var enabled: Boolean
 
     /**

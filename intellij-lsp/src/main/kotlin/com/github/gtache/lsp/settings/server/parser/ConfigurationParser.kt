@@ -20,7 +20,7 @@ interface ConfigurationParser {
 
         fun getConfiguration(doc: String, typ: ConfigType): Configuration? {
             val parser = forType(typ)
-            val file = FileUtilRt.createTempFile("config", "." + ConfigType.toExt(typ), true)
+            val file = FileUtilRt.createTempFile("config", "." + ConfigType.toExtension(typ), true)
             return parser?.parse(file)
         }
 
@@ -43,7 +43,7 @@ interface ConfigurationParser {
         }
 
         private fun forExt(ext: String): ConfigurationParser? {
-            return forType(ConfigType.fromExt(ext))
+            return forType(ConfigType.fromExtension(ext))
         }
 
         fun combineConfigurations(firstConfig: Map<String, Map<String, Any?>>, secondConfig: Map<String, Map<String, Any?>>): Map<String, Map<String, Any?>> {
@@ -71,7 +71,7 @@ interface ConfigurationParser {
         override fun parse(file: File): Configuration {
             val reader = FileReader(file)
             if (file.length() == 0L) {
-                return Configuration.emptyConfiguration
+                return Configuration.EMPTY_CONFIGURATION
             } else {
                 try {
                     val json = com.google.gson.JsonParser.parseReader(reader)
@@ -128,11 +128,11 @@ interface ConfigurationParser {
                         }
                         return Configuration(flatten("global", null, jsonObject, configMap))
                     } else {
-                        return Configuration.invalidConfiguration
+                        return Configuration.INVALID_CONFIGURATION
                     }
                 } catch (t: Throwable) {
                     logger.warn("Error parsing JSON", t)
-                    return Configuration.invalidConfiguration
+                    return Configuration.INVALID_CONFIGURATION
                 }
             }
         }

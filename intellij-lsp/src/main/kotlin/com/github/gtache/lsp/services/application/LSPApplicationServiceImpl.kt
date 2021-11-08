@@ -5,7 +5,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 
 /**
- * The main class of the plugin
+ * Implementation of LSPApplicationService
  */
 class LSPApplicationServiceImpl : LSPApplicationService {
 

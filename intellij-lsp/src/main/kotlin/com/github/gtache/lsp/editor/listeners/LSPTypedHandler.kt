@@ -11,8 +11,9 @@ import com.intellij.psi.PsiFile
  * This class notifies an EditorEventManager that a character has been typed in the editor
  */
 class LSPTypedHandler : TypedHandlerDelegate() {
+
     override fun charTyped(c: Char, project: Project, editor: Editor, file: PsiFile): Result {
-        service<EditorApplicationService>().forEditor(editor)?.characterTyped(c)
+        service<EditorApplicationService>().managerForEditor(editor)?.characterTyped(c)
         return Result.CONTINUE
     }
 }

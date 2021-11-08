@@ -11,6 +11,9 @@ import org.eclipse.aether.repository.RemoteRepository
 import org.eclipse.aether.resolution.DependencyResolutionException
 import java.io.File
 
+/**
+ * Aether service
+ */
 class AetherImpl : Aether {
 
     override fun resolveClasspath(artifact: String): String? {
@@ -68,21 +71,27 @@ class AetherImpl : Aether {
             }
         }
 
+        /**
+         * Checks the [repositories] string syntax and possibly shows an error message
+         */
         @JvmStatic
-        fun checkRepositories(s: String, showErrorMessage: Boolean = false): Boolean {
-            return if (s.isNotEmpty()) {
-                val repos = s.split("\n")
+        fun checkRepositories(repositories: String, showErrorMessage: Boolean = false): Boolean {
+            return if (repositories.isNotEmpty()) {
+                val repos = repositories.split("\n")
                 checkRepositories(repos, showErrorMessage)
             } else true
         }
 
+        /**
+         * Checks the [repos] syntax and possibly shows an error message
+         */
         fun checkRepositories(repos: Iterable<String>, showErrorMessage: Boolean): Boolean {
             val errMsg = StringBuilder(0)
             return if (showErrorMessage) {
                 repos.forEach { s ->
                     val arr = s.split(SEPARATOR)
                     if (arr.isEmpty() || arr.size != 2 || !Repositories.values().map { v -> v.name.lowercase() }.contains(arr[0].lowercase()))
-                        errMsg.append(arr.joinToString("-")).append(Utils.lineSeparator)
+                        errMsg.append(arr.joinToString("-")).append(Utils.LINE_SEPARATOR)
                 }
                 if (errMsg.isNotEmpty()) {
                     invokeLater {

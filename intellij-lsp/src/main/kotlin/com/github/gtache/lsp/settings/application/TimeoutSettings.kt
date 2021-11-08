@@ -1,7 +1,6 @@
 package com.github.gtache.lsp.settings.application
 
 import com.github.gtache.lsp.settings.application.gui.TimeoutGUI
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.options.Configurable
 import org.jetbrains.annotations.Nls
 import javax.swing.JComponent
@@ -40,17 +39,6 @@ class TimeoutSettings private constructor() : Configurable {
     }
 
     companion object {
-        private val logger = Logger.getInstance(
-            TimeoutSettings::class.java
-        )
         private var timeoutGUI: TimeoutGUI? = null
-        var instance: TimeoutSettings? = null
-            get() {
-                if (field == null) {
-                    field = TimeoutSettings()
-                }
-                return field
-            }
-            private set
     }
 }

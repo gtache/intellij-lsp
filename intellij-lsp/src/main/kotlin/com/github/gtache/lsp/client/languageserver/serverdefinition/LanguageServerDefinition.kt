@@ -13,27 +13,42 @@ import java.net.URI
 interface LanguageServerDefinition {
 
     companion object {
-        const val SPLIT_CHAR = ";"
-        val allDefinitions: MutableSet<LanguageServerDefinition> = HashSet()
-            get() = HashSet(field)
         private val logger: Logger = Logger.getInstance(LanguageServerDefinition::class.java)
 
         /**
-         * Register a server definition
-         *
-         * @param definition The server definition
+         * The character to split the extensions with
          */
-        fun register(definition: LanguageServerDefinition): Unit {
-            allDefinitions.add(definition)
-            logger.info("Added definition for $definition")
-        }
+        const val SPLIT_CHAR: String = ";"
 
-        fun fromArray(arr: Array<String>): LanguageServerDefinition? {
-            return UserConfigurableServerDefinition.fromArray(arr)
+        /**
+         * All the language server definitions
+         */
+        val ALL_DEFINITIONS: MutableSet<LanguageServerDefinition> = HashSet()
+            get() = HashSet(field)
+
+        /**
+         * Splits an [extension] string into a list of extensions
+         */
+        fun splitExtension(extension: String): List<String> {
+            val split = extension.split(SPLIT_CHAR)
+            return if (split.size > 1) {
+                val tmp = split.toMutableList()
+                tmp.add(extension)
+                return tmp
+            } else {
+                listOf(extension)
+            }
         }
     }
 
+    /**
+     * Set of all the extensions that are registered
+     */
     val mappedExtensions: MutableSet<String>
+
+    /**
+     * Map of working directory -> stream connection provider
+     */
     val streamConnectionProviders: MutableMap<String, StreamConnectionProvider>
 
     /**
@@ -50,94 +65,77 @@ interface LanguageServerDefinition {
 
 
     /**
-     * Starts a Language server for the given directory and returns a tuple (InputStream, OutputStream)
-     *
-     * @param workingDir The root directory
-     * @return The input and output streams of the server
+     * Starts a Language server for the given working [directory] and returns a tuple (InputStream, OutputStream)
      */
-    fun start(workingDir: String): Pair<InputStream?, OutputStream?> {
-        val connectionProvider = streamConnectionProviders[workingDir]
+    fun start(directory: String): Pair<InputStream?, OutputStream?> {
+        val connectionProvider = streamConnectionProviders[directory]
         return if (connectionProvider != null) {
             Pair(connectionProvider.inputStream, connectionProvider.outputStream)
         } else {
-            val newConnectionProvider = createConnectionProvider(workingDir)
+            val newConnectionProvider = createConnectionProvider(directory)
             newConnectionProvider.start()
-            streamConnectionProviders[workingDir] = newConnectionProvider
+            streamConnectionProviders[directory] = newConnectionProvider
             return Pair(newConnectionProvider.inputStream, newConnectionProvider.outputStream)
         }
     }
 
-    fun getOutputStreams(workingDir: String): Pair<InputStream?, InputStream?>? {
-        val connectionProvider = streamConnectionProviders[workingDir]
+    /**
+     * Gets the (output,error) streams pair for the given working [directory]
+     */
+    fun getOutputStreams(directory: String): Pair<InputStream?, InputStream?>? {
+        val connectionProvider = streamConnectionProviders[directory]
         return if (connectionProvider != null) {
             Pair(connectionProvider.inputStream, connectionProvider.errorStream)
         } else {
-            logger.warn("Trying to get streams of unstarted process")
+            logger.warn("Trying to get streams of un-started process")
             null
         }
     }
 
     /**
-     * Stops the Language server corresponding to the given working directory
-     *
-     * @param workingDir The root directory
+     * Stops the Language server corresponding to the given working [directory]
      */
-    fun stop(workingDir: String): Unit {
-        val connectionProvider = streamConnectionProviders[workingDir]
+    fun stop(directory: String): Unit {
+        val connectionProvider = streamConnectionProviders[directory]
         if (connectionProvider != null) {
             connectionProvider.stop()
-            streamConnectionProviders.remove(workingDir)
+            streamConnectionProviders.remove(directory)
         } else {
-            logger.warn("No connection for workingDir $workingDir and ext $ext")
+            logger.warn("No connection for workingDir $directory and ext $ext")
         }
     }
 
     /**
-     * Adds a file extension for this LanguageServer
-     *
-     * @param ext the extension
+     * Adds a file [extension] for this definition
      */
-    fun addMappedExtension(ext: String): Unit {
-        mappedExtensions.addAll(splitExtension(ext))
-    }
-
-    fun splitExtension(ext: String): List<String> {
-        val split = ext.split(";")
-        return if (split.size > 1) {
-            val tmp = split.toMutableList()
-            tmp.add(ext)
-            return tmp
-        } else {
-            listOf(ext)
-        }
+    fun addMappedExtension(extension: String): Unit {
+        mappedExtensions.addAll(splitExtension(extension))
     }
 
     /**
-     * Removes a file extension for this LanguageServer
-     *
-     * @param ext the extension
+     * Removes a file [extension] for this definition
      */
-    fun removeMappedExtension(ext: String): Unit {
-        mappedExtensions.remove(ext)
+    fun removeMappedExtension(extension: String): Unit {
+        mappedExtensions.remove(extension)
     }
 
     /**
-     * @return the LanguageClient for this LanguageServer
+     * Returns the LanguageClient for this LanguageServer
      */
     fun createLanguageClient(): LanguageClientImpl = LanguageClientImpl()
 
+    /**
+     * Returns the initialization options for the given [uri]
+     */
     fun getInitializationOptions(uri: URI): Any? = null
 
     /**
-     * @return The array corresponding to the server definition
+     * Returns the string array corresponding to the server definition
      */
     fun toArray(): Array<String> = throw NotImplementedError()
 
     /**
-     * Creates a StreamConnectionProvider given the working directory
-     *
-     * @param workingDir The root directory
-     * @return The stream connection provider
+     * Creates a StreamConnectionProvider given the working [directory]
      */
-    fun createConnectionProvider(workingDir: String): StreamConnectionProvider
+    fun createConnectionProvider(directory: String): StreamConnectionProvider
 }

@@ -13,10 +13,6 @@ import com.intellij.psi.PsiNamedElement
  */
 class LSPFindUsagesProvider : FindUsagesProvider {
 
-    companion object {
-        private val logger: Logger = Logger.getInstance(LSPFindUsagesProvider::class.java)
-    }
-
     override fun getHelpId(psiElement: PsiElement): String? = null
 
     override fun canFindUsagesFor(psiElement: PsiElement): Boolean {

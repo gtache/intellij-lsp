@@ -4,29 +4,49 @@ import com.github.gtache.lsp.editor.EditorEventManager
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
 
+/**
+ * Represents a service helping to manage editors for the whole application
+ */
 interface EditorApplicationService {
 
     /**
-     * @param editor An editor
-     * @return The manager for the given editor, or None
+     * Returns the manager for the given [editor]
      */
-    fun forEditor(editor: Editor): EditorEventManager?
+    fun managerForEditor(editor: Editor): EditorEventManager?
 
-    fun forDocument(document: Document): EditorEventManager?
+    /**
+     * Returns the manager for the given [document]
+     */
+    fun managerForDocument(document: Document): EditorEventManager?
 
-    fun getEditor(document: Document): Editor?
+    /**
+     * Returns the editor for the given [document]
+     */
+    fun editorForDocument(document: Document): Editor?
 
+    /**
+     * Notifies that an [editor] has been opened
+     */
     fun editorOpened(editor: Editor): Unit
 
+    /**
+     * Notifies that an [editor] has been closed
+     */
     fun editorClosed(editor: Editor): Unit
 
     /**
-     * Tells all the servers that all the documents will be saved
+     * Notifies that all the documents will be saved
      */
     fun willSaveAll(): Unit
 
+    /**
+     * Adds a [manager]
+     */
     fun addManager(manager: EditorEventManager): Unit
 
+    /**
+     * Removes a [manager]
+     */
     fun removeManager(manager: EditorEventManager): Unit
 
 }

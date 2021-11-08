@@ -27,7 +27,8 @@ import java.util.concurrent.ConcurrentHashMap
 * KIND, either express or implied.  See the License for the
 * specific language governing permissions and limitations
 * under the License.
-*/ /**
+*/
+/**
  * A simplistic transfer listener that logs uploads/downloads to the console.
  */
 class ConsoleTransferListener @JvmOverloads constructor(out: PrintStream? = null) : AbstractTransferListener() {

@@ -7,6 +7,9 @@ import com.intellij.openapi.project.Project
 import org.jetbrains.annotations.Nls
 import javax.swing.JComponent
 
+/**
+ * Miscellaneous settings
+ */
 class MiscSettings(private val project: Project) : Configurable {
     override fun getDisplayName(): @Nls String {
         return "Language Server Protocol"
@@ -38,9 +41,6 @@ class MiscSettings(private val project: Project) : Configurable {
     }
 
     companion object {
-        private val logger = Logger.getInstance(
-            MiscSettings::class.java
-        )
         private var miscGUI: MiscGUI? = null
     }
 }

@@ -9,7 +9,7 @@ import java.io.OutputStream
 import java.util.*
 
 /**
- * A class symbolizing a stream to a process
+ * A class representing a connection to a process
  *
  * @param commands   The commands to start the process
  * @param workingDir The working directory of the process

@@ -2,7 +2,6 @@ package com.github.gtache.lsp.client.languageserver.serverdefinition
 
 import com.github.gtache.lsp.head
 import com.github.gtache.lsp.tail
-import com.github.gtache.lsp.utils.Utils
 import com.intellij.openapi.diagnostic.Logger
 import java.util.*
 
@@ -18,18 +17,18 @@ data class ExeLanguageServerDefinition(
     override val ext: String,
     val path: String,
     val args: Array<String>
-) : BaseServerDefinition(), CommandServerDefinition {
+) : AbstractServerDefinition(), CommandServerDefinition {
 
     companion object : UserConfigurableServerDefinitionObject {
         private val logger: Logger = Logger.getInstance(UserConfigurableServerDefinitionObject::class.java)
 
-        override val typ: String = "exe"
+        override val type: String = "exe"
 
         @JvmStatic
-        override val presentableTyp: String = "Executable"
+        override val presentableType: String = "Executable"
 
         override fun fromArray(arr: Array<String>): ExeLanguageServerDefinition? {
-            if (arr.head == typ) {
+            if (arr.head == type) {
                 val arrTail = arr.tail
                 return if (arrTail.size < 2) {
                     logger.warn("Not enough elements to translate into a ServerDefinition : " + arr.joinToString(" ; "))
@@ -39,7 +38,7 @@ data class ExeLanguageServerDefinition(
                     ExeLanguageServerDefinition(
                         arrTail.head,
                         arrTail.tail.head,
-                        if (arrTail.size > 2) Utils.parseArgs(arrTail.drop(2)) else emptyArray()
+                        if (arrTail.size > 2) parseArgs(arrTail.drop(2)) else emptyArray()
                     )
                 }
             } else {
@@ -57,12 +56,12 @@ data class ExeLanguageServerDefinition(
     }
 
     override fun toArray(): Array<String> {
-        val tmp = mutableListOf(typ, ext, path)
+        val tmp = mutableListOf(type, ext, path)
         tmp.addAll(args)
         return tmp.toTypedArray()
     }
 
-    override fun toString(): String = typ + " : path " + path + " args : " + args.joinToString(" ")
+    override fun toString(): String = type + " : path " + path + " args : " + args.joinToString(" ")
 
 
     override fun equals(other: Any?): Boolean = other is ExeLanguageServerDefinition && ext == other.ext && path == other.path &&

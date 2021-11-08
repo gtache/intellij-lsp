@@ -4,8 +4,7 @@ import com.intellij.codeInspection.InspectionToolProvider
 import com.intellij.codeInspection.LocalInspectionTool
 
 /**
- * The provider for the LSP Inspection
- * Returns a single class, LSPInspection
+ * Provider of LSPInspection
  */
 class LSPInspectionProvider : InspectionToolProvider {
 

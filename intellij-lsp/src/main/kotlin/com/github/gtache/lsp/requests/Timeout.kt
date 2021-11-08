@@ -3,7 +3,7 @@ package com.github.gtache.lsp.requests
 import com.github.gtache.lsp.requests.Timeouts.*
 
 /**
- * An object containing the Timeout for the various requests
+ * An object containing the timeout values for the various requests
  */
 object Timeout {
 

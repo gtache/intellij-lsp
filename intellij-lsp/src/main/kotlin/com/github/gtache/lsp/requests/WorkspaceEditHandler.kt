@@ -23,21 +23,24 @@ import org.eclipse.lsp4j.WorkspaceEdit
 import java.net.URL
 
 /**
- * An Object handling WorkspaceEdits
+ * An object handling WorkspaceEdits
  */
 object WorkspaceEditHandler {
 
     private val logger: Logger = Logger.getInstance(WorkspaceEditHandler::class.java)
 
+    /**
+     * Applies the given edit specified by the [element] to edit, the [newName] to give to this [element], various [infos] regarding the usage, a [listener] to notify and the list of [openedEditors]
+     */
     fun applyEdit(
-        elem: PsiElement,
+        element: PsiElement,
         newName: String,
         infos: Array<UsageInfo>,
         listener: RefactoringElementListener?,
         openedEditors: Iterable<VirtualFile>
     ): Unit {
         val edits = HashMap<String, MutableList<TextEdit>>()
-        when (elem) {
+        when (element) {
             is LSPPsiElement -> {
                 if (infos.all { info -> info.element is LSPPsiElement }) {
                     infos.forEach { ui ->
@@ -45,8 +48,8 @@ object WorkspaceEditHandler {
                             FileUtils.editorFromVirtualFile(vf, ui.project)?.let { editor ->
                                 ui.element?.textRange?.let { range ->
                                     val lspRange = Range(
-                                        DocumentUtils.offsetToLSPPos(editor, range.startOffset),
-                                        DocumentUtils.offsetToLSPPos(editor, range.endOffset)
+                                        DocumentUtils.offsetToLSPPosition(editor, range.startOffset),
+                                        DocumentUtils.offsetToLSPPosition(editor, range.endOffset)
                                     )
                                     val edit = TextEdit(lspRange, newName)
                                     val uri = FileUtils.sanitizeURI(URL(vf.url.replace(" ", FileUtils.SPACE_ENCODED)).toURI().toString())
@@ -60,22 +63,22 @@ object WorkspaceEditHandler {
                         }
                     }
                     val mapping = HashMap<String, List<TextEdit>>()
-                    edits.forEach { edit ->
-                        mapping[edit.key] = edit.value
+                    edits.forEach { (key, value) ->
+                        mapping[key] = value
                     }
                     val workspaceEdit = WorkspaceEdit(mapping)
-                    applyEdit(workspaceEdit, elem.project, "Rename " + elem.name + " to " + newName, openedEditors)
+                    applyEdit(workspaceEdit, element.project, "Rename " + element.name + " to " + newName, openedEditors)
                 }
             }
-            else -> logger.warn("Not an LSPPsiElement : $elem")
+            else -> logger.warn("Not an LSPPsiElement : $element")
         }
     }
 
     /**
-     * Applies a WorkspaceEdit
+     * Applies an [edit] named as [name] to the given [project] and closes the files [toClose]
      *
      * @param edit The edit
-     * @return True if everything was applied, false otherwise
+     * Returns True if everything was applied, false otherwise
      */
     fun applyEdit(edit: WorkspaceEdit, project: Project, name: String = "LSP edits", toClose: Iterable<VirtualFile> = ArrayList()): Boolean {
         val dChanges = if (edit.documentChanges != null) edit.documentChanges else null
@@ -85,17 +88,17 @@ object WorkspaceEditHandler {
             val openedEditors = ArrayList<VirtualFile>()
 
             /**
-             * Opens an editor when needed and gets the Runnable
+             * Opens if required an editor specified by the given file [uri], and returns a Runnable applying the given [edits] if [version] is greater than the editor version
              *
              * @param edits   The text edits
              * @param uri     The uri of the file
              * @param version The version of the file
-             * @return The runnable containing the edits
+             * Returns The runnable containing the edits
              */
             fun manageUnopenedEditor(edits: Iterable<TextEdit>, uri: String, version: Int = Int.MAX_VALUE): Runnable? {
                 return FileUtils.openClosedEditor(uri, project)?.let {
                     openedEditors += it.first
-                    service<EditorApplicationService>().forEditor(it.second)?.getEditsRunnable(version, edits, name)
+                    service<EditorApplicationService>().managerForEditor(it.second)?.getEditsRunnable(version, edits, name)
                 }
             }
 

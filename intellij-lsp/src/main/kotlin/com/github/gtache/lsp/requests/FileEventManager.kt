@@ -26,7 +26,7 @@ object FileEventManager {
      * @param doc The document
      */
     fun willSave(doc: Document): Unit {
-        service<EditorApplicationService>().forDocument(doc)?.willSave()
+        service<EditorApplicationService>().managerForDocument(doc)?.willSave()
     }
 
     /**
@@ -42,7 +42,7 @@ object FileEventManager {
      * @param file The file
      */
     fun fileChanged(file: VirtualFile): Unit {
-        val uri = FileUtils.VFSToURI(file)
+        val uri = FileUtils.vfsToURI(file)
         if (uri != null) {
             val managers = ProjectManager.getInstance().openProjects.mapNotNull { p -> p.service<EditorProjectService>().forUri(uri) }
             managers.forEach { it.documentSaved() }
@@ -73,7 +73,7 @@ object FileEventManager {
     }
 
     private fun notifyServers(file: VirtualFile, typ: FileChangeType, wrappers: Collection<LanguageServerWrapper> = emptyList()): Unit {
-        val uri = FileUtils.VFSToURI(file)
+        val uri = FileUtils.vfsToURI(file)
         if (uri != null) {
             ApplicationUtils.pool {
                 val projects = ProjectManager.getInstance().openProjects.filter { p -> ProjectRootManager.getInstance(p).fileIndex.isInContent(file) }

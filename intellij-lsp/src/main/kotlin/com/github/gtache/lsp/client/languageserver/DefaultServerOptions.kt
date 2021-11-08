@@ -2,7 +2,10 @@ package com.github.gtache.lsp.client.languageserver
 
 import org.eclipse.lsp4j.*
 
-object DummyServerOptions {
+/**
+ * Dummy / default server options
+ */
+object DefaultServerOptions {
     val SYNC_KIND = TextDocumentSyncKind.None
     val RENAME = RenameOptions()
     val COMPLETION = CompletionOptions()

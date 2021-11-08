@@ -1,24 +1,33 @@
 package com.github.gtache.lsp.settings.server.parser
 
+/**
+ * Configuration type
+ */
 enum class ConfigType {
     FLAT, JSON, XML;
 
     companion object {
-        fun fromExt(ext: String?): ConfigType? {
-            return if ("FLAT".equals(ext, ignoreCase = true)) {
+        /**
+         * Returns a type given an [extension]
+         */
+        fun fromExtension(extension: String?): ConfigType? {
+            return if ("txt".equals(extension, ignoreCase = true) || "ini".equals(extension, ignoreCase = true)) {
                 FLAT
-            } else if ("JSON".equals(ext, ignoreCase = true)) {
+            } else if (JSON.name.equals(extension, ignoreCase = true)) {
                 JSON
-            } else if ("XML".equals(ext, ignoreCase = true)) {
+            } else if (XML.name.equals(extension, ignoreCase = true)) {
                 XML
             } else null
         }
 
-        fun toExt(typ: ConfigType): String? {
-            return when (typ) {
+        /**
+         * Returns an extension given a [type]
+         */
+        fun toExtension(type: ConfigType): String? {
+            return when (type) {
                 FLAT -> "txt"
-                JSON -> "json"
-                XML -> "xml"
+                JSON -> JSON.name.lowercase()
+                XML -> XML.name.lowercase()
                 else -> null
             }
         }

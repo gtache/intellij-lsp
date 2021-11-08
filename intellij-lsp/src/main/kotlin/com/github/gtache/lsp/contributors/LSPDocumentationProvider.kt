@@ -37,13 +37,13 @@ class LSPDocumentationProvider : DocumentationProvider {
     override fun getQuickNavigateInfo(element: PsiElement?, originalElement: PsiElement?): String {
         return when (element) {
             is LSPPsiElement ->
-                service<EditorApplicationService>().forEditor(element.editor)?.let { m ->
+                service<EditorApplicationService>().managerForEditor(element.editor)?.let { m ->
                     m.requestDoc(m.editor, element.getTextOffset())
                 } ?: ""
             is PsiFile -> {
                 val editor = FileUtils.editorFromPsiFile(element)
                 editor?.let {
-                    service<EditorApplicationService>().forEditor(it)?.requestDoc(it, it.caretModel.currentCaret.offset)
+                    service<EditorApplicationService>().managerForEditor(it)?.requestDoc(it, it.caretModel.currentCaret.offset)
                 } ?: ""
             }
             else -> ""

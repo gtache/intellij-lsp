@@ -9,6 +9,9 @@ import com.intellij.openapi.wm.StatusBarWidget
 import com.intellij.openapi.wm.StatusBarWidgetFactory
 import com.intellij.openapi.wm.impl.status.widget.StatusBarWidgetsManager
 
+/**
+ * Widget factory for server status
+ */
 class ServerStatusWidgetFactory : StatusBarWidgetFactory {
     private val wrappers: MutableMap<Project, MutableList<LanguageServerWrapper>> = HashMap()
 
@@ -29,20 +32,18 @@ class ServerStatusWidgetFactory : StatusBarWidgetFactory {
     override fun canBeEnabledOn(statusBar: StatusBar): Boolean = true
 
     /**
-     * Creates a widget given a LanguageServerWrapper and adds it to the status bar
-     *
-     * @param wrapper The wrapper
-     * @return The widget
+     * Adds a [wrapper] to the widget
      */
     fun addWrapper(wrapper: LanguageServerWrapper): Unit {
         val project = wrapper.project
         if (wrappers.contains(project)) {
-            val projectWrappers = wrappers[project]!!
-            if (!projectWrappers.contains(wrapper)) {
-                projectWrappers += wrapper
-                updateWidget(wrapper)
-            } else {
-                logger.warn("Trying to add already existing wrapper $wrapper")
+            wrappers[project]?.let { projectWrappers ->
+                if (!projectWrappers.contains(wrapper)) {
+                    projectWrappers += wrapper
+                    updateWidget(wrapper)
+                } else {
+                    logger.warn("Trying to add already existing wrapper $wrapper")
+                }
             }
         } else {
             wrappers[project] = mutableListOf(wrapper)
@@ -50,20 +51,24 @@ class ServerStatusWidgetFactory : StatusBarWidgetFactory {
         }
     }
 
+    /**
+     * Removes a [wrapper] from the widget
+     */
     fun removeWrapper(wrapper: LanguageServerWrapper): Unit {
         val project = wrapper.project
         if (!wrappers.contains(project)) {
             logger.warn("Trying to remove non-existing wrapper $wrapper")
         } else {
-            val projectWrappers = wrappers[project]!!
-            if (projectWrappers.contains(wrapper)) {
-                projectWrappers -= wrapper
-                if (projectWrappers.isEmpty()) {
-                    wrappers.remove(wrapper.project)
+            wrappers[project]?.let { projectWrappers ->
+                if (projectWrappers.contains(wrapper)) {
+                    projectWrappers -= wrapper
+                    if (projectWrappers.isEmpty()) {
+                        wrappers.remove(wrapper.project)
+                    }
+                    updateWidget(wrapper)
+                } else {
+                    logger.warn("Trying to remove non-existing wrapper $wrapper")
                 }
-                updateWidget(wrapper)
-            } else {
-                logger.warn("Trying to remove non-existing wrapper $wrapper")
             }
         }
     }

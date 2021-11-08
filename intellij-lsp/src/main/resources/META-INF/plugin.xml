@@ -70,6 +70,10 @@
         <applicationService id="Aether" serviceInterface="com.github.gtache.lsp.utils.aether.Aether"
                             serviceImplementation="com.github.gtache.lsp.utils.aether.AetherImpl"/>
 
+        <projectService id="ReformatHandler"
+                        serviceInterface="com.github.gtache.lsp.requests.services.project.ReformatProjectService"
+                        serviceImplementation="com.github.gtache.lsp.requests.services.project.ReformatProjectServiceImpl"/>
+
         <gotoSymbolContributor implementation="com.github.gtache.lsp.contributors.gotoo.LSPGotoSymbolContributor"
                                id="LSPGotoSymbolContributor"/>
         <gotoClassContributor implementation="com.github.gtache.lsp.contributors.gotoo.LSPGotoClassContributor"

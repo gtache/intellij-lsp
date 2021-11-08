@@ -14,6 +14,9 @@ import org.eclipse.lsp4j.SemanticHighlightingParams
 import java.awt.Color
 import java.awt.Font
 
+/**
+ * Object managing semantic highlighting
+ */
 object SemanticHighlightingHandler {
 
     private val logger: Logger = Logger.getInstance(SemanticHighlightingHandler::class.java)

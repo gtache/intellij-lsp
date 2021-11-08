@@ -1,29 +1,28 @@
 package com.github.gtache.lsp.editor.services.application
 
 import com.github.gtache.lsp.editor.EditorEventManager
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
 
+/**
+ * Implementation of EditorApplicationService
+ */
 class EditorApplicationServiceImpl : EditorApplicationService {
-    companion object {
-        private val logger: Logger = Logger.getInstance(EditorApplicationServiceImpl::class.java)
-    }
 
     private val editorToManager: MutableMap<Editor, EditorEventManager> = HashMap()
     private val documentToEditor: MutableMap<Document, Editor> = HashMap()
 
 
-    override fun forEditor(editor: Editor): EditorEventManager? {
+    override fun managerForEditor(editor: Editor): EditorEventManager? {
         prune()
         return editorToManager[editor]
     }
 
-    override fun forDocument(document: Document): EditorEventManager? {
-        return editorToManager[getEditor(document)]
+    override fun managerForDocument(document: Document): EditorEventManager? {
+        return editorToManager[editorForDocument(document)]
     }
 
-    override fun getEditor(document: Document): Editor? {
+    override fun editorForDocument(document: Document): Editor? {
         return documentToEditor[document]
     }
 
@@ -35,13 +34,6 @@ class EditorApplicationServiceImpl : EditorApplicationService {
         documentToEditor -= editor.document
     }
 
-    fun getEditors(): Set<Editor> {
-        return editorToManager.keys
-    }
-
-    /**
-     * Tells all the servers that all the documents will be saved
-     */
     override fun willSaveAll(): Unit {
         prune()
         editorToManager.forEach { e -> e.value.willSave() }

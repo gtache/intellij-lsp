@@ -1,8 +1,11 @@
 package com.github.gtache.lsp.client.languageserver.serverdefinition
 
 
-enum class ConfigurableTypes(val typ: String) {
-    ARTIFACT(ArtifactLanguageServerDefinition.presentableTyp),
-    EXE(ExeLanguageServerDefinition.presentableTyp),
-    RAWCOMMAND(RawCommandServerDefinition.presentableTyp);
+/**
+ * List of all the configurable server definitions types
+ */
+enum class ConfigurableTypes(val type: String) {
+    ARTIFACT(ArtifactLanguageServerDefinition.presentableType),
+    EXE(ExeLanguageServerDefinition.presentableType),
+    RAWCOMMAND(RawCommandServerDefinition.presentableType);
 }

@@ -3,7 +3,8 @@ package com.github.gtache.lsp.client.languageserver.wrapper
 
 import com.github.gtache.lsp.client.DynamicRegistrationMethods
 import com.github.gtache.lsp.client.LanguageClientImpl
-import com.github.gtache.lsp.client.languageserver.*
+import com.github.gtache.lsp.client.languageserver.DefaultServerOptions
+import com.github.gtache.lsp.client.languageserver.ServerOptions
 import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
 import com.github.gtache.lsp.client.languageserver.requestmanager.SimpleRequestManager
 import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
@@ -42,7 +43,6 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseMessage
 import org.eclipse.lsp4j.launch.LSPLauncher
 import org.eclipse.lsp4j.services.LanguageServer
-import org.jetbrains.annotations.Nullable
 import java.io.*
 import java.net.URI
 import java.nio.file.FileSystems
@@ -63,34 +63,6 @@ class LanguageServerWrapperImpl(
     override val serverDefinition: LanguageServerDefinition,
     override val project: Project
 ) : LanguageServerWrapper {
-
-    companion object {
-        private val logger: Logger = Logger.getInstance(LanguageServerWrapperImpl::class.java)
-        private val uriToLanguageServerWrapper: MutableMap<Pair<String, String>, LanguageServerWrapper> = HashMap()
-
-        /**
-         * @param uri A file uri
-         * @return The wrapper for the given uri, or None
-         */
-        fun forUri(uri: String, project: Project): LanguageServerWrapper? {
-            return uriToLanguageServerWrapper[Pair(uri, FileUtils.projectToUri(project))]
-        }
-
-        /**
-         * @param editor An editor
-         * @return The wrapper for the given editor, or None
-         */
-        fun forEditor(editor: Editor): LanguageServerWrapper? {
-            return if (editor.project == null) {
-                null
-            } else {
-                uriToLanguageServerWrapper[Pair(
-                    FileUtils.editorToURIString(editor),
-                    FileUtils.editorToProjectFolderUri(editor)
-                )]
-            }
-        }
-    }
 
     private val toConnect: MutableSet<Editor> = HashSet()
     private val rootPath = project.basePath
@@ -147,7 +119,7 @@ class LanguageServerWrapperImpl(
     private var fileWatchers: Iterable<FileSystemWatcher> = emptyList()
 
     /**
-     * @return if the server supports willSaveWaitUntil
+     * Returns whether the server supports willSaveWaitUntil
      */
     fun isWillSaveWaitUntil(): Boolean {
         val capabilities = getServerCapabilities()?.textDocumentSync
@@ -169,7 +141,7 @@ class LanguageServerWrapperImpl(
     /**
      * Warning: this is a long running operation
      *
-     * @return the languageServer capabilities, or null if initialization job didn't complete
+     * Returns the languageServer capabilities, or null if initialization job didn't complete
      */
     override fun getServerCapabilities(): ServerCapabilities? {
         if (initializeResult != null) return initializeResult?.capabilities else {
@@ -209,31 +181,16 @@ class LanguageServerWrapperImpl(
         return languageServer
     }
 
-    override fun notifyResult(timeouts: Timeouts, success: Boolean): Unit {
-        statusWidget?.notifyResult(timeouts, success)
+    override fun notifyResult(timeout: Timeouts, success: Boolean): Unit {
+        statusWidget?.notifyResult(timeout, success)
     }
 
-    /**
-     * Returns the EditorEventManager for a given uri
-     *
-     * @param uri the URI as a string
-     * @return the EditorEventManager (or null)
-     */
     override fun getEditorManagerFor(uri: String): EditorEventManager? {
         return connectedEditors[uri]
     }
 
-
-    /**
-     * @return whether the underlying connection to language languageServer is still active
-     */
     override fun isActive(): Boolean = (launcherFuture?.let { !it.isDone && !it.isCancelled } ?: false) && !alreadyShownTimeout && !alreadyShownCrash
 
-    /**
-     * Connects an editor to the languageServer
-     *
-     * @param editor the editor
-     */
     override fun connect(editor: Editor): Unit {
         val uri = FileUtils.editorToURIString(editor)
         if (uri != null) {
@@ -257,7 +214,7 @@ class LanguageServerWrapperImpl(
                                     if (syncOptions != null) {
                                         val syncKind = if (syncOptions.isRight) syncOptions.right.change
                                         else if (syncOptions.isLeft) syncOptions.left
-                                        else DummyServerOptions.SYNC_KIND
+                                        else DefaultServerOptions.SYNC_KIND
                                         val mouseListener = EditorMouseListenerImpl()
                                         val mouseMotionListener = EditorMouseMotionListenerImpl()
                                         val documentListener = DocumentListenerImpl()
@@ -265,20 +222,20 @@ class LanguageServerWrapperImpl(
                                         val renameProvider = capabilities.renameProvider
                                         val renameOptions = if (renameProvider != null) {
                                             if (renameProvider.isLeft) {
-                                                if (renameProvider.left) RenameOptions() else DummyServerOptions.RENAME
+                                                if (renameProvider.left) RenameOptions() else DefaultServerOptions.RENAME
                                             } else {
                                                 renameProvider.right
                                             }
-                                        } else DummyServerOptions.RENAME
+                                        } else DefaultServerOptions.RENAME
                                         val serverOptions = ServerOptions(
                                             syncKind,
-                                            capabilities.completionProvider ?: DummyServerOptions.COMPLETION,
-                                            capabilities.signatureHelpProvider ?: DummyServerOptions.SIGNATURE_HELP,
-                                            capabilities.codeLensProvider ?: DummyServerOptions.CODELENS,
-                                            capabilities.documentOnTypeFormattingProvider ?: DummyServerOptions.DOCUMENT_ON_TYPE_FORMATTING,
-                                            capabilities.documentLinkProvider ?: DummyServerOptions.DOCUMENT_LINK,
-                                            capabilities.executeCommandProvider ?: DummyServerOptions.EXECUTE_COMMAND,
-                                            capabilities.semanticHighlighting ?: DummyServerOptions.SEMANTIC_HIGHLIGHTING,
+                                            capabilities.completionProvider ?: DefaultServerOptions.COMPLETION,
+                                            capabilities.signatureHelpProvider ?: DefaultServerOptions.SIGNATURE_HELP,
+                                            capabilities.codeLensProvider ?: DefaultServerOptions.CODELENS,
+                                            capabilities.documentOnTypeFormattingProvider ?: DefaultServerOptions.DOCUMENT_ON_TYPE_FORMATTING,
+                                            capabilities.documentLinkProvider ?: DefaultServerOptions.DOCUMENT_LINK,
+                                            capabilities.executeCommandProvider ?: DefaultServerOptions.EXECUTE_COMMAND,
+                                            capabilities.semanticHighlighting ?: DefaultServerOptions.SEMANTIC_HIGHLIGHTING,
                                             renameOptions
                                         )
                                         val manager = EditorEventManager(
@@ -322,11 +279,6 @@ class LanguageServerWrapperImpl(
         } else logger.warn("Null uri for $editor")
     }
 
-    /**
-     * Disconnects an editor from the LanguageServer
-     *
-     * @param path The uri of the editor
-     */
     override fun disconnect(path: String): Unit {
         synchronized(connectedEditors) {
             synchronized(uriToLanguageServerWrapper) {
@@ -375,9 +327,6 @@ class LanguageServerWrapperImpl(
         stopLoggingServerErrors()
     }
 
-    /**
-     * Checks if the wrapper is already connected to the document at the given path
-     */
     override fun isConnectedTo(location: String): Boolean = connectedEditors.contains(location)
 
     private fun prepareWorkspaceClientCapabilities(): WorkspaceClientCapabilities {
@@ -421,9 +370,6 @@ class LanguageServerWrapperImpl(
         return textDocumentClientCapabilities
     }
 
-    /**
-     * Starts the LanguageServer
-     */
     override fun start(): Unit {
         if (status == ServerStatus.STOPPED || status == ServerStatus.FAILED) {
             status = ServerStatus.STARTING
@@ -496,10 +442,6 @@ class LanguageServerWrapperImpl(
         getAllPotentialEditors().forEach { connect(it) }
     }
 
-    /**
-     * @return The language ID that this wrapper is dealing , if defined in the content type mapping for the language languageServer
-     */
-    @Nullable
     override fun getLanguageId(contentTypes: Array<String>): String? {
         return if (contentTypes.any { serverDefinition.mappedExtensions.contains(it) }) serverDefinition.id else null
     }
@@ -568,7 +510,7 @@ class LanguageServerWrapperImpl(
         }
     }
 
-    override fun crashed(e: Exception): Unit {
+    override fun crashed(exception: Exception): Unit {
         crashCount += 1
         if (crashCount < 4) {
             stop()
@@ -580,7 +522,7 @@ class LanguageServerWrapperImpl(
             if (!alreadyShownCrash) ApplicationUtils.invokeLater {
                 if (!alreadyShownCrash)
                     Messages.showErrorDialog(
-                        "LanguageServer for definition " + serverDefinition + ", project " + project + " keeps crashing due to \n" + e.message + "\nCheck settings.",
+                        "LanguageServer for definition " + serverDefinition + ", project " + project + " keeps crashing due to \n" + exception.message + "\nCheck settings.",
                         "LSP Error"
                     )
                 alreadyShownCrash = true
@@ -597,11 +539,6 @@ class LanguageServerWrapperImpl(
         statusWidget?.dispose()
     }
 
-    /**
-     * Disconnects an editor from the LanguageServer
-     *
-     * @param editor The editor
-     */
     override fun disconnect(editor: Editor): Unit {
         val uri = FileUtils.editorToURIString(editor)
         if (uri != null) {
@@ -616,7 +553,7 @@ class LanguageServerWrapperImpl(
     }
 
     private fun connect(uri: String): Unit {
-        val vfs = FileUtils.URIToVFS(uri)
+        val vfs = FileUtils.uriToVFS(uri)
         if (vfs != null) {
             val editors = FileEditorManager.getInstance(project).getAllEditors(vfs)
                 .mapNotNull { t -> (t as TextEditor).editor }
@@ -686,8 +623,8 @@ class LanguageServerWrapperImpl(
         errLogThread?.interrupt()
     }
 
-    override fun didChangeWatchedFiles(uri: String, typ: FileChangeType): Unit {
-        val params = DidChangeWatchedFilesParams(listOf(FileEvent(uri, typ)))
+    override fun didChangeWatchedFiles(uri: String, type: FileChangeType): Unit {
+        val params = DidChangeWatchedFilesParams(listOf(FileEvent(uri, type)))
         val uriFile = File(URI(uri))
         val confFile = File(getConfPath())
         try {
@@ -703,7 +640,7 @@ class LanguageServerWrapperImpl(
             if (fileWatchers.any { fw ->
                     val pattern = fw.globPattern
                     val event = fw.kind
-                    val typInt = when (typ) {
+                    val typInt = when (type) {
                         FileChangeType.Created -> 1
                         FileChangeType.Changed -> 2
                         FileChangeType.Deleted -> 4
@@ -716,6 +653,32 @@ class LanguageServerWrapperImpl(
         } else {
             //If the server didn't register for file events, send anyway
             requestManager?.didChangeWatchedFiles(params)
+        }
+    }
+
+    companion object {
+        private val logger: Logger = Logger.getInstance(LanguageServerWrapperImpl::class.java)
+        private val uriToLanguageServerWrapper: MutableMap<Pair<String, String>, LanguageServerWrapper> = HashMap()
+
+        /**
+         * Returns The wrapper for the given [uri] and [project]
+         */
+        fun forUri(uri: String, project: Project): LanguageServerWrapper? {
+            return uriToLanguageServerWrapper[Pair(uri, FileUtils.projectToUri(project))]
+        }
+
+        /**
+         * Returns the wrapper for the given [editor]
+         */
+        fun forEditor(editor: Editor): LanguageServerWrapper? {
+            return if (editor.project == null) {
+                null
+            } else {
+                uriToLanguageServerWrapper[Pair(
+                    FileUtils.editorToURIString(editor),
+                    FileUtils.editorToProjectFolderUri(editor)
+                )]
+            }
         }
     }
 }

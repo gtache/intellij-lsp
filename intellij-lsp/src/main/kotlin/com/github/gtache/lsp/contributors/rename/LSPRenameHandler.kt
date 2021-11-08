@@ -9,7 +9,6 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.command.impl.StartMarkAction
 import com.intellij.openapi.components.service
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Pass
@@ -26,11 +25,10 @@ import com.intellij.refactoring.rename.inplace.InplaceRefactoring
 import com.intellij.refactoring.rename.inplace.MemberInplaceRenameHandler
 import com.intellij.refactoring.rename.inplace.MemberInplaceRenamer
 
+/**
+ * Rename handler for LSP
+ */
 class LSPRenameHandler : RenameHandler {
-
-    companion object {
-        private val logger: Logger = Logger.getInstance(LSPRenameHandler::class.java)
-    }
 
     override fun invoke(project: Project, elements: Array<PsiElement>, dataContext: DataContext): Unit {
         dataContext.getData(CommonDataKeys.EDITOR)?.let { editor ->
@@ -41,7 +39,7 @@ class LSPRenameHandler : RenameHandler {
     }
 
     override fun invoke(project: Project, editor: Editor, file: PsiFile, dataContext: DataContext): Unit {
-        val manager = service<EditorApplicationService>().forEditor(editor)
+        val manager = service<EditorApplicationService>().managerForEditor(editor)
         if (manager != null) {
             if (editor.contentComponent.hasFocus()) {
                 val psiElement = manager.getElementAtOffset(editor.caretModel.currentCaret.offset)
@@ -52,7 +50,7 @@ class LSPRenameHandler : RenameHandler {
         }
     }
 
-    fun doRename(elementToRename: PsiElement, editor: Editor, dataContext: DataContext): InplaceRefactoring? {
+    private fun doRename(elementToRename: PsiElement, editor: Editor, dataContext: DataContext): InplaceRefactoring? {
         if (elementToRename is PsiNameIdentifierOwner) {
             val processor = RenamePsiElementProcessor.forElement(elementToRename)
             if (processor.isInplaceRenameSupported) {
@@ -109,10 +107,10 @@ class LSPRenameHandler : RenameHandler {
     private fun isAvailable(psiElement: PsiElement?, editor: Editor, psiFile: PsiFile): Boolean {
         return when (psiElement) {
             is PsiFile -> {
-                service<EditorApplicationService>().forEditor(editor)?.canRename() ?: false
+                service<EditorApplicationService>().managerForEditor(editor)?.canRename() ?: false
             }
             is LSPPsiElement -> {
-                service<EditorApplicationService>().forEditor(editor)?.canRename(psiElement.textOffset) ?: false
+                service<EditorApplicationService>().managerForEditor(editor)?.canRename(psiElement.textOffset) ?: false
                 //IntelliJ 2018 returns psiElement null for unsupported languages
             }
             else -> {

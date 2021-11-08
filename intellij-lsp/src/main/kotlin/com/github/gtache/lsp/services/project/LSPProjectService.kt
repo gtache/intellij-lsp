@@ -11,25 +11,30 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import org.eclipse.lsp4j.SymbolKind
 
+/**
+ * Represents an LSP service at the project level
+ */
 interface LSPProjectService {
-    var extToServerDefinition: Map<String, LanguageServerDefinition>
+    /**
+     * Map of file extension to server definition
+     */
+    var extensionsToServerDefinitions: Map<String, LanguageServerDefinition>
 
     /**
-     * @param ext An extension
-     * @return True if there is a LanguageServer supporting this extension, false otherwise
+     * Returns whether there is a server definition supporting the given [extension]
      */
-    fun isExtensionSupported(ext: String?): Boolean {
-        return ext != null && extToServerDefinition.contains(ext)
+    fun isExtensionSupported(extension: String?): Boolean {
+        return extension != null && extensionsToServerDefinitions.contains(extension)
     }
 
     /**
-     * Returns the corresponding workspaceSymbols given a name
+     * Returns the corresponding workspaceSymbols given a [name], an unused [pattern], whether to search in non-project items [includeNonProjectItems] unused and a kind set [onlyKind] for filtering
      *
      * @param name                   The name to search for
      * @param pattern                The pattern (unused)
      * @param includeNonProjectItems Whether to search in libraries for example (unused)
      * @param onlyKind               Filter the results to only the kinds in the set (all by default)
-     * @return An array of NavigationItem
+     * Returns An array of NavigationItem
      */
     fun workspaceSymbols(
         name: String,
@@ -39,22 +44,28 @@ interface LSPProjectService {
     ): Array<NavigationItem>
 
 
+    /**
+     * Notifies that the settings state has been loaded
+     */
     fun notifyStateLoaded(): Unit
+
+    /**
+     * Returns all the wrappers currently instantiated
+     */
     fun getAllWrappers(): Set<LanguageServerWrapper>
 
+    /**
+     * Removes a wrapper
+     */
     fun removeWrapper(wrapper: LanguageServerWrapper): Unit
 
     /**
-     * Called when an editor is opened. Instantiates a LanguageServerWrapper if necessary, and adds the Editor to the Wrapper
-     *
-     * @param editor the editor
+     * Called when an [editor] is opened. Instantiates a LanguageServerWrapper if necessary, and links the [editor] to this wrapper
      */
     fun editorOpened(editor: Editor): Unit
 
     /**
-     * Called when an editor is closed. Notifies the LanguageServerWrapper if needed
-     *
-     * @param editor the editor.
+     * Called when an [editor] is closed. Notifies the LanguageServerWrapper if needed
      */
     fun editorClosed(editor: Editor): Unit {
         val uri = FileUtils.editorToURIString(editor)
@@ -68,8 +79,14 @@ interface LSPProjectService {
         }
     }
 
-    fun forceEditorOpened(editor: Editor, serverDefinition: LanguageServerDefinition, project: Project): Unit
+    /**
+     * Forces the linking from [editor] to the wrapper corresponding to [serverDefinition] in the given [project]
+     */
+    fun forceEditorLink(editor: Editor, serverDefinition: LanguageServerDefinition, project: Project): Unit
 
+    /**
+     * Reset all the custom associations
+     */
     fun resetAssociations(): Unit
 
     companion object {

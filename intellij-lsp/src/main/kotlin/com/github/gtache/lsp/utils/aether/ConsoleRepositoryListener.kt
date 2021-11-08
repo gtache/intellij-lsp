@@ -22,7 +22,8 @@ import java.util.*
 * KIND, either express or implied.  See the License for the
 * specific language governing permissions and limitations
 * under the License.
-*/ /**
+*/
+/**
  * A simplistic repository listener that logs events to the console.
  */
 class ConsoleRepositoryListener @JvmOverloads constructor(out: PrintStream? = null) : AbstractRepositoryListener() {
