@@ -1,5 +1,5 @@
 plugins {
-    id "org.jetbrains.intellij" version "0.3.7"
+    id "org.jetbrains.intellij" version "1.13.3"
 }
 
 repositories {
@@ -9,13 +9,8 @@ repositories {
 apply plugin: 'org.jetbrains.intellij'
 
 intellij {
-    version '2019.3'
-    plugins 'IntelliLang'
-    pluginName 'LSP Support'
-}
-
-patchPluginXml {
-    untilBuild '2019.3'
+    version = '2023.1'
+    pluginName = 'LSP Support'
 }
 
 dependencies {
