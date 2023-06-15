@@ -1,4 +1,7 @@
-## Currently on hold due to COVID-19 related issues
+# No more maintained
+If anyone wants to take over this project, send me an email. In the meantime, it seems that JetBrains will support LSP with their new Fleet IDE.    
+Also check out [lsp4intellij](https://github.com/ballerina-platform/lsp4intellij) which was forked from this project.     
+There is a Kotlin branch which is a conversion of the master one, but it wasn't tested.
 # intellij-lsp
 Plugin adding support for Language Server Protocol for IntelliJ since version 2018.2     
 This plugin should be compatible with any JetBrains IDE (tested successfully on IntelliJ, PyCharm and CLion)    
