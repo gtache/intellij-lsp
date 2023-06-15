@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.settings.application
 
-import com.github.gtache.lsp.settings.application.gui.TimeoutGUI
+import com.github.gtache.lsp.settings.application.gui.TimeoutSettingsGUI
 import com.intellij.openapi.options.Configurable
 import org.jetbrains.annotations.Nls
 import javax.swing.JComponent
@@ -18,8 +18,9 @@ class TimeoutSettings private constructor() : Configurable {
     }
 
     override fun createComponent(): JComponent {
-        timeoutGUI = TimeoutGUI()
-        return timeoutGUI!!.getRootPanel()
+        val gui = TimeoutSettingsGUI()
+        timeoutGUI = gui
+        return gui.getRootPanel()
     }
 
     override fun isModified(): Boolean {
@@ -39,6 +40,6 @@ class TimeoutSettings private constructor() : Configurable {
     }
 
     companion object {
-        private var timeoutGUI: TimeoutGUI? = null
+        private var timeoutGUI: TimeoutSettingsGUI? = null
     }
 }

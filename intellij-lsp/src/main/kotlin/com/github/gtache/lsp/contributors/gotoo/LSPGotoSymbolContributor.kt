@@ -11,6 +11,6 @@ import com.intellij.openapi.project.Project
 class LSPGotoSymbolContributor : LSPGotoContributor {
 
     override fun getItemsByName(name: String, pattern: String, project: Project, includeNonProjectItems: Boolean): Array<NavigationItem> {
-        return project.service<LSPProjectService>().workspaceSymbols(name, pattern, includeNonProjectItems)
+        return project.service<LSPProjectService>().workspaceSymbols(name, pattern, includeNonProjectItems).toTypedArray()
     }
 }

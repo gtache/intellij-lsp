@@ -41,7 +41,7 @@ class LSPDocumentationProvider : DocumentationProvider {
                     m.requestDoc(m.editor, element.getTextOffset())
                 } ?: ""
             is PsiFile -> {
-                val editor = FileUtils.editorFromPsiFile(element)
+                val editor = FileUtils.psiFileToEditor(element)
                 editor?.let {
                     service<EditorApplicationService>().managerForEditor(it)?.requestDoc(it, it.caretModel.currentCaret.offset)
                 } ?: ""

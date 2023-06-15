@@ -41,10 +41,10 @@ class LSPFindUsagesHandlerFactory : FindUsagesHandlerFactory() {
                 }
                 when (element) {
                     is PsiFile -> {
-                        setElemsFromEditor(FileUtils.editorFromPsiFile(element))
+                        setElemsFromEditor(FileUtils.psiFileToEditor(element))
                     }
                     is LSPPsiElement -> {
-                        setElemsFromEditor(FileUtils.editorFromPsiFile(element.containingFile))
+                        setElemsFromEditor(FileUtils.psiFileToEditor(element.containingFile))
                     }
                 }
             }

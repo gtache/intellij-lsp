@@ -48,28 +48,28 @@ object FileUtils {
     /**
      * Returns the extension of a [psiFile]
      */
-    fun extFromPsiFile(psiFile: PsiFile): String? {
+    fun psiFileToExtension(psiFile: PsiFile): String? {
         return psiFile.virtualFile.extension
     }
 
     /**
      * Returns the editor of a [psiFile]
      */
-    fun editorFromPsiFile(psiFile: PsiFile): Editor? {
-        return editorFromVirtualFile(psiFile.virtualFile, psiFile.project)
+    fun psiFileToEditor(psiFile: PsiFile): Editor? {
+        return virtualFileToEditor(psiFile.virtualFile, psiFile.project)
     }
 
     /**
      * Returns the editor given an [uri] and a [project]
      */
-    fun editorFromUri(uri: String, project: Project): Editor? {
-        return uriToVFS(uri)?.let { editorFromVirtualFile(it, project) }
+    fun uriToEditor(uri: String, project: Project): Editor? {
+        return uriToVFS(uri)?.let { virtualFileToEditor(it, project) }
     }
 
     /**
      * Returns the editor given a virtual [file] and a [project]
      */
-    fun editorFromVirtualFile(file: VirtualFile, project: Project): Editor? {
+    fun virtualFileToEditor(file: VirtualFile, project: Project): Editor? {
         return FileEditorManager.getInstance(project).getAllEditors(file).filterIsInstance<TextEditor>().map { t -> t.editor }.firstOrNull()
     }
 
@@ -93,28 +93,36 @@ object FileUtils {
     /**
      * Returns a file type given an [editor]
      */
-    fun fileTypeFromEditor(editor: Editor): FileType? {
+    fun editorToFileType(editor: Editor): FileType? {
         return FileDocumentManager.getInstance().getFile(editor.document)?.fileType
     }
 
     /**
      * Returns the extension of a file opened in an [editor]
      */
-    fun extFromEditor(editor: Editor): String? {
+    fun editorToExtension(editor: Editor): String? {
         return FileDocumentManager.getInstance().getFile(editor.document)?.extension
+    }
+
+
+    /**
+     * Returns the extension of a file with the given [uri]
+     */
+    fun uriToExtension(uri: String): String? {
+        return uriToVFS(uri)?.extension
     }
 
     /**
      * Transforms an [editor] identifier to an LSP identifier
      */
     fun editorToLSPIdentifier(editor: Editor): TextDocumentIdentifier {
-        return TextDocumentIdentifier(editorToURIString(editor))
+        return TextDocumentIdentifier(editorToUri(editor))
     }
 
     /**
      * Returns the URI string corresponding to an [editor]
      */
-    fun editorToURIString(editor: Editor): String? {
+    fun editorToUri(editor: Editor): String? {
         val file = FileDocumentManager.getInstance().getFile(editor.document)
         return file?.let {
             vfsToURI(it)?.let { uri ->

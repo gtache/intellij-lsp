@@ -1,7 +1,9 @@
 package com.github.gtache.lsp.actions
 
 import com.github.gtache.lsp.editor.services.application.EditorApplicationService
-import com.github.gtache.lsp.settings.project.LSPProjectSettings
+import com.github.gtache.lsp.languageserver.wrapper.provider.LanguageServerWrapperProvider
+import com.github.gtache.lsp.services.project.LSPProjectService
+import com.github.gtache.lsp.settings.project.LSPPersistentProjectSettings
 import com.intellij.codeInsight.documentation.actions.ShowQuickDocInfoAction
 import com.intellij.lang.LanguageDocumentation
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -25,14 +27,16 @@ class QuickDocAction : ShowQuickDocInfoAction(), DumbAware {
             if (file != null && project != null) {
                 val language = PsiManager.getInstance(project).findFile(file)?.language
                 //Hack for IntelliJ 2018 TODO proper way
-                if (language != null && (project.service<LSPProjectSettings>().projectState.isAlwaysSendRequests || LanguageDocumentation.INSTANCE.allForLanguage(
-                        language
-                    )
-                        .isEmpty()
-                            || (ApplicationInfo.getInstance().majorVersion.toInt() > 2017) && PlainTextLanguage.INSTANCE == language)) {
-                    val manager = service<EditorApplicationService>().managerForEditor(editor)
-                    if (manager != null) {
-                        manager.quickDoc(editor)
+                val id = project.service<LSPProjectService>().getWrapper(editor)?.serverDefinition?.id
+                val state = project.service<LSPPersistentProjectSettings>().projectState
+                if (id != null) {
+                    if (language != null && (state.idToSettings[id]?.isAlwaysSendRequests == true
+                                || LanguageDocumentation.INSTANCE.allForLanguage(language).isEmpty()
+                                || (ApplicationInfo.getInstance().majorVersion.toInt() > 2017) && PlainTextLanguage.INSTANCE == language)) {
+                        val manager = service<EditorApplicationService>().managerForEditor(editor)
+                        if (manager != null) {
+                            manager.quickDoc(editor)
+                        } else super.actionPerformed(e)
                     } else super.actionPerformed(e)
                 } else super.actionPerformed(e)
             } else super.actionPerformed(e)

@@ -30,7 +30,10 @@
     </applicationListeners>
 
     <extensionPoints>
-        <extensionPoint interface="com.github.gtache.lsp.contributors.icon.LSPIconProvider" name="lspIconProvider"/>
+        <extensionPoint interface="com.github.gtache.lsp.contributors.icon.LanguageServerIconProvider"
+                        name="lspIconProvider" dynamic="true"/>
+        <extensionPoint interface="com.github.gtache.lsp.languageserver.definition.Definition" name="lspDefinition"
+                        dynamic="true"/>
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.intellij">
@@ -40,36 +43,44 @@
         <fileDocumentManagerListener
                 implementation="com.github.gtache.lsp.editor.listeners.FileDocumentManagerListenerImpl"/>
         <editorFactoryListener implementation="com.github.gtache.lsp.editor.listeners.EditorListener"/>
-        <projectConfigurable instance="com.github.gtache.lsp.settings.project.MiscSettings" id="MiscSettings"
+        <projectConfigurable instance="com.github.gtache.lsp.settings.project.MiscConfigurable" id="MiscSettings"
                              groupId="language" displayName="Language Server Protocol"/>
         <projectConfigurable parentId="MiscSettings" id="ServerSettings" displayName="Server Definitions"
-                             instance="com.github.gtache.lsp.settings.project.ServersSettings"/>
+                             instance="com.github.gtache.lsp.settings.project.ServersConfigurable"/>
         <applicationConfigurable parentId="MiscSettings" id="TimeoutSettings" displayName="Timeouts"
                                  instance="com.github.gtache.lsp.settings.application.TimeoutSettings"/>
         <applicationConfigurable parentId="MiscSettings" id="ArtifactSettings" displayName="Artifacts"
-                                 instance="com.github.gtache.lsp.settings.application.ArtifactSettings"/>
+                                 instance="com.github.gtache.lsp.settings.application.ArtifactConfigurable"/>
 
-        <projectService id="LSPProjectService"
-                        serviceInterface="com.github.gtache.lsp.services.project.LSPProjectService"
-                        serviceImplementation="com.github.gtache.lsp.services.project.LSPProjectServiceImpl"/>
         <applicationService id="LSPApplicationService"
                             serviceInterface="com.github.gtache.lsp.services.application.LSPApplicationService"
                             serviceImplementation="com.github.gtache.lsp.services.application.LSPApplicationServiceImpl"/>
-        <projectService id="EditorProjectService"
-                        serviceInterface="com.github.gtache.lsp.editor.services.project.EditorProjectService"
-                        serviceImplementation="com.github.gtache.lsp.editor.services.project.EditorProjectServiceImpl"/>
+        <applicationService id="LSPApplicationState"
+                            serviceInterface="com.github.gtache.lsp.settings.application.LSPPersistentApplicationSettings"
+                            serviceImplementation="com.github.gtache.lsp.settings.application.LSPPersistentApplicationSettingsImpl"/>
         <applicationService id="EditorApplicationService"
                             serviceInterface="com.github.gtache.lsp.editor.services.application.EditorApplicationService"
                             serviceImplementation="com.github.gtache.lsp.editor.services.application.EditorApplicationServiceImpl"/>
-        <projectService id="LSPProjectState"
-                        serviceInterface="com.github.gtache.lsp.settings.project.LSPProjectSettings"
-                        serviceImplementation="com.github.gtache.lsp.settings.project.LSPProjectSettingsImpl"/>
-        <applicationService id="LSPApplicationState"
-                            serviceInterface="com.github.gtache.lsp.settings.application.LSPApplicationSettings"
-                            serviceImplementation="com.github.gtache.lsp.settings.application.LSPApplicationSettingsImpl"/>
         <applicationService id="Aether" serviceInterface="com.github.gtache.lsp.utils.aether.Aether"
                             serviceImplementation="com.github.gtache.lsp.utils.aether.AetherImpl"/>
-
+        <applicationService id="LSDProvider"
+                            serviceInterface="com.github.gtache.lsp.languageserver.definition.provider.LanguageServerDefinitionProvider"
+                            serviceImplementation="com.github.gtache.lsp.languageserver.definition.provider.LanguageServerDefinitionProviderImpl"/>
+        <applicationService id="LSCProvider"
+                            serviceInterface="com.github.gtache.lsp.languageserver.configuration.provider.ConfigurationProvider"
+                            serviceImplementation="com.github.gtache.lsp.languageserver.configuration.provider.ConfigurationProviderImpl"/>
+        <projectService id="LSPProjectService"
+                        serviceInterface="com.github.gtache.lsp.services.project.LSPProjectService"
+                        serviceImplementation="com.github.gtache.lsp.services.project.LSPProjectServiceImpl"/>
+        <projectService id="LSPProjectState"
+                        serviceInterface="com.github.gtache.lsp.settings.project.LSPPersistentProjectSettings"
+                        serviceImplementation="com.github.gtache.lsp.settings.project.LSPPersistentProjectSettingsImpl"/>
+        <projectService id="EditorProjectService"
+                        serviceInterface="com.github.gtache.lsp.editor.services.project.EditorProjectService"
+                        serviceImplementation="com.github.gtache.lsp.editor.services.project.EditorProjectServiceImpl"/>
+        <projectService id="LSWProvider"
+                        serviceInterface="com.github.gtache.lsp.languageserver.wrapper.provider.LanguageServerWrapperProvider"
+                        serviceImplementation="com.github.gtache.lsp.languageserver.wrapper.provider.LanguageServerWrapperProviderImpl"/>
         <projectService id="ReformatHandler"
                         serviceInterface="com.github.gtache.lsp.requests.services.project.ReformatProjectService"
                         serviceImplementation="com.github.gtache.lsp.requests.services.project.ReformatProjectServiceImpl"/>
@@ -94,7 +105,7 @@
         <lang.documentationProvider implementationClass="com.github.gtache.lsp.contributors.LSPDocumentationProvider"
                                     id="LSPDocumentationProvider" language="TEXT" order="first"/>
         <statusBarWidgetFactory
-                implementation="com.github.gtache.lsp.client.languageserver.status.ServerStatusWidgetFactory"/>
+                implementation="com.github.gtache.lsp.languageserver.status.ServerStatusWidgetFactory"/>
 
         <!--        <lang.findUsagesProvider implementationClass="com.github.gtache.lsp.contributors.LSPFindUsagesProvider" id="LSPFindUsagesProvider" language="TEXT" order="first" />
                 <findUsagesHandlerFactory implementation="com.github.gtache.lsp.contributors.LSPFindUsagesHandlerFactory" id="LSPFindUsagesHandlerFactory" />-->

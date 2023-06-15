@@ -64,7 +64,7 @@ class LSPRenameProcessor : RenamePsiElementProcessor() {
                             val offset = editor.caretModel.currentCaret.offset
                             val (elements, openedEditors) = manager.references(offset, getOriginalElement = true)
                             this.elements += elements.toSet()
-                            LSPRenameProcessor.openedFiles += openedEditors.toSet()
+                            openedFiles += openedEditors.toSet()
                             this.curElem = elements.find { e ->
                                 val range = e.textRange
                                 val start = range.startOffset
@@ -92,7 +92,7 @@ class LSPRenameProcessor : RenamePsiElementProcessor() {
             is LSPPsiElement -> if (elements.contains(element)) {
                 elements.mapNotNull { e -> e.reference }
             } else {
-                val manager = FileUtils.editorFromPsiFile(element.containingFile)?.let { service<EditorApplicationService>().managerForEditor(it) }
+                val manager = FileUtils.psiFileToEditor(element.containingFile)?.let { service<EditorApplicationService>().managerForEditor(it) }
                 if (manager != null) {
                     val refs = manager.references(element.textOffset, getOriginalElement = true)
                     openedFiles += refs.second

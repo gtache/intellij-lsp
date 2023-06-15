@@ -1,8 +1,9 @@
 package com.github.gtache.lsp.actions
 
-import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapperImpl
+import com.github.gtache.lsp.languageserver.wrapper.provider.LanguageServerWrapperProvider
 import com.github.gtache.lsp.services.project.LSPProjectService
 import com.github.gtache.lsp.settings.gui.ComboCheckboxDialog
+import com.github.gtache.lsp.settings.project.LSPPersistentProjectSettings
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -31,11 +32,11 @@ class LinkToServerAction : DumbAwareAction() {
                 ActionPlaces.EDITOR_TAB_POPUP -> {
                     val virtualFile = anActionEvent.dataContext.getData(CommonDataKeys.VIRTUAL_FILE)
                     if (virtualFile != null) {
-                        editors = listOf(FileUtils.editorFromVirtualFile(virtualFile, project))
+                        editors = listOf(FileUtils.virtualFileToEditor(virtualFile, project))
                         if (editors[0] == null) {
                             val psiFile = anActionEvent.dataContext.getData(CommonDataKeys.PSI_FILE)
                             if (psiFile != null) {
-                                editors = listOf(FileUtils.editorFromPsiFile(psiFile))
+                                editors = listOf(FileUtils.psiFileToEditor(psiFile))
                             }
                         }
                     }
@@ -51,7 +52,7 @@ class LinkToServerAction : DumbAwareAction() {
                     logger.warn("Unknown place : " + anActionEvent.place)
                 }
             }
-            val allEditors = editors.filterNotNull().partition { e -> LanguageServerWrapperImpl.forEditor(e) == null }
+            val allEditors = editors.filterNotNull().partition { e -> project.service<LSPProjectService>().getWrapper(e) == null }
             val tmpEditors = allEditors.first.toMutableList()
             tmpEditors.addAll(allEditors.second)
             if (!tmpEditors.all { e -> e.project == project }) {
@@ -68,18 +69,19 @@ class LinkToServerAction : DumbAwareAction() {
                         project,
                         "Editor(s) " + alreadyConnected.joinToString("\n") { e ->
                             FileDocumentManager.getInstance().getFile(e.document)?.name ?: "null"
-                        } + " already connected to servers , ext " + alreadyConnected.joinToString(",") { e ->
-                            LanguageServerWrapperImpl.forEditor(e)?.serverDefinition?.ext ?: "null"
+                        } + " already connected to server, id " + alreadyConnected.joinToString(",") { e ->
+                            project.service<LSPProjectService>().getWrapper(e)?.serverDefinition?.id ?: "null"
                         } + ", will be overwritten",
                         "Trying to connect an already connected editor"
                     )
                 }
                 if (editors.isNotEmpty()) {
                     val projectService = project.service<LSPProjectService>()
-                    val allDefinitions = projectService.extensionsToServerDefinitions.values.distinct()
-                    val allDefinitionNames = allDefinitions.map { d -> d.ext }
+                    val state = project.service<LSPPersistentProjectSettings>().projectState
+                    val allDefinitions = state.extensionToServerDefinition.values.distinct()
+                    val allDefinitionNames = allDefinitions.map { d -> d.id }
                     val allWrappers = projectService.getAllWrappers()
-                    val allWrapperNames = allWrappers.map { w -> w.serverDefinition.ext + " : " + w.project.name }
+                    val allWrapperNames = allWrappers.map { w -> w.serverDefinition.id + " : " + w.project.name }
                     val dialog = ComboCheckboxDialog(
                         project,
                         "Link a file to a language server",
@@ -90,7 +92,7 @@ class LinkToServerAction : DumbAwareAction() {
                     val exitCode = dialog.exitCode
                     if (exitCode >= 0) {
                         editors.forEach { editor ->
-                            val fileType = FileUtils.fileTypeFromEditor(editor)
+                            val fileType = FileUtils.editorToFileType(editor)
                             if (projectService.isExtensionSupported(fileType?.defaultExtension)) {
                                 val ret = Messages.showOkCancelDialog(
                                     editor.project,
@@ -98,9 +100,9 @@ class LinkToServerAction : DumbAwareAction() {
                                     "Known extension", "Ok", "Cancel", Messages.getWarningIcon()
                                 )
                                 if (ret == Messages.OK) {
-                                    projectService.forceEditorLink(editor, allDefinitions[exitCode], project)
+                                    projectService.forceEditorLink(editor, allDefinitions[exitCode])
                                 }
-                            } else projectService.forceEditorLink(editor, allDefinitions[exitCode], project)
+                            } else projectService.forceEditorLink(editor, allDefinitions[exitCode])
                         }
                     }
                 }
@@ -110,7 +112,7 @@ class LinkToServerAction : DumbAwareAction() {
 
     private fun openClosedEditors(uris: Iterable<String>, project: Project): List<Editor> {
         return uris.mapNotNull { uri ->
-            var editor = FileUtils.editorFromUri(uri, project)
+            var editor = FileUtils.uriToEditor(uri, project)
             if (editor == null) {
                 editor = FileUtils.openClosedEditor(uri, project)?.second
             }

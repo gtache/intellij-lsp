@@ -1,8 +1,9 @@
 package com.github.gtache.lsp.actions
 
+import com.github.gtache.lsp.languageserver.wrapper.provider.LanguageServerWrapperProvider
 import com.github.gtache.lsp.requests.services.project.ReformatProjectService
 import com.github.gtache.lsp.services.project.LSPProjectService
-import com.github.gtache.lsp.settings.project.LSPProjectSettings
+import com.github.gtache.lsp.settings.project.LSPPersistentProjectSettings
 import com.intellij.codeInsight.actions.ReformatCodeAction
 import com.intellij.lang.LanguageFormatting
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -22,15 +23,16 @@ class ReformatAction : ReformatCodeAction(), DumbAware {
         val editor = e.getData(CommonDataKeys.EDITOR)
         if (editor != null && project != null) {
             val file = PsiDocumentManager.getInstance(project).getPsiFile(editor.document)
-            val state = project.service<LSPProjectSettings>().projectState
-            if (file != null && (state.isAlwaysSendRequests ||
-                        (LanguageFormatting.INSTANCE.allForLanguage(file.language).isEmpty()
-                                && project.service<LSPProjectService>().isExtensionSupported(file.virtualFile.extension)))
-            ) {
-                project.service<ReformatProjectService>().reformatFile(editor)
-            } else {
-                super.actionPerformed(e)
-            }
+            val id = project.service<LSPProjectService>().getWrapper(editor)?.serverDefinition?.id
+            val state = project.service<LSPPersistentProjectSettings>().projectState
+            if (id != null) {
+                if (file != null && (state.idToSettings[id]?.isAlwaysSendRequests == true ||
+                            (LanguageFormatting.INSTANCE.allForLanguage(file.language).isEmpty()
+                                    && project.service<LSPProjectService>().isExtensionSupported(file.virtualFile.extension)))
+                ) {
+                    project.service<ReformatProjectService>().reformatFile(editor)
+                } else super.actionPerformed(e)
+            } else super.actionPerformed(e)
         }
     }
 

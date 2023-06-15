@@ -116,7 +116,7 @@ class LSPRenameHandler : RenameHandler {
             else -> {
                 val project = editor.project ?: psiFile.project
 
-                psiElement == null && FileUtils.extFromPsiFile(psiFile)?.let { project.service<LSPProjectService>().isExtensionSupported(it) } ?: false
+                psiElement == null && FileUtils.psiFileToExtension(psiFile)?.let { project.service<LSPProjectService>().isExtensionSupported(it) } ?: false
             }
         }
     }

@@ -1,15 +1,16 @@
 package com.github.gtache.lsp.editor
 
 import com.github.gtache.lsp.actions.ReferencesAction
-import com.github.gtache.lsp.client.languageserver.DefaultServerOptions
-import com.github.gtache.lsp.client.languageserver.ServerOptions
-import com.github.gtache.lsp.client.languageserver.requestmanager.RequestManager
-import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapperImpl
+import com.github.gtache.lsp.contributors.icon.LanguageServerIconProvider
 import com.github.gtache.lsp.contributors.psi.LSPPsiElement
 import com.github.gtache.lsp.contributors.rename.LSPRenameProcessor
 import com.github.gtache.lsp.editor.services.application.EditorApplicationService
 import com.github.gtache.lsp.editor.services.project.EditorProjectService
 import com.github.gtache.lsp.head
+import com.github.gtache.lsp.languageserver.options.DefaultServerOptions
+import com.github.gtache.lsp.languageserver.options.ServerOptions
+import com.github.gtache.lsp.languageserver.requestmanager.RequestManager
+import com.github.gtache.lsp.languageserver.wrapper.LanguageServerWrapperImpl
 import com.github.gtache.lsp.multicatch
 import com.github.gtache.lsp.requests.HoverHandler
 import com.github.gtache.lsp.requests.SemanticHighlightingHandler
@@ -26,7 +27,7 @@ import com.github.gtache.lsp.requests.Timeout.SIGNATURE_TIMEOUT
 import com.github.gtache.lsp.requests.Timeout.WILLSAVE_TIMEOUT
 import com.github.gtache.lsp.requests.Timeouts
 import com.github.gtache.lsp.requests.WorkspaceEditHandler
-import com.github.gtache.lsp.settings.project.LSPProjectSettings
+import com.github.gtache.lsp.settings.project.LSPPersistentProjectSettings
 import com.github.gtache.lsp.tail
 import com.github.gtache.lsp.utils.ApplicationUtils.computableReadAction
 import com.github.gtache.lsp.utils.ApplicationUtils.computableWriteAction
@@ -40,7 +41,6 @@ import com.github.gtache.lsp.utils.DocumentUtils.lspPositionToOffset
 import com.github.gtache.lsp.utils.DocumentUtils.lspRangeToTextRange
 import com.github.gtache.lsp.utils.DocumentUtils.offsetToLSPPosition
 import com.github.gtache.lsp.utils.FileUtils
-import com.github.gtache.lsp.utils.GUIUtils
 import com.intellij.codeInsight.CodeInsightSettings
 import com.intellij.codeInsight.hint.HintManager
 import com.intellij.codeInsight.hint.HintManagerImpl
@@ -216,7 +216,7 @@ class EditorEventManager(
 
     }
 
-    private val identifier: TextDocumentIdentifier = TextDocumentIdentifier(FileUtils.editorToURIString(editor))
+    private val identifier: TextDocumentIdentifier = TextDocumentIdentifier(FileUtils.editorToUri(editor))
     private val changesParams = DidChangeTextDocumentParams(VersionedTextDocumentIdentifier(), ArrayList())
     private val selectedSymbHighlights: MutableSet<RangeHighlighter> = HashSet()
     private val diagnosticsHighlights: MutableSet<DiagnosticRangeHighlighter> = HashSet()
@@ -243,7 +243,7 @@ class EditorEventManager(
     private val project: Project = editor.project!!
 
     @Volatile
-    var needSave = false
+    var needSave: Boolean = false
     private var showDocThread = Timer("ShowDocThread", true)
     private var prepareDocThread = Timer("PrepareDocThread", true)
     private var showDocTask: TimerTask? = null
@@ -448,7 +448,7 @@ class EditorEventManager(
                         val sortText = item.sortText
                         val presentableText = if (label != null && label != "") label else insertText ?: ""
                         val tailText = if (detail != null) "\t" + detail else ""
-                        val iconProvider = GUIUtils.getIconProviderFor(wrapper.serverDefinition)
+                        val iconProvider = LanguageServerIconProvider.getProviderFor(wrapper.serverDefinition)
                         val icon = iconProvider.getCompletionIcon(kind)
                         var lookupElementBuilder: LookupElementBuilder?
                         /*            .,Renderer((element: LookupElement, presentation: LookupElementPresentation) -> { //TODO later
@@ -988,39 +988,45 @@ class EditorEventManager(
      * @param e The mouse event
      */
     fun mouseClicked(e: EditorMouseEvent): Unit {
-        if (e.mouseEvent.isControlDown && docRange != null && docRange!!.loc != null && docRange!!.loc!!.targetUri != null) {
-            val loc = docRange!!.loc!!
-            val offset = editor.logicalPositionToOffset(editor.xyToLogicalPosition(e.mouseEvent.point))
-            val locUri = FileUtils.sanitizeURI(loc.targetUri)
-            if (identifier.uri == locUri) {
-                if (docRange!!.definitionContainsOffset(offset)) {
-                    (ActionManager.getInstance().getAction("LSPFindUsages") as ReferencesAction).showReferences(this, offset)
-                } else {
-                    val startOffset = lspPositionToOffset(editor, loc.targetRange.start)
-                    writeAction {
-                        editor.caretModel.moveToOffset(startOffset)
-                        editor.selectionModel.setSelection(startOffset, lspPositionToOffset(editor, loc.targetRange.end))
-                        editor.scrollingModel.scrollToCaret(ScrollType.CENTER)
-                    }
-                }
-            } else {
-                val file = LocalFileSystem.getInstance().findFileByIoFile(File(URI(locUri)))
-                if (file != null) {
-                    val descriptor = OpenFileDescriptor(project, file)
-                    writeAction {
-                        val newEditor = FileEditorManager.getInstance(project).openTextEditor(descriptor, true)
-                        if (newEditor != null) {
-                            val startOffset = lspPositionToOffset(newEditor, loc.targetRange.start)
-                            newEditor.caretModel.currentCaret.moveToOffset(startOffset)
-                            newEditor.selectionModel.setSelection(startOffset, lspPositionToOffset(newEditor, loc.targetRange.end))
-                            newEditor.scrollingModel.scrollToCaret(ScrollType.CENTER)
+        if (e.mouseEvent.isControlDown) {
+            docRange?.let { dr ->
+                dr.loc?.let { loc ->
+                    if (loc.targetUri != null) {
+                        val offset = editor.logicalPositionToOffset(editor.xyToLogicalPosition(e.mouseEvent.point))
+                        val locUri = FileUtils.sanitizeURI(loc.targetUri)
+                        if (identifier.uri == locUri) {
+                            if (dr.definitionContainsOffset(offset)) {
+                                (ActionManager.getInstance().getAction("LSPFindUsages") as ReferencesAction).showReferences(this, offset)
+                            } else {
+                                val startOffset = lspPositionToOffset(editor, loc.targetRange.start)
+                                writeAction {
+                                    editor.caretModel.moveToOffset(startOffset)
+                                    editor.selectionModel.setSelection(startOffset, lspPositionToOffset(editor, loc.targetRange.end))
+                                    editor.scrollingModel.scrollToCaret(ScrollType.CENTER)
+                                }
+                            }
+                        } else {
+                            val file = LocalFileSystem.getInstance().findFileByIoFile(File(URI(locUri)))
+                            if (file != null) {
+                                val descriptor = OpenFileDescriptor(project, file)
+                                writeAction {
+                                    val newEditor = FileEditorManager.getInstance(project).openTextEditor(descriptor, true)
+                                    if (newEditor != null) {
+                                        val startOffset = lspPositionToOffset(newEditor, loc.targetRange.start)
+                                        newEditor.caretModel.currentCaret.moveToOffset(startOffset)
+                                        newEditor.selectionModel.setSelection(startOffset, lspPositionToOffset(newEditor, loc.targetRange.end))
+                                        newEditor.scrollingModel.scrollToCaret(ScrollType.CENTER)
+                                    }
+                                }
+                            } else {
+                                logger.warn("Empty file for $locUri")
+                            }
                         }
+                        cancelDoc()
                     }
-                } else {
-                    logger.warn("Empty file for $locUri")
                 }
             }
-            cancelDoc()
+
         }
     }
 
@@ -1377,8 +1383,9 @@ class EditorEventManager(
             val psiFile = PsiDocumentManager.getInstance(project).getPsiFile(editor.document)
             if (psiFile != null) {
                 val language = psiFile.language
-                if ((project.service<LSPProjectSettings>().projectState.isAlwaysSendRequests != false || LanguageDocumentation.INSTANCE.allForLanguage(language)
-                        .isEmpty() || language == PlainTextLanguage.INSTANCE)
+                if ((project.service<LSPPersistentProjectSettings>().projectState.idToSettings[wrapper.serverDefinition.id]?.isAlwaysSendRequests != false
+                            || LanguageDocumentation.INSTANCE.allForLanguage(language).isEmpty()
+                            || language == PlainTextLanguage.INSTANCE)
                     && (ctrlDown || EditorSettingsExternalizable.getInstance().isShowQuickDocOnMouseOverElement)) {
                     val lPos = getPos(e)
                     if (lPos != null) {
@@ -1592,7 +1599,7 @@ class EditorEventManager(
                         val end = l.range.end
                         val uri = FileUtils.sanitizeURI(l.uri)
                         val file = FileUtils.uriToVFS(uri)
-                        var curEditor: Editor? = FileUtils.editorFromUri(uri, project)
+                        var curEditor: Editor? = FileUtils.uriToEditor(uri, project)
                         if (curEditor == null && file != null) {
                             val descriptor = OpenFileDescriptor(project, file)
                             curEditor = computableWriteAction(Computable { FileEditorManager.getInstance(project).openTextEditor(descriptor, false) })

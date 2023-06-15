@@ -524,9 +524,8 @@ data class LSPPsiElement(private var name: String, private val project: Project,
         var control = true
         while (control) {
             val map = getUserMap()
-            var copyableMap = map.get(COPYABLE_USER_MAP_KEY)
-            if (copyableMap == null) copyableMap = KeyFMap.EMPTY_MAP
-            val newCopyableMap = if (value == null) copyableMap!!.minus(key) else copyableMap!!.plus(key, value)
+            val copyableMap = map.get(COPYABLE_USER_MAP_KEY) ?: KeyFMap.EMPTY_MAP
+            val newCopyableMap = if (value == null) copyableMap.minus(key) else copyableMap.plus(key, value)
             val newMap = if (newCopyableMap.isEmpty) map.minus(COPYABLE_USER_MAP_KEY) else map.plus(COPYABLE_USER_MAP_KEY, newCopyableMap)
             if ((newMap === map) || changeUserMap(map, newMap)) control = false
         }
@@ -559,7 +558,7 @@ data class LSPPsiElement(private var name: String, private val project: Project,
     }
 
     override fun navigate(requestFocus: Boolean): Unit {
-        val editor = FileUtils.editorFromPsiFile(containingFile)
+        val editor = FileUtils.psiFileToEditor(containingFile)
         if (editor == null) {
             val descriptor = OpenFileDescriptor(getProject(), containingFile.virtualFile, textOffset)
             ApplicationUtils.invokeLater { ApplicationUtils.writeAction { FileEditorManager.getInstance(getProject()).openTextEditor(descriptor, false) } }

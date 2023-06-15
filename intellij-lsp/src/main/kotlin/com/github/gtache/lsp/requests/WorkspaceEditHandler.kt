@@ -45,7 +45,7 @@ object WorkspaceEditHandler {
                 if (infos.all { info -> info.element is LSPPsiElement }) {
                     infos.forEach { ui ->
                         ui.virtualFile?.let { vf ->
-                            FileUtils.editorFromVirtualFile(vf, ui.project)?.let { editor ->
+                            FileUtils.virtualFileToEditor(vf, ui.project)?.let { editor ->
                                 ui.element?.textRange?.let { range ->
                                     val lspRange = Range(
                                         DocumentUtils.offsetToLSPPosition(editor, range.startOffset),
@@ -54,7 +54,7 @@ object WorkspaceEditHandler {
                                     val edit = TextEdit(lspRange, newName)
                                     val uri = FileUtils.sanitizeURI(URL(vf.url.replace(" ", FileUtils.SPACE_ENCODED)).toURI().toString())
                                     if (edits.contains(uri)) {
-                                        edits[uri]!! += edit
+                                        edits[uri]?.add(edit)
                                     } else {
                                         edits[uri] = mutableListOf(edit)
                                     }

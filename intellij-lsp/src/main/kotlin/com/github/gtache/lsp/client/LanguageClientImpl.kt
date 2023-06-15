@@ -1,6 +1,6 @@
 package com.github.gtache.lsp.client
 
-import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
+import com.github.gtache.lsp.languageserver.wrapper.LanguageServerWrapper
 import com.github.gtache.lsp.editor.services.project.EditorProjectService
 import com.github.gtache.lsp.requests.SemanticHighlightingHandler
 import com.github.gtache.lsp.requests.WorkspaceEditHandler

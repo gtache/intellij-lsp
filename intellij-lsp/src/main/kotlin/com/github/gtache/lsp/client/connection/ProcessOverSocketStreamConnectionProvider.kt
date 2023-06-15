@@ -17,7 +17,7 @@ import kotlin.concurrent.thread
  * @param workingDir
  * @param port
  */
-class ProcessOverSocketStreamConnectionProvider(commands: Array<String>, workingDir: String, private val port: Int = 0) :
+class ProcessOverSocketStreamConnectionProvider(commands: List<String>, workingDir: String, private val port: Int = 0) :
     ProcessStreamConnectionProvider(commands, workingDir) {
 
     companion object {

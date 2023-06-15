@@ -1,8 +1,9 @@
 package com.github.gtache.lsp.actions
 
 import com.github.gtache.lsp.editor.services.application.EditorApplicationService
+import com.github.gtache.lsp.languageserver.wrapper.provider.LanguageServerWrapperProvider
 import com.github.gtache.lsp.services.project.LSPProjectService
-import com.github.gtache.lsp.settings.project.LSPProjectSettings
+import com.github.gtache.lsp.settings.project.LSPPersistentProjectSettings
 import com.intellij.codeInsight.actions.LayoutCodeDialog
 import com.intellij.codeInsight.actions.ShowReformatFileDialog
 import com.intellij.codeInsight.actions.TextRangeType
@@ -28,28 +29,25 @@ class ShowReformatDialogAction : ShowReformatFileDialog(), DumbAware {
         val project = e.getData(CommonDataKeys.PROJECT)
         if (editor != null && project != null) {
             val file = PsiDocumentManager.getInstance(project).getPsiFile(editor.document)
-            if (file != null && (project.service<LSPProjectSettings>().projectState.isAlwaysSendRequests || (LanguageFormatting.INSTANCE.allForLanguage(file.language)
-                    .isEmpty()
-                        && project.service<LSPProjectService>().isExtensionSupported(
-                    FileDocumentManager.getInstance().getFile(editor.document)?.extension
-                )))
-            ) {
+            val id = project.service<LSPProjectService>().getWrapper(editor)?.serverDefinition?.id
+            val state = project.service<LSPPersistentProjectSettings>().projectState
+            if (id != null) {
+                if (file != null && (state.idToSettings[id]?.isAlwaysSendRequests == true
+                            || (LanguageFormatting.INSTANCE.allForLanguage(file.language).isEmpty()
+                            && project.service<LSPProjectService>()
+                        .isExtensionSupported(FileDocumentManager.getInstance().getFile(editor.document)?.extension)))) {
+                    val hasSelection = editor.selectionModel.hasSelection()
+                    val dialog = LayoutCodeDialog(project, file, hasSelection, HELP_ID)
+                    dialog.show()
 
-                val hasSelection = editor.selectionModel.hasSelection()
-                val dialog = LayoutCodeDialog(project, file, hasSelection, HELP_ID)
-                dialog.show()
-
-                if (dialog.isOK) {
-                    val options = dialog.runOptions
-                    service<EditorApplicationService>().managerForEditor(editor)
-                        ?.let { manager -> if (options.textRangeType == TextRangeType.SELECTED_TEXT) manager.reformatSelection() else manager.reformat() }
-                }
-            } else {
-                super.actionPerformed(e)
-            }
-        } else {
-            super.actionPerformed(e)
-        }
+                    if (dialog.isOK) {
+                        val options = dialog.runOptions
+                        service<EditorApplicationService>().managerForEditor(editor)
+                            ?.let { manager -> if (options.textRangeType == TextRangeType.SELECTED_TEXT) manager.reformatSelection() else manager.reformat() }
+                    }
+                } else super.actionPerformed(e)
+            } else super.actionPerformed(e)
+        } else super.actionPerformed(e)
     }
 
 }

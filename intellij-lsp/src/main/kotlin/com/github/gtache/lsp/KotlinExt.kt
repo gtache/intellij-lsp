@@ -15,6 +15,15 @@ fun <T> MutableList<T>?.prepend(obj: T): MutableList<T>? {
 }
 
 /**
+ * Filters a map by removing null values
+ */
+fun <K, V> Map<K, V?>.filterNotNullValues(): Map<K, V> {
+    return mapNotNull { (key, nullableValue) ->
+        nullableValue?.let { key to it }
+    }.toMap()
+}
+
+/**
  * Returns the first character of a string
  */
 val String.head: Char

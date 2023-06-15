@@ -27,7 +27,7 @@ class EditorProjectServiceImpl(private val project: Project) : EditorProjectServ
     }
 
     override fun addManager(manager: EditorEventManager) {
-        val uri = FileUtils.editorToURIString(manager.editor)
+        val uri = FileUtils.editorToUri(manager.editor)
         if (uri != null) {
             uriToManager[uri] = manager
         } else {
@@ -36,7 +36,7 @@ class EditorProjectServiceImpl(private val project: Project) : EditorProjectServ
     }
 
     override fun removeManager(manager: EditorEventManager) {
-        FileUtils.editorToURIString(manager.editor)?.let { uriToManager -= it }
+        FileUtils.editorToUri(manager.editor)?.let { uriToManager -= it }
     }
 
     private fun prune(): Unit {

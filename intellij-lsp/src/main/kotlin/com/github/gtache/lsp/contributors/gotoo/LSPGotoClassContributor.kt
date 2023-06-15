@@ -12,7 +12,7 @@ import org.eclipse.lsp4j.SymbolKind
 class LSPGotoClassContributor : LSPGotoContributor {
     override fun getItemsByName(name: String, pattern: String, project: Project, includeNonProjectItems: Boolean): Array<NavigationItem> {
         return project.service<LSPProjectService>()
-            .workspaceSymbols(name, pattern, includeNonProjectItems, setOf(SymbolKind.Class, SymbolKind.Enum, SymbolKind.Interface))
+            .workspaceSymbols(name, pattern, includeNonProjectItems, setOf(SymbolKind.Class, SymbolKind.Enum, SymbolKind.Interface)).toTypedArray()
     }
 
 }

@@ -1,53 +1,33 @@
 package com.github.gtache.lsp.services.project
 
-import com.github.gtache.lsp.client.languageserver.serverdefinition.LanguageServerDefinition
-import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapper
-import com.github.gtache.lsp.client.languageserver.wrapper.LanguageServerWrapperImpl
-import com.github.gtache.lsp.utils.ApplicationUtils
+import com.github.gtache.lsp.languageserver.definition.Definition
+import com.github.gtache.lsp.languageserver.wrapper.LanguageServerWrapper
+import com.github.gtache.lsp.settings.project.LSPPersistentProjectSettings
 import com.github.gtache.lsp.utils.FileUtils
 import com.intellij.navigation.NavigationItem
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.project.Project
 import org.eclipse.lsp4j.SymbolKind
 
 /**
  * Represents an LSP service at the project level
  */
-interface LSPProjectService {
-    /**
-     * Map of file extension to server definition
-     */
-    var extensionsToServerDefinitions: Map<String, LanguageServerDefinition>
+interface LSPProjectService : LSPPersistentProjectSettings.Listener {
 
     /**
      * Returns whether there is a server definition supporting the given [extension]
      */
-    fun isExtensionSupported(extension: String?): Boolean {
-        return extension != null && extensionsToServerDefinitions.contains(extension)
-    }
+    fun isExtensionSupported(extension: String?): Boolean
 
     /**
-     * Returns the corresponding workspaceSymbols given a [name], an unused [pattern], whether to search in non-project items [includeNonProjectItems] unused and a kind set [onlyKind] for filtering
-     *
-     * @param name                   The name to search for
-     * @param pattern                The pattern (unused)
-     * @param includeNonProjectItems Whether to search in libraries for example (unused)
-     * @param onlyKind               Filter the results to only the kinds in the set (all by default)
-     * Returns An array of NavigationItem
+     * Returns the corresponding workspaceSymbols given a [name], a [pattern] (unused), whether to search in non-project items [includeNonProjectItems] (unused) and a kind set [onlyKind] for filtering
      */
     fun workspaceSymbols(
         name: String,
         pattern: String,
         includeNonProjectItems: Boolean = false,
         onlyKind: Set<SymbolKind> = emptySet()
-    ): Array<NavigationItem>
-
-
-    /**
-     * Notifies that the settings state has been loaded
-     */
-    fun notifyStateLoaded(): Unit
+    ): List<NavigationItem>
 
     /**
      * Returns all the wrappers currently instantiated
@@ -55,9 +35,16 @@ interface LSPProjectService {
     fun getAllWrappers(): Set<LanguageServerWrapper>
 
     /**
-     * Removes a wrapper
+     * Returns the wrapper currently managing the given [editor]
      */
-    fun removeWrapper(wrapper: LanguageServerWrapper): Unit
+    fun getWrapper(editor: Editor): LanguageServerWrapper? {
+        return FileUtils.editorToUri(editor)?.let { getWrapper(it) }
+    }
+
+    /**
+     * Returns the wrapper currently managing the file with the given [uri]
+     */
+    fun getWrapper(uri: String): LanguageServerWrapper?
 
     /**
      * Called when an [editor] is opened. Instantiates a LanguageServerWrapper if necessary, and links the [editor] to this wrapper
@@ -67,22 +54,12 @@ interface LSPProjectService {
     /**
      * Called when an [editor] is closed. Notifies the LanguageServerWrapper if needed
      */
-    fun editorClosed(editor: Editor): Unit {
-        val uri = FileUtils.editorToURIString(editor)
-        if (uri != null) {
-            LanguageServerWrapperImpl.forEditor(editor)?.let { l ->
-                ApplicationUtils.pool {
-                    logger.info("Disconnecting $uri")
-                    l.disconnect(uri)
-                }
-            }
-        }
-    }
+    fun editorClosed(editor: Editor)
 
     /**
-     * Forces the linking from [editor] to the wrapper corresponding to [serverDefinition] in the given [project]
+     * Forces the linking from [editor] to the wrapper corresponding to [serverDefinition]
      */
-    fun forceEditorLink(editor: Editor, serverDefinition: LanguageServerDefinition, project: Project): Unit
+    fun forceEditorLink(editor: Editor, serverDefinition: Definition): Unit
 
     /**
      * Reset all the custom associations

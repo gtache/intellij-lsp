@@ -14,7 +14,7 @@ import java.util.*
  * @param commands   The commands to start the process
  * @param workingDir The working directory of the process
  */
-open class ProcessStreamConnectionProvider(private var commands: Array<String>, private var workingDir: String) :
+open class ProcessStreamConnectionProvider(private var commands: List<String>, private var workingDir: String) :
     StreamConnectionProvider {
 
     companion object {
@@ -37,7 +37,9 @@ open class ProcessStreamConnectionProvider(private var commands: Array<String>, 
         val builder = createProcessBuilder()
         logger.info("Starting server process , commands ${commands.joinToString(" ")} and workingDir $workingDir")
         this.process = builder.start()
-        if (!process!!.isAlive) throw IOException("Unable to start language server: $this") else logger.info("Server process started $process")
+        process?.let {
+            if (!it.isAlive) throw IOException("Unable to start language server: $this") else logger.info("Server process started $process")
+        }
     }
 
     private fun createProcessBuilder(): ProcessBuilder {
@@ -52,7 +54,7 @@ open class ProcessStreamConnectionProvider(private var commands: Array<String>, 
 
     override fun equals(other: Any?): Boolean {
         return other is ProcessStreamConnectionProvider && commands.size == other.commands.size &&
-                this.commands.contentEquals(other.commands) && this.workingDir == other.workingDir
+                this.commands == other.commands && this.workingDir == other.workingDir
 
     }
 
